@@ -179,3 +179,4 @@ local.properties
 # KDE directory preferences
 .directory
 
+gaenv_lib/
