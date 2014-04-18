@@ -99,7 +99,7 @@ com_crashlytics_export_strings.xml
 
 
 ### Bower ###
-bower_components
+static/vendor
 
 
 ### Node ###
