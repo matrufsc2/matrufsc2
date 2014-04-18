@@ -1,0 +1,241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>MatrUFSC2</title>
+    <meta name="description" content="MatrUFSC2 é um combinador de horários para matrículas da UFSC" />
+    <meta name="keywords" content="combinador,grade,horários,matrícula,UFSC,CAGR" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta property="fb:page_id" content="234395573293479" />
+    <link rel="stylesheet" type="text/css" href="/css/capim.css" />
+  </head>
+
+  <body style="background-color:#eeeeee;">
+
+    <div id="fb-root"></div>
+    <script>if(0)(function(d, s, id) {
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = "//connect.facebook.net/pt_BR/all.js#xfbml=1&appId=339910152768267";
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));</script>
+
+    <script type="text/javascript">
+    if(0){
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-37160597-1']);
+      _gaq.push(['_trackPageview']);
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+    } else {
+      _gaq = [];
+    }
+    </script>
+
+    <div id="ui_main" style="overflow:auto;width:890px;margin:0 auto;display:none;">
+     <table width="100%"><tr><td>
+     <div style="font-size:24px;text-align:left;">MatrUFSC2</div>
+     </td><td align="left" style="font-size:11px;width:40px;">
+     <div id="sobre"></div>
+     </td>
+     </tr></table>
+     <table><tr><td colspan="2">
+      <table cellpadding="0" cellspacing="0" width="100%"><tr><td align="left">
+       <div id="campus"></div>
+      </td><td align="left" style="width:280px;">
+       <div id="planos"></div>
+      </td><td align="right">
+       <div id="saver"></div>
+      </td></tr></table>
+      <table cellpadding="0" cellspacing="0" width="100%"><tr><td>
+       <input type="text" id="materias_input" /><br />
+       <div id="materias_suggestions"></div>
+      </td><td style="border:1px solid lightblue;width:100%;">
+       <div id="logger"></div>
+      </td></tr></table>
+     </td></tr><tr><td colspan="2">
+      <div id="avisos"></div>
+      <div id="updates_list"></div>
+     </td></tr><tr><td colspan="2">
+      <div id="materias_list"></div>
+     </td></tr><tr><td style="width:440px;">
+      <div id="horario"></div>
+     </td><td style="width:440px;" valign="top">
+      <div id="turmas_list" style="overflow:auto;position:relative;"></div>
+      </td></tr><tr><td colspan="2">
+       <table cellpadding="0" cellspacing="0" width="100%"><tr><td align="left" style="font-size:11px;">
+        Não se esqueça de fazer sua matrícula no <a target="_blank" href="http://cagr.ufsc.br/">CAGR</a>! Este aplicativo não tem nenhum vínculo com a UFSC.
+       </td><td align="right" style="font-size:13px;">
+       <div id="comousar"><a target="_blank" href="http://www.facebook.com/media/set/?set=a.482828205116880.112513.234395573293479&type=3">Como usar</a></div>
+       </td><td align="right" style="font-size:13px;">
+       <div id="sobre"></div>
+       </td></tr><tr><td colspan="2" align="left" style="font-size:11px;">
+        <a href="http://github.com/ramiropolla/capim">github.com/ramiropolla/capim</a>. <span id="versao"></span>. <span id="data_db"></span>
+       </td></tr></table>
+     </td></tr></table>
+    </div>
+    <div id="ui_fb" style="overflow:visible;width:890px;margin:0 auto;display:none;">
+    <div class="fb-like" data-href="http://www.facebook.com/MatrUFSC" data-send="false" data-width="700" data-show-faces="false" data-font="lucida grande"></div>
+    </div>
+
+    <div id="dconsole" style="font-size:11px;">
+    </div>
+
+    <!--[if IE]>
+    <input id="userdata" type="hidden" style="behavior:url('#default#userData')" />
+    <![endif]-->
+    <div id="grayout" style="display:none;"></div>
+    <div id="sobre_popup" style="display:none;">
+    <div id="fechar_sobre" class="fechar">
+ <a href="#">Fechar</a>
+</div>
+<div class="contato">
+ Para qualquer comentário, visite a página no Facebook:<br />
+ <a target="_blank" href="http://www.facebook.com/MatrUFSC">http://www.facebook.com/MatrUFSC</a>
+ <div><br />(ou entre em contato por email: matrufsc@gmail.com)</div>
+ <div><br />(o MatrUFSC é desenvolvido por Ramiro Polla)</div>
+</div>
+
+<div class="main">
+ <div class="titulo">1- Adicionando matérias do CAGR:</div>
+ <p>
+  Digite o código ou o nome da disciplina na caixa de busca (canto esquerdo
+  superior). Aparecerão no máximo 10 sugestões, nas quais você pode clicar ou
+  escolher com as teclas <strong>para baixo</strong> e
+  <strong>para cima</strong> do teclado e apertar <strong>enter</strong>.
+ </p>
+ <p>
+  Você pode selecionar matérias individualmente clicando na caixa de seleção
+  da matéria, selecionar a prioridade das matérias clicando nas setas
+  <strong>↑</strong> e <strong>↓</strong> e remover matérias clicando no botão
+  <strong>X</strong>.
+ </p>
+ <div class="subtitulo">1.1- Escolhendo turmas:</div>
+ <p>
+  Clique na matéria para mostrar as suas turmas na caixa de turmas (lado
+  direito do horário). Os horários de cada turma são mostrados graficamente
+  ao passar o mouse por cima da sua linha. Selecione turmas individualmente
+  clicando na sua linha ou na sua caixa de seleção. Turmas com o mesmo horário
+  podem ser agrupadas e consideradas como uma só para o gerador de combinações.
+ </p>
+ <div class="subtitulo">1.2- Planos:</div>
+ <p>
+  Você pode usar até 4 planos diferente para montar suas atividades. Use o
+  menu de planos para copiar ou limpar seus planos.
+ </p>
+
+ <div class="titulo">2- Combinações:</div>
+ <p>
+  As combinações são geradas automaticamente a cada ação que mude as
+  matérias/turmas selecionadas. Para mudar de combinação, use as teclas
+  <strong>direita</strong> e <strong>esquerda</strong>, ou clique nas setas
+  <strong>&nbsp;&lt;&nbsp;</strong> e <strong>&nbsp;&gt;&nbsp;</strong> na
+  caixa de combinações, ou escreva um número na caixa de combinações e aperte
+  <strong>enter</strong>.
+ </p>
+ <p>
+  As turmas de cada combinação serão mostradas na caixa de matérias.
+ </p>
+
+ <div class="titulo">3- Criando suas próprias atividades:</div>
+ <p>
+  O suporte para criar suas próprias atividades ainda é meio complicado:
+  <ul>
+   <li>Digite o nome da atividade na caixa de busca (por exemplo:
+     <strong>Estágio</strong>).</li>
+   <li>Clique em <strong>Criar atividade nova</strong>. Uma nova atividade será
+     adicionada na caixa de matérias (em cima do horário).</li>
+   <li>Na menu principal da caixa de turmas (no canto esquerdo superior da caixa
+     de turmas), clique em <strong>adicionar turma</strong>.</li>
+   <li>No menu da turma recém-criada (no lado direito da turma, ao passar o
+     mouse por cima), selecione <strong>editar turma</strong> para editar o
+     horário dessa turma.</li>
+   <li>Especifique o horário graficamente na caixa de horário.</li>
+   <li>Clique em <strong>OK</strong>.</li>
+  </ul>
+ </p>
+
+ <div class="titulo">4- Salvando/abrindo horários:</div>
+ <p>
+  É possível salvar seus horários para que eles sejam acessadas futuramente.
+  Escolha qualquer identificador (por exemplo seu número de matrícula) e
+  clique no botão <strong>salvar</strong> no canto direito superior. Em
+  qualquer momento é possível clicar em <strong>abrir</strong> para recarregar
+  as combinações salvas com o identificador especificado.
+ </p>
+ <p>
+  <strong>Cuidado:</strong> qualquer um pode salvar/carregar em qualquer identificador!
+ </p>
+ <p>
+  Você também pode fazer download dos seus horários no menu do canto superior
+  direito. Este download pode ser carregado no programa usando a opção de
+  upload, também localizada no menu do canto superior direito.
+ </p>
+
+ <div class="titulo">5- Suporte a diferentes navegadores:</div>
+ <p>
+  Esse aplicativo web funciona nos principais navegadores que eu me importo:
+  Chrome, Firefox, Safari e Internet Explorer 7 ou maior. O programa fica meio
+  devagar no Internet Explorer. Sugiro que um navegador mais eficiente como o
+  Google Chrome seja usado.
+ </p>
+ <p>
+  O programa também fica devagar quando a extensão FireBug do Firefox está
+  ativada.
+ </p>
+
+ <div class="titulo">6- Privacidade:</div>
+ <p>
+  Como o MatrUFSC não dispõe de sistema de login/senha, se baseando unicamente
+  em identificadores, qualquer pessoa pode acessar qualquer identificador. Para
+  evitar que alguém acesse seu horário, escolha identificadores grandes,
+  complexos e não-previsíveis. Outra opção seria nunca salvar seu horário e
+  fazer uso das funções de <strong>download</strong> e <strong>upload</strong>.
+ </p>
+ <p>
+  O MatrUFSC guarda o horário que você está editando enquanto seu navegador
+  está aberto. O seu identificador é guardado e recarregado cada vez que você
+  acessa o MatrUFSC. Para limpar todos os dados guardados, assim como toda a
+  seleção atual de horários sobre a qual você está trabalhando, clique em
+  <strong>limpar tudo</strong> no menu do canto superior direito.
+ </p>
+
+</div>
+
+    </div>
+
+    <script src="/js/json2.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/compat.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/persistence.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/dconsole.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/combinacoes.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/materias.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/display.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/combobox.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/database.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/state.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/versao.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/widgets.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_sobre_popup.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_avisos.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_campus.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_combinacoes.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_horario.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_logger.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_materias.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_planos.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_saver.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_turmas.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/ui_updates.js" language="javascript" type="text/javascript"></script>
+    <script src="/js/main.js" language="javascript" type="text/javascript"></script>
+    <noscript>
+     <div style="text-align:center;font-size:32px;">
+     O MatrUFSC é um aplicativo Web: você tem que habilitar Javascript no seu navegador.
+     </div>
+    </noscript>
+  </body>
+
+</html>
