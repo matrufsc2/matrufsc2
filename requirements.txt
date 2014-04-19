@@ -1,0 +1,5 @@
+argparse==1.2.1
+bottle==0.12.5
+gaenv==0.1.7
+odslib==1.0.2
+wsgiref==0.1.2
