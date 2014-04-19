@@ -7,22 +7,22 @@ function UI_saver(id)
 
     var ui_saver = document.getElementById(id).parentNode;
     ui_saver.className = "ui_saver";
-    ui_saver.appendChild(document.createTextNode("identificador: "));
+    //ui_saver.appendChild(document.createTextNode("identificador: "));
     var input = document.createElement("input");
     self.input = input;
     input.title = "Escolha um identificador qualquer para salvar/abrir seus horários. O identificador pode ser qualquer coisa (por exemplo seu número de matrícula). Cuidado: qualquer um pode usar qualquer identificador.";
-    ui_saver.appendChild(input);
-    ui_saver.appendChild(document.createTextNode(" "));
+    // ui_saver.appendChild(input);
+    // ui_saver.appendChild(document.createTextNode(" "));
     var button = document.createElement("span");
     button.innerHTML = "abrir";
     button.onselectstart = function () { return false; };
-    ui_saver.appendChild(button);
+    // ui_saver.appendChild(button);
     self.button_load = button;
     ui_saver.appendChild(document.createTextNode(" "));
     var button = document.createElement("span");
     button.innerHTML = "salvar";
     button.onselectstart = function () { return false; };
-    ui_saver.appendChild(button);
+    // ui_saver.appendChild(button);
     self.button_save = button;
     ui_saver.appendChild(document.createTextNode(" "));
 
@@ -46,7 +46,8 @@ function UI_saver(id)
             _gaq.push(['_trackEvent', 'state', 'reset', self.input.value]);
         }
     });
-    dropdown_menu.add("exportar arquivo ODS (Excel)", function(e) { self.cb_ods(); _gaq.push(['_trackEvent', 'state', 'ods', self.input.value]); });
+    // Disable temporarily
+    // dropdown_menu.add("exportar arquivo ODS (Excel)", function(e) { self.cb_ods(); _gaq.push(['_trackEvent', 'state', 'ods', self.input.value]); });
     dropdown_menu.add("exportar arquivo iCalendar", function(e) { self.cb_download(".ics"); _gaq.push(['_trackEvent', 'state', 'icalendar', self.input.value]); });
     dropdown_menu.add("exportar arquivo JSON", function(e) { self.cb_download(".json"); _gaq.push(['_trackEvent', 'state', 'download', self.input.value]); });
     dropdown_menu.add("importar arquivo JSON", function(e) { self.cb_upload(); _gaq.push(['_trackEvent', 'state', 'upload', self.input.value]); });
