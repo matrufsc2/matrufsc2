@@ -15,7 +15,7 @@ Estaremos aprimorando o código com o passar do tempo. No momento, estaremos foc
 
 **LICENÇA**
 
-Leia o arquivo [LICENSE](https://github.com/matrufsc2/matrufsc2/blob/master/LICENSE).
+Leia o arquivo [LICENSE](https://github.com/matrufsc2/matrufsc2/blob/develop/LICENSE).
 
 ===========================================================================
 1. Instalação
@@ -28,7 +28,9 @@ instalados no servidor:
 No ubuntu, os comandos são:
 
 $ sudo apt-get install python-pip
+
 $ sudo pip install -r requirements.txt
+
 $ python matrufsc2.py
 
 Como usamos Bottle, ao executar o último comando você já poderá acessar http://127.0.0.1:8080/ para ver a aplicação funcionando.
