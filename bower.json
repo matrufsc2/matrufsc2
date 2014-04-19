@@ -12,7 +12,6 @@
   "keywords": [
     "matrufsc2"
   ],
-  "license": "MIT",
   "private": true,
   "ignore": [
     "**/.*",
