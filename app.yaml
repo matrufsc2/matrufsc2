@@ -1,0 +1,26 @@
+application: matrufsc2
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: yes
+default_expiration: "1h"
+
+handlers:
+- url: /js
+  static_dir: static/js
+  http_headers:
+    Cache-Control: public, max-age=3600
+    Pragma: cache
+
+- url: /css
+  static_dir: static/css
+  http_headers:
+    Cache-Control: public, max-age=3600
+    Pragma: cache
+
+- url: .*
+  static_files: static/index.html
+  upload: static/index.html
+  http_headers:
+    Cache-Control: public, max-age=3600
+    Pragma: cache
