@@ -7,3 +7,4 @@ Para contribuir com código para o projeto, certifique-se de estar respeitando a
 - Evitar anexação de bibliotecas e frameworks **não** manejadas pelos gerenciadores de pacotes usados atualmente: Bower e pip.
 - Seguir regras impostas pelo *jshint* (para Javascript) e pelo *pep8* (em breve, teremos um script para garantir esse tipo de qualidade).
 - Não usar pré-processadores (Coffeescript, LESS, Typescript, SASS, etc.) no código incorporado na aplicação (bibliotecas podem usar pré-processadores desde que forneçam um pacote com o código compilado (vide o exemplo do ChaplinJS))
+- No projeto, usaremos o git-flow para garantir um fluxo interessante com o Git. Certifique-se de enviar branchs que sigam tal padrão. =)
