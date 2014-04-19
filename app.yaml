@@ -6,6 +6,13 @@ threadsafe: yes
 default_expiration: "1h"
 
 handlers:
+- url: /([0-9]+)\.json
+  static_files: static/dados/\1.json
+  upload: static/dados/.*.json
+  http_headers:
+    Cache-Control: public, max-age=3600
+    Pragma: cache
+
 - url: /js
   static_dir: static/js
   http_headers:
@@ -17,6 +24,9 @@ handlers:
   http_headers:
     Cache-Control: public, max-age=3600
     Pragma: cache
+
+- url: (.*)\.cgi
+  script: matrufsc2.application
 
 - url: .*
   static_files: static/index.html
