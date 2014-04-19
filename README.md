@@ -15,7 +15,7 @@ Estaremos aprimorando o código com o passar do tempo. No momento, estaremos foc
 
 **LICENÇA**
 
-Leia o arquivo [LICENSE](https://github.com/matrufsc2/matrufsc2/blob/develop/LICENSE).
+Leia o arquivo [LICENSE](https://github.com/matrufsc2/matrufsc2/blob/develop/LICENSE.md).
 
 ===========================================================================
 1. Instalação

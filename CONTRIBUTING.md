@@ -1,6 +1,6 @@
 ### CONTRIBUINDO
 
-Para contribuir com código para o projeto, certifique-se de estar respeitando a [LICENÇA original](https://github.com/matrufsc2/matrufsc2/blob/master/LICENSE) e de averiguar os seguintes aspectos:
+Para contribuir com código para o projeto, certifique-se de estar respeitando a [LICENÇA original](https://github.com/matrufsc2/matrufsc2/blob/develop/LICENSE.md) e de averiguar os seguintes aspectos:
 
 - Garantir que, para todo recurso novo, tenha testes unitários de forma a garantir 100% de cobertura de código. (apenas quando essa condição for cumprida poderá ser realizado o deploy)
 - Garantir testes em todos os navegadores a partir do IE 8.
