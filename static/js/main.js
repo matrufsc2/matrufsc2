@@ -785,7 +785,7 @@ function Main(ui_materias, ui_turmas, ui_logger, ui_combinacoes, ui_horario,
         document.getElementById("data_db").innerHTML = "banco de dados atualizado em " + database.get_date(semestre);
     };
     self.set_db = function(semestre, campus, callback) {
-        if (semestre == "20132" || semestre == "20141") {
+        if (semestre == "20141" || semestre == "20142") {
             ui_avisos.reset();
         } else {
             var str = semestre.substr(0,4) + "-" + semestre.substr(4,1);
@@ -971,12 +971,12 @@ window.onload = function() {
     }
     if (!database_ok) {
         if (identificador != null && identificador != "") {
-            ui_saver.cb_load(identificador, function(){ main.set_db("20141", "FLO"); });
+            ui_saver.cb_load(identificador, function(){ main.set_db("20142", "FLO"); });
             database_ok = true;
         }
     }
     if (!database_ok)
-        main.set_db("20141", "FLO");
+        main.set_db("20142", "FLO");
     if (combo.input.value == identificador)
         combo.input.value = "";
 
