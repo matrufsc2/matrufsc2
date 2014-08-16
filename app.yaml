@@ -5,32 +5,34 @@ api_version: 1
 threadsafe: yes
 default_expiration: "1h"
 
-handlers:
-- url: /([0-9]+)\.json
-  static_files: static/dados/\1.json
-  upload: static/dados/.*.json
-  http_headers:
-    Cache-Control: public, max-age=3600
-    Pragma: cache
+builtins:
+- appstats: on
 
+handlers:
 - url: /js
-  static_dir: static/js
+  static_dir: frontend/public/js
   http_headers:
     Cache-Control: public, max-age=3600
     Pragma: cache
 
 - url: /css
-  static_dir: static/css
+  static_dir: frontend/public/css
   http_headers:
     Cache-Control: public, max-age=3600
     Pragma: cache
 
-- url: (.*)\.cgi
-  script: matrufsc2.application
+- url: /font
+  static_dir: frontend/public/font
+  http_headers:
+    Cache-Control: public, max-age=3600
+    Pragma: cache
 
-- url: .*
-  static_files: static/index.html
-  upload: static/index.html
+- url: /api/.*
+  script: matrufsc2.app
+
+- url: /.*
+  static_files: frontend/views/index-optimize.html
+  upload: frontend/views/index-optimize.html
   http_headers:
     Cache-Control: public, max-age=3600
     Pragma: cache
