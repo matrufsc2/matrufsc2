@@ -13,7 +13,7 @@ class Semester(ndb.Model, JSONSerializable):
     def campi(self):
         return Campus.query(semester=self.key)
 
-    def toJSON(self):
+    def to_json(self):
         return {
             "id": self.id,
             "name": self.name
@@ -33,7 +33,7 @@ class Campus(ndb.Model, JSONSerializable):
         return Discipline.query(campus=self.key)
 
 
-    def toJSON(self):
+    def to_json(self):
         return {
             "id": self.id,
             "name": self.name
@@ -53,7 +53,7 @@ class Discipline(ndb.Model, JSONSerializable):
     def teams(self):
         return Team.query(discipline=self.key)
 
-    def toJSON(self):
+    def to_json(self):
         return {
             "id": self.id,
             "code": self.code,
@@ -67,7 +67,7 @@ class Teacher(ndb.Model, JSONSerializable):
     def id(self):
         return self.key.integer_id()
 
-    def toJSON(self):
+    def to_json(self):
         return {
             "id": self.id,
             "name": self.name
@@ -85,7 +85,7 @@ class Schedule(ndb.Model, JSONSerializable):
     def id(self):
         return self.key.integer_id()
 
-    def toJSON(self):
+    def to_json(self):
         return {
             "id": self.id,
             "hourStart": self.hourStart,
@@ -108,7 +108,7 @@ class Team(ndb.Model, JSONSerializable):
     def id(self):
         return self.key.integer_id()
 
-    def toJSON(self):
+    def to_json(self):
         return {
             "id": self.id,
             "code": self.code,

@@ -3,8 +3,8 @@ from flask import Flask, request
 import os
 from werkzeug.contrib.cache import GAEMemcachedCache
 from app import api
-from app.services import Robot
 from app.json_serializer import JSONEncoder
+from app.robot.robot import Robot
 
 app = Flask(__name__)
 
@@ -25,7 +25,7 @@ def return_cached():
 
 @app.after_request
 def cache_response(response):
-    if not request.values:
+    if not request.values and "update" not in request.path:
         cache.set(CACHE_KEY%(request.path), response, CACHE_TIMEOUT)
     return response
 
@@ -41,59 +41,55 @@ def serialize(result):
 
 @app.route("/api/campi/")
 def getCampi():
-    result = list(api.getCampi(request.args))
+    result = list(api.get_campi(request.args))
     return serialize(result)
 
 
 @app.route("/api/campi/<int:idValue>/")
 def getCampus(idValue):
-    result = api.getCampus(idValue)
+    result = api.get_campus(idValue)
     return serialize(result)
 
 @app.route("/api/semesters/")
 def getSemesters():
-    result = list(api.getSemesters(request.args))
+    result = list(api.get_semesters(request.args))
     return serialize(result)
 
 
 @app.route("/api/semesters/<int:idValue>/")
 def getSemester(idValue):
-    result = api.getSemester(idValue)
+    result = api.get_semester(idValue)
     return serialize(result)
 
 
 @app.route("/api/disciplines/")
 def getDisciplines():
-    result = list(api.getDisciplines(request.args))
+    result = list(api.get_disciplines(request.args))
     return serialize(result)
 
 
 @app.route("/api/disciplines/<int:idValue>/")
 def getDiscipline(idValue):
-    result = api.getDiscipline(idValue)
+    result = api.get_discipline(idValue)
     return serialize(result)
 
 @app.route("/api/teams/")
 def getTeams():
-    result = list(api.getTeams(request.args))
+    result = list(api.get_teams(request.args))
     return serialize(result)
 
 
 @app.route("/api/teams/<int:idValue>/")
 def getTeam(idValue):
-    result = api.getTeam(idValue)
+    result = api.get_team(idValue)
     return serialize(result)
 
-@app.route("/api/update")
+@app.route("/api/update/")
 def update():
-    robot = Robot()
+    robot = Robot("http://127.0.0.1:5000/%s/")
     fut = robot.run()
-    exc = fut.get_exception()
-    if exc:
-        return str(exc),500
-    else:
-        return "OK", 200
-
+    """ :type: google.appengine.ext.ndb.Future """
+    return fut.get_result()
 app.debug = IN_DEV
 
 if __name__ == "__main__":

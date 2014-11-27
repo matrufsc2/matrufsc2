@@ -4,73 +4,73 @@ from app.repositories import CampusRepository, DisciplinesRepository, TeamsRepos
 __author__ = 'fernando'
 
 
-def getCampi(filters):
+def get_campi(filters):
     repository = CampusRepository()
     if filters:
-        return repository.findBy(filters)
-    return repository.findAll()
+        return repository.find_by(filters)
+    return repository.find_all()
 
 
-def getCampus(idValue):
+def get_campus(idValue):
     repository = CampusRepository()
-    return repository.findByID(idValue)
+    return repository.find_by_id(idValue)
 
 
-def getSemesters(filters):
+def get_semesters(filters):
     repository = SemesterRepository()
     if filters:
-        return repository.findBy(filters)
-    return repository.findAll()
+        return repository.find_by(filters)
+    return repository.find_all()
 
 
-def getSemester(idValue):
+def get_semester(idValue):
     repository = SemesterRepository()
-    return repository.findByID(idValue)
+    return repository.find_by_id(idValue)
 
 
-def getDisciplines(filters):
+def get_disciplines(filters):
     repository = DisciplinesRepository()
     if filters:
-        return repository.findBy(filters)
-    return repository.findAll()
+        return repository.find_by(filters)
+    return repository.find_all()
 
 
-def getDiscipline(idValue):
+def get_discipline(idValue):
     repository = DisciplinesRepository()
-    return repository.findByID(idValue)
+    return repository.find_by_id(idValue)
 
 
-def getTeams(filters):
+def get_teams(filters):
     repository = TeamsRepository()
     if filters:
-        return repository.findBy(filters)
-    return repository.findAll()
+        return repository.find_by(filters)
+    return repository.find_all()
 
 
-def getTeam(idValue):
+def get_team(idValue):
     repository = TeamsRepository()
-    return repository.findByID(idValue)
+    return repository.find_by_id(idValue)
 
 
-def getTeachers(filters):
+def get_teachers(filters):
     repository = TeachersRepository()
     if filters:
-        return repository.findBy(filters)
-    return repository.findAll()
+        return repository.find_by(filters)
+    return repository.find_all()
 
 
-def getTeacher(idValue):
+def get_teacher(idValue):
     repository = TeachersRepository()
-    return repository.findByID(idValue)
+    return repository.find_by_id(idValue)
 
 
-def getSchedules(filters):
+def get_schedules(filters):
     repository = SchedulesRepository()
     if filters:
-        return repository.findBy(filters)
-    return repository.findAll()
+        return repository.find_by(filters)
+    return repository.find_all()
 
 
-def getSchedule(idValue):
+def get_schedule(idValue):
     repository = SchedulesRepository()
-    return repository.findByID(idValue)
+    return repository.find_by_id(idValue)
