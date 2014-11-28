@@ -68,4 +68,4 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 			}, this);
 		}
 	});
-});-
+});

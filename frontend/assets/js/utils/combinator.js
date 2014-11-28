@@ -3,7 +3,7 @@ define("utils/combinator", ["underscore"], function(_){
     return function getCombinations(arr, n){
         arr = _.clone(arr);
         var i,j,k,elem,l = arr.length,childperm,ret=[];
-        if(n == 1){
+        if(n === 1){
             for(i=0; i < arr.length; i++){
                 for(j=0; j < arr[i].length; j++){
                     ret.push([arr[i][j]]);

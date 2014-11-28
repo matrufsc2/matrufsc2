@@ -16,11 +16,11 @@ define("views/HomeView", [
 		},
 		"initialize": function(options) {
 			_.extend(this, _.pick(options, [
-				'campi',
-				'disciplines',
-				'selectedDisciplines',
-				'semesters',
-				'status'
+				"campi",
+				"disciplines",
+				"selectedDisciplines",
+				"semesters",
+				"status"
 			]));
 		},
 		"addSubViews": function(){

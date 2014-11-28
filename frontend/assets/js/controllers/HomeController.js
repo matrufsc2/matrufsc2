@@ -111,7 +111,7 @@ define("controllers/HomeController", [
 						});
 					});
 				}, this);
-				this.campi.once('sync', function(){
+				this.campi.once("sync", function(){
 					this.status.set(_.pick(statusSession, "campus"));
 					this.disciplines.trigger("sync");
 				}, this);
@@ -120,7 +120,6 @@ define("controllers/HomeController", [
 			} else {
 				updateStatusSession();
 			}
-			window.h = this;
 			this.semesters.fetch();
 			this.status.listenEvents();
 		}

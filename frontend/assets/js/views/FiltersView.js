@@ -25,7 +25,7 @@ define("views/FiltersView", [
 				"text": onGet(model)
 			};
 		});
-		results.more = results.results.length == 11;
+		results.more = results.results.length === 11;
 		results.results = results.results.slice(0, 10);
 		return results;
 	};
