@@ -84,10 +84,10 @@ def getTeam(idValue):
     result = api.get_team(idValue)
     return serialize(result)
 
-@app.route("/api/update/")
+@app.route("/secret/update/", methods=["GET", "POST"])
 def update():
     robot = Robot("http://127.0.0.1:5000/%s/")
-    fut = robot.run()
+    fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
 app.debug = IN_DEV

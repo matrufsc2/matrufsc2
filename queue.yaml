@@ -1,0 +1,4 @@
+queue:
+- name: default
+  rate: 1/m
+  max_concurrent_requests: 1

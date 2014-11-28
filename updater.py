@@ -1,6 +1,5 @@
 import zlib
-from app.robot.fetcher.OriginalFetcher import OriginalFetcher
-from app.robot.fetcher.SeleniumFetcher import SeleniumFetcher, logging as logger
+from app.robot.fetcher.OriginalFetcher import OriginalFetcher, logging as logger
 from app.robot.fetcher.auth.EnvAuth import EnvAuth
 
 __author__ = 'fernando'
@@ -19,7 +18,6 @@ except:
     except:
         pass
 
-from selenium.webdriver.firefox.webdriver import WebDriver
 logger.setLevel("DEBUG")
 logger.addHandler(logging.StreamHandler())
 
