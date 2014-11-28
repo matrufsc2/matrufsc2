@@ -12,25 +12,26 @@ define("collections/BaseCollection", ["underscore", "chaplin", "oboe", "bluebird
 			});
 			var context = options.context || this;
 			var collection = this;
+			var idAttribute = (new collection.model()).idAttribute;
 			return (new Promise(function(resolve, reject) {
 				collection.beginSync();
 				var req = oboe({
 					"url": _.result(collection, "url"),
 					"method": options.type,
 					"headers": options.headers,
-					"cached": options.cache !== false ? true : false,
+					"cached": options.cache !== false,
 					"body": options.data
 				});
-				req.node("[*]", function(){
+				req.node("[*]", _.throttle(function() {
 					// Progressive set.
 					collection.set(_.filter(req.root(), function(model){
-						return _.has(model, (new collection.model(model)).idAttribute);
+						return _.has(model, idAttribute);
 					}));
-				});
+				}, 50));
 				req.done(function(){
 					collection.set(_.filter(req.root(), function(model){
 						// Allow only models with an ID defined to be set-ed.
-						return _.has(model, (new collection.model(model)).idAttribute);
+						return _.has(model, idAttribute);
 					}));
 					collection.trigger("sync", collection, req.root(), options);
 					resolve();

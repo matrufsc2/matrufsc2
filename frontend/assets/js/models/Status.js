@@ -15,7 +15,8 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 		},
 		"listenEvents": function() {
 			this.listenTo(this.semesters, "sync", function(){
-				if(this.semesters.length === 0 || this.get("semester") !== null) {
+				if(this.semesters.length === 0 || this.get("semester") !== null || this.get("semester") ===
+					this.semesters.at(0).id) {
 					return;
 				}
 				this.set({
@@ -26,11 +27,15 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				if(this.campi.isSyncing()) {
 					return this.campi.once("syncStateChange", fetchCampi, this);
 				}
+				var url = "/api/campi/?semester="+this.get("semester");
+				if (this.campi.url === url) {
+					return;
+				}
 				this.set({
 					"campus": null
-				});
+				}, {"silent": true});
 				this.campi.reset();
-				this.campi.url = "/api/campi/?semester="+this.get("semester");
+				this.campi.url = url;
 				this.campi.fetch({
 					"context": this
 				}).then(function(){
@@ -40,7 +45,7 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				});
 			}, this);
 			this.listenTo(this.campi, "sync", function(){
-				if(this.campi.length === 0 || this.get("campus") !== null) {
+				if(this.campi.length === 0 || this.get("campus") !== null || this.get("campus") === this.campi.at(0).id) {
 					return;
 				}
 				this.set({
@@ -51,12 +56,16 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				if(this.disciplines.isSyncing()) {
 					return this.disciplines.once("syncStateChange", fetchDisciplines, this);
 				}
+				var url = "/api/disciplines/?campus="+this.get("campus");
+				if (!this.get("campus") || this.disciplines.url === url) {
+					return;
+				}
 				this.disciplines.reset();
-				this.disciplines.url = "/api/disciplines/?campus="+this.get("campus");
+				this.disciplines.url = url;
 				this.disciplines.fetch({
 					"context": this
 				});
 			}, this);
 		}
 	});
-});
+});-

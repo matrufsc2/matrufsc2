@@ -50,20 +50,20 @@ define("controllers/HomeController", [
 			});
 			var statusSessionKeys = ["semester","campus","discipline", "selectedDisciplines", "disabledTeams", "selectedCombination"];
 			var statusSession = _.pick(request.query, statusSessionKeys);
-			function updateStatusSession(){
-				this.status.on("change", function(){
-					_.extend(statusSession, this.status.pick(["semester","campus","discipline"]));
+			var updateStatusSession = _.bind(function() {
+				this.status.on("change", function () {
+					_.extend(statusSession, this.status.pick(["semester", "campus", "discipline"]));
 					var url = Chaplin.utils.reverse("Home#index", statusSession, {"trigger": false});
 					Backbone.history.navigate(url, {"trigger": false, "replace": false});
 				}, this);
-				this.selectedDisciplines.on("add change remove change:combination", function(){
+				this.selectedDisciplines.on("add change remove change:combination", function () {
 					var selectedDisciplines = [];
 					var allDisabledTeams = [];
-					this.selectedDisciplines.each(function(discipline) {
+					this.selectedDisciplines.each(function (discipline) {
 						var disabledTeams = [];
 						selectedDisciplines.push(discipline.id);
-						discipline.teams.each(function(team){
-							if(team.get("_selected")) {
+						discipline.teams.each(function (team) {
+							if (team.get("_selected")) {
 								return;
 							}
 							disabledTeams.push(team.id);
@@ -76,8 +76,7 @@ define("controllers/HomeController", [
 					var url = Chaplin.utils.reverse("Home#index", statusSession, {"trigger": false});
 					Backbone.history.navigate(url, {"trigger": false, "replace": false});
 				}, this);
-			}
-			updateStatusSession = _.bind(updateStatusSession, this);
+			}, this);
 			if(_.size(statusSession) === statusSessionKeys.length) {
 				this.disciplines.once("sync", function(){
 					var selectedDisciplinesIDs = statusSession.selectedDisciplines || [];
@@ -106,7 +105,7 @@ define("controllers/HomeController", [
 					})).bind(this).then(function(){
 						this.selectedDisciplines.updateCombinations(parseInt(statusSession.selectedCombination)).then(function(){
 							this.status.set({
-								"discipline": statusSession['discipline']
+								"discipline": statusSession.discipline
 							});
 							updateStatusSession();
 						});
