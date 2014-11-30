@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "version": "0.1.1",
-  "description": "A Mimosa starter skeleton",
+  "description": "The frontend of MatrUFSC2",
   "dependencies": {
     "MD5": "^1.2.1",
     "istanbul": "^0.3.0",

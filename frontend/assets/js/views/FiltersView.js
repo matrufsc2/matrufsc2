@@ -2,8 +2,9 @@ define("views/FiltersView", [
 	"underscore",
 	"templates",
 	"views/BaseView",
+	"diacritic",
 	"select2"
-], function(_, templates, BaseView){
+], function(_, templates, BaseView, diacritic){
 	"use strict";
 	var filterCollectionByQuery = function(collection, query, onGet) {
 		var count = 0;
@@ -14,7 +15,7 @@ define("views/FiltersView", [
 			if(count >= limit){
 				return false;
 			}
-			var result = onGet(model).toLowerCase().match(query.term.toLowerCase());
+			var result = onGet(model).toLowerCase().match(diacritic.clean(query.term).toLowerCase());
 			if(result){
 				++count;
 			}

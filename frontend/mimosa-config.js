@@ -23,7 +23,7 @@ exports.config = {
     }
   },
   "watch": {
-    "javascriptDir": "js",
+    "javascriptDir": "js"
   },
   "vendor": {
     "javascripts" : "js/vendor",
@@ -53,7 +53,8 @@ exports.config = {
         "mocha"     : ["mocha.js", "mocha.css"],
         "modernizr" : ["modernizr.js"],
         "expect"    : ["index.js"],
-        "pleasejs"  : ["Please.js"]
+        "pleasejs"  : ["dist/Please.js"],
+        "diacritic": ["diacritics.js"]
       }
     }
   },

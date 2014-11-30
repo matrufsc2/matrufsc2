@@ -19,6 +19,7 @@ require.config({
 		"fastdom"      : "vendor/fastdom/index",
 		"select2"	   : "vendor/select2/select2",
 		"please"       : "vendor/pleasejs/Please",
+		"diacritic"    : "vendor/diacritic/diacritics",
 		"testem"       : "../testem"
 	},
 	"shim" : {
@@ -59,5 +60,5 @@ require.config({
 		"templates" : {
 			"vendor/underscore" : "underscore"
 		}
-	},
+	}
 });
