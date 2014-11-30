@@ -15,3 +15,11 @@
         </ul>
     </section>
 </div>
+
+<div data-alert class="alert-box warning round" style="margin-top:20px;">
+  Hey, pequeno gafanhoto! Você mesmo! Tudo bem? Eu gostaria de avisar que esse projeto <b>AINDA</b> está em testes, e
+  que portanto <a href="http://github.com/matrufsc2/matrufsc2/issues/new">falhas e outras coisas podem (E DEVEM) ser
+  reportadas  clicando aqui</a> para serem resolvidas. Ah sim, e gostariamos de agradecer desde já o contato e a participação
+  nos testes! :D
+  <a href="#" class="close">&times;</a>
+</div>
