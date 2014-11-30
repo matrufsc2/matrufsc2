@@ -20,23 +20,23 @@ handlers:
 - url: /js
   static_dir: frontend/public/js
   http_headers:
-    Cache-Control: private
-    # Cache-Control: public, max-age=3600
-    #Pragma: cache
+    #Cache-Control: private
+    Cache-Control: public, max-age=3600
+    Pragma: cache
 
 - url: /css
   static_dir: frontend/public/css
   http_headers:
-    Cache-Control: private
-    #Cache-Control: public, max-age=3600
-    #Pragma: cache
+    #Cache-Control: private
+    Cache-Control: public, max-age=3600
+    Pragma: cache
 
 - url: /font
   static_dir: frontend/public/font
   http_headers:
-    Cache-Control: private
-    #Cache-Control: public, max-age=3600
-    #Pragma: cache
+    #Cache-Control: private
+    Cache-Control: public, max-age=3600
+    Pragma: cache
 
 - url: /api/.*
   script: matrufsc2.app
@@ -46,8 +46,8 @@ handlers:
   login: admin
 
 - url: /.*
-  static_files: frontend/views/index.html
-  upload: frontend/views/index.html
+  static_files: frontend/views/index-optimize.html
+  upload: frontend/views/index-optimize.html
   http_headers:
     Cache-Control: public, max-age=3600
     Pragma: cache
