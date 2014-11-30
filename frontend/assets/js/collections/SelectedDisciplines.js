@@ -144,7 +144,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 			this.selectCombination();
 		},
 		"hasNextCombination": function(){
-			return this.combinationCount() > this.getSelectedCombination();
+			return (this.combinationCount()-1) > this.getSelectedCombination();
 		},
 		"previousCombination": function(){
 			if(this.hasPreviousCombination()) {
