@@ -31,8 +31,7 @@ class SeleniumFetcher(BaseFetcher):
         self.browser.implicitly_wait(5)
         self.waiter = WebDriverWait(self.browser, 20)
         self.last_data = None
-        self.base_url = "http://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/"
-        self.login()
+        self.base_url = "https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/"
 
     def wait_loading(self):
         self.waiter.until_not(expected_conditions.visibility_of_element_located((By.ID, "loadingDiv")))
@@ -42,8 +41,7 @@ class SeleniumFetcher(BaseFetcher):
         Do login in CAGR
         """
         if not self.auth or not self.auth.has_data():
-            logging.debug("Not logging in")
-            return
+            raise Exception("SeleniumFetcher needs auth data")
         logging.debug("Doing login \o/")
         self.browser.get("https://cagr.sistemas.ufsc.br/modules/aluno")
         form = self.browser.find_element_by_id("fm1")

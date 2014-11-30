@@ -26,7 +26,7 @@ def return_cached():
 @app.after_request
 def cache_response(response):
     if not request.values and "update" not in request.path:
-        cache.set(CACHE_KEY%(request.path), response, CACHE_TIMEOUT)
+        cache.set(CACHE_KEY % request.path, response)
     return response
 
 @app.route("/api/")
@@ -45,7 +45,7 @@ def getCampi():
     return serialize(result)
 
 
-@app.route("/api/campi/<int:idValue>/")
+@app.route("/api/campi/<idValue>/")
 def getCampus(idValue):
     result = api.get_campus(idValue)
     return serialize(result)
@@ -56,7 +56,7 @@ def getSemesters():
     return serialize(result)
 
 
-@app.route("/api/semesters/<int:idValue>/")
+@app.route("/api/semesters/<idValue>/")
 def getSemester(idValue):
     result = api.get_semester(idValue)
     return serialize(result)
@@ -68,7 +68,7 @@ def getDisciplines():
     return serialize(result)
 
 
-@app.route("/api/disciplines/<int:idValue>/")
+@app.route("/api/disciplines/<idValue>/")
 def getDiscipline(idValue):
     result = api.get_discipline(idValue)
     return serialize(result)
@@ -79,7 +79,7 @@ def getTeams():
     return serialize(result)
 
 
-@app.route("/api/teams/<int:idValue>/")
+@app.route("/api/teams/<idValue>/")
 def getTeam(idValue):
     result = api.get_team(idValue)
     return serialize(result)

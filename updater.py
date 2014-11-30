@@ -29,24 +29,30 @@ lock = Lock()
 def acquire_lock():
     lock.acquire()
 
-@app.before_request
 def fetch():
     data = request.form.to_dict()
-    try:
-        page_number = int(data.pop("page_number", 1))
-        fetcher.fetch(data, page_number)
-    except Exception, e:
-        logger.exception("Error when fetching page")
-        return pickle.dumps(e)
+    page_number = int(data.pop("page_number", 1))
+    fetcher.fetch(data, page_number)
 
 @app.after_request
 def release_lock(response):
     lock.release()
     return response
 
+@app.route("/login/", methods=["POST"])
+def login():
+    try:
+        fetcher.login()
+        result = True
+    except Exception, e:
+        logger.exception("Error when logging in")
+        result = e
+    return zlib.compress(pickle.dumps(result))
+
 @app.route("/fetch_teams/", methods=["POST"])
 def fetch_teams():
     try:
+        fetch()
         result = fetcher.fetch_teams()
     except Exception, e:
         logger.exception("Error when fetching teams")

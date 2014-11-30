@@ -1,10 +1,11 @@
+import hashlib
 import logging as _logging
 import time
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
 from app.repositories import CampusRepository, SemesterRepository, DisciplinesRepository, TeamsRepository
 from app.robot.fetcher.NDBRemoteFetcher import NDBRemoteFetcher
 from google.appengine.ext import ndb
-from google.appengine.api import taskqueue, memcache
+from google.appengine.api import taskqueue, modules
 
 try:
     import cPickle as pickle
@@ -15,6 +16,9 @@ __author__ = 'fernando'
 
 logging = _logging.getLogger("robot")
 
+context = ndb.get_context()
+context_options = ndb.ContextOptions(use_cache=False, use_memcache=False)
+
 class Robot(NDBRemoteFetcher, object):
     def __init__(self, base_url):
         """
@@ -24,6 +28,21 @@ class Robot(NDBRemoteFetcher, object):
         :type base_url: selenium.webdriver.remote.webdriver.WebDriver
         """
         super(Robot, self).__init__(base_url)
+
+    def generate_semester_key(self, semester):
+        """
+        Generate the semester key
+
+        :param semester: The semester in which the key is based on
+        :return: The key of the semester
+        :rtype: str
+        """
+        key = "%(id)s-%(name)s" % {
+            "id": semester.id,
+            "name": semester.name
+        }
+        key = "matrufsc2-semester-%s" % hashlib.sha1(key).hexdigest()
+        return key
 
     @ndb.tasklet
     def register_semesters(self, semesters):
@@ -58,7 +77,7 @@ class Robot(NDBRemoteFetcher, object):
             if semester.id in found_ids:
                 continue
             logging.debug("Saving semesters to be put in the database..")
-            to_put.append(Semester(name=semester.name))
+            to_put.append(Semester(key=ndb.Key(Semester, self.generate_semester_key(semester)), name=semester.name))
         logging.debug("Saving semesters in the database...")
         new_keys = yield ndb.put_multi_async(to_put)
         for semester_key, semester_model in zip(new_keys, to_put):
@@ -79,6 +98,24 @@ class Robot(NDBRemoteFetcher, object):
         assert len(found_ids) == len(semesters), "Not found all semesters (%d != %d)" % (len(found_ids), len(semesters))
         raise ndb.Return(result)
 
+    def generate_campus_key(self, campus, semester):
+        """
+        Generate the campus key
+
+        :param campus: The campus in which the key is based on
+        :param semester: The semester in which the key is based on
+        :return: The key of the campus
+        :rtype: str
+        """
+        key = "%(semester_id)s-%(semester_name)s-%(id)s-%(name)s" % {
+            "id": campus.id,
+            "semester_id": semester['id'],
+            "semester_name": semester['name'],
+            "name": campus.name
+        }
+        key = "matrufsc2-campus-%s" % hashlib.sha1(key).hexdigest()
+        return key
+
     @ndb.tasklet
     def register_campi(self, campi, semesters):
         logging.info("Registering campi..")
@@ -89,7 +126,7 @@ class Robot(NDBRemoteFetcher, object):
             logging.debug("Finding all semesters related to a campus..")
             to_get = repository.find_by({
                 "name": campus_data.name,
-                "semester": map(lambda semester: semester['key'].integer_id(), semesters)
+                "semester": map(lambda semester: semester['key'].id(), semesters)
             }).iter()
             """ :type to_get: google.appengine.ext.ndb.QueryIterator """
             to_put = []
@@ -98,7 +135,7 @@ class Robot(NDBRemoteFetcher, object):
                 campus = to_get.next()
                 semester = None
                 for semester_data in semesters:
-                    if campus.semester.integer_id() == semester_data['key'].integer_id():
+                    if campus.semester.id() == semester_data['key'].id():
                         semester = semester_data
                         break
                 if semester is None:
@@ -116,14 +153,18 @@ class Robot(NDBRemoteFetcher, object):
                 if semester['id'] in found_semesters:
                     continue
                 logging.debug("Registering campus to be saved...")
-                to_put.append(Campus(name=campus_data.name, semester=semester['key']))
+                to_put.append(Campus(
+                    key=ndb.Key(Campus, self.generate_campus_key(campus_data, semester)),
+                    name=campus_data.name,
+                    semester=semester['key']
+                ))
             logging.debug("Saving campi..")
             new_keys = yield ndb.put_multi_async(to_put)
             for campus_key, campus_model in zip(new_keys, to_put):
                 """ :type campus_model: app.models.Campus """
                 semester = None
                 for semester_data in semesters:
-                    if semester_data['key'].integer_id() == campus_model.semester.integer_id():
+                    if semester_data['key'].id() == campus_model.semester.id():
                         semester = semester_data
                         break
                 if semester is None:
@@ -140,6 +181,24 @@ class Robot(NDBRemoteFetcher, object):
             assert len(found_semesters) == len(semesters), "Not found all semesters"
         raise ndb.Return(result)
 
+    def generate_schedule_key(self, schedule):
+        """
+        Gets a schedule key to use to save cache and other nice things
+
+        :param schedule: The schedule to base the key on
+        :return: The key of the schedule
+        ;rtype: str
+        """
+        key = "%(hourStart)d-%(minuteStart)d-%(numberOfLessons)d-%(dayOfWeek)d-%(room)s" % {
+            "hourStart": schedule.hourStart,
+            "minuteStart": schedule.minuteStart,
+            "numberOfLessons": schedule.numberOfLessons,
+            "dayOfWeek": schedule.dayOfWeek,
+            "room": schedule.room
+        }
+        key = "matrufsc2-schedule-%s" % hashlib.sha1(key).hexdigest()
+        return key
+
     @ndb.tasklet
     def get_schedule_key(self, schedule):
         """
@@ -150,44 +209,39 @@ class Robot(NDBRemoteFetcher, object):
         :return: The schedule key
         :rtype: google.appengine.ext.ndb.Key
         """
-        key = "matrufsc2-schedule-%(hourStart)d-%(minuteStart)d-%(numberOfLessons)d-%(dayOfWeek)d-%(room)s" % {
-            "hourStart": schedule.hourStart,
-            "minuteStart": schedule.minuteStart,
-            "numberOfLessons": schedule.numberOfLessons,
-            "dayOfWeek": schedule.dayOfWeek,
-            "room": schedule.room
-        }
-        logging.debug("Searching schedule '%s'", key)
-        if memcache.get(key) is not None:
-            tries = 10
-            while memcache.get(key) is False and tries >= 0:
-                logging.debug("Awaiting schedule '%s' to be saved in cache", key)
-                yield ndb.sleep(0.5)
-                tries -= 1
-            if tries >= 0:
-                logging.debug("Found schedule '%s' in cache", key)
-                raise ndb.Return(memcache.get(key))
-        logging.debug("Setting schedule on cache just to guarantee consistence")
-        memcache.add(key, False)
-        schedule_key = yield Schedule.query(
-            Schedule.hourStart == schedule.hourStart,
-            Schedule.minuteStart == schedule.minuteStart,
-            Schedule.numberOfLessons == schedule.numberOfLessons,
-            Schedule.dayOfWeek == schedule.dayOfWeek,
-            Schedule.room == schedule.room
-        ).get_async(keys_only=True)
-        if not schedule_key:
-            logging.debug("Registering schedule in NDB")
-            schedule_key = yield Schedule(
-                hourStart=schedule.hourStart,
-                minuteStart=schedule.minuteStart,
-                numberOfLessons=schedule.numberOfLessons,
-                dayOfWeek=schedule.dayOfWeek,
-                room=schedule.room
-            ).put_async()
+        key = self.generate_schedule_key(schedule)
+        logging.debug("Searching schedule '%s' in cache", key)
+        value = yield context.memcache_get(key)
+        if value is not None:
+            raise ndb.Return(value)
+        logging.debug("Searching (or even registering) schedule in NDB")
+        schedule_model = yield Schedule.get_or_insert_async(
+            key,
+            hourStart=schedule.hourStart,
+            minuteStart=schedule.minuteStart,
+            numberOfLessons=schedule.numberOfLessons,
+            dayOfWeek=schedule.dayOfWeek,
+            room=schedule.room,
+            context_options=context_options
+        )
+        """ type: app.models.Schedule """
         logging.debug("Saving schedule '%s' in cache", key)
-        memcache.replace(key, schedule_key)
-        raise ndb.Return(schedule_key)
+        yield context.memcache_set(key, schedule_model.key)
+        raise ndb.Return(schedule_model.key)
+
+    def generate_teacher_key(self, teacher):
+        """
+        Gets a teacher key to use to save cache and other nice things
+
+        :param teacher: The teacher to base the key on
+        :return: The key of the teacher
+        ;rtype: str
+        """
+        key = "%(teacher_name)s"% {
+            "teacher_name": teacher.name
+        }
+        key = "matrufsc2-teacher-%s" % hashlib.sha1(key).hexdigest()
+        return key
 
     @ndb.tasklet
     def get_teacher_key(self, teacher):
@@ -200,32 +254,37 @@ class Robot(NDBRemoteFetcher, object):
         :rtype: google.appengine.ext.ndb.Key
         """
         logging.debug("Searching teacher '%s'", teacher.name)
-        key = "matrufsc2-teacher-%(teacher_name)s"% {
-            "teacher_name": teacher.name
+        key = self.generate_teacher_key(teacher)
+        logging.debug("Searching teacher '%s' in cache", teacher.name.decode("ISO-8859-1"))
+        value = yield context.memcache_get(key)
+        if value:
+            raise ndb.Return(value)
+        logging.debug("Searching (or even registering) teacher '%s' in NDB", teacher.name.decode("ISO-8859-1"))
+        teacher_model = yield Teacher.get_or_insert_async(
+            key,
+            name=teacher.name.decode("ISO-8859-1"),
+            context_options=context_options
+        )
+        """ type: app.models.Teacher """
+        logging.debug("Saving teacher '%s' in cache", teacher.name.decode("ISO-8859-1"))
+        yield context.memcache_set(key, teacher_model.key)
+        raise ndb.Return(teacher_model.key)
+
+    def generate_discipline_key(self, discipline, campus):
+        """
+        Gets a discipline key to use to save the cache and other nice things
+
+        :param discipline: The discipline to base the key on
+        :param campus: The campus to base the key on
+        :return: The key of the discipline
+        ;rtype: str
+        """
+        key = '%(campus)s-%(discipline_code)s' % {
+            "campus": campus["key"].id(),
+            "discipline_code": discipline.code
         }
-        if memcache.get(key) is not None:
-            tries = 10
-            while memcache.get(key) is False and tries >= 0:
-                logging.debug("Awaiting teacher '%s' to be saved in cache", teacher.name)
-                yield ndb.sleep(0.5)
-                tries -= 1
-            if tries >= 0:
-                logging.debug("Teacher '%s' found in cache", teacher.name)
-                raise ndb.Return(memcache.get(key))
-        logging.debug("Setting teacher on cache just to guarantee consistence")
-        memcache.add(key, False)
-        teacher_key = yield Teacher.query(
-            Teacher.name == teacher.name.decode("ISO-8859-1")
-        ).get_async(keys_only=True)
-        """ :type: google.appengine.ext.ndb.Key """
-        if not teacher_key:
-            logging.debug("Registering teacher '%s' in NDB", teacher.name)
-            teacher_key = yield Teacher(
-                name=teacher.name.decode("ISO-8859-1")
-            ).put_async()
-        logging.debug("Saving teacher '%s' in cache", teacher.name)
-        memcache.replace(key, teacher_key)
-        raise ndb.Return(teacher_key)
+        key = "matrufsc2-discipline-%s" % hashlib.sha1(key).hexdigest()
+        return key
 
     @ndb.tasklet
     def get_discipline_key(self, discipline, campus):
@@ -238,37 +297,41 @@ class Robot(NDBRemoteFetcher, object):
         :return: The discipline key
         :rtype: google.appengine.ext.ndb.Key
         """
-        key = 'matrufsc2-discipline-%(campus)s-%(discipline_code)s' % {
-            "campus": campus["id"],
-            "discipline_code": discipline.code
-        }
-        if memcache.get(key) is not None:
-            tries = 10
-            while memcache.get(key) is False:
-                logging.debug("Awaiting discipline '%s' to be saved in cache", discipline.code)
-                yield ndb.sleep(0.5)
-                tries -= 1
-            if tries >= 0:
-                logging.debug("Discipline %s found in cache", discipline.code)
-                raise ndb.Return(memcache.get(key))
-        logging.debug("Setting discipline on cache just to guarantee consistence")
-        memcache.add(key, False)
-        discipline_repository = DisciplinesRepository()
-        discipline_key = yield discipline_repository.find_by({
-            "code": discipline.code,
-            "campus": campus['key'].integer_id()
-        }).get_async(keys_only=True)
-        """ :type: google.appengine.ext.ndb.Key """
-        if not discipline_key:
-            logging.debug("Not found discipline %s in database, registering it in NDB", discipline.code)
-            discipline_key = yield Discipline(
-                code=discipline.code,
-                name=discipline.name,
-                campus=campus['key']
-            ).put_async()
+        logging.debug("Searching discipline '%s' in cache", discipline.code)
+        key = self.generate_discipline_key(discipline, campus)
+        value = yield context.memcache_get(key)
+        if value is not None:
+            raise ndb.Return(value)
+        logging.debug("Searching (or even registering) discipline '%s' in NDB", discipline.code)
+        discipline_model = yield Discipline.get_or_insert_async(
+            key,
+            code=discipline.code,
+            name=discipline.name,
+            campus=campus['key'],
+            context_options=context_options
+        )
+        """ type: app.models.Discipline """
         logging.debug("Saving discipline '%s' in cache", discipline.code)
-        memcache.replace(key, discipline_key)
-        raise ndb.Return(discipline_key)
+        yield context.memcache_set(key, discipline_model.key)
+        raise ndb.Return(discipline_model.key)
+
+    def generate_team_key(self, team, campus):
+        """
+        Generate a team key to use with cache and other nice things
+
+        :param team: The team which the key is based on
+        :param campus: The campus which the key is based on
+        :return: The key generated for the team
+        :rtype: str
+        """
+        key = '%(semester_id)s-%(campus)s-%(discipline_code)s-%(team_code)s'% {
+            "semester_id": campus['semester_key'].id(),
+            'campus': campus['key'].id(),
+            'discipline_code': team.discipline.code,
+            'team_code': team.code
+        }
+        key = "matrufsc2-team-%s" % hashlib.sha1(key).hexdigest()
+        return key
 
     @ndb.tasklet
     def process_team(self, team, campus):
@@ -282,28 +345,21 @@ class Robot(NDBRemoteFetcher, object):
         """
         logging.debug("Getting information about team %s in campus %s and semesters %s", team.code, campus['name'],
                       campus['semester_id'])
-        discipline_key, teachers, schedules = yield (
+        key = self.generate_team_key(team, campus)
+        logging.debug("Searching for team '%s' in cache", team.code)
+        team_model, discipline_key, teachers, schedules = yield (
+            context.memcache_get(key),
             self.get_discipline_key(team.discipline, campus),
             map(self.get_teacher_key, team.teachers),
             map(self.get_schedule_key, team.schedules)
         )
-        key = 'matrufsc2-team-%(semester_id)s-%(campus)s-%(discipline_code)s-%(team_code)s'% {
-            "semester_id": campus['semester_id'],
-            'campus': campus['id'],
-            'discipline_code': team.discipline.code,
-            'team_code': team.code
-        }
-        if memcache.get(key) is not None:
+        """ :type: app.models.Team|None """
+        db_key = ndb.Key(Team, key)
+        if team_model is not None:
             logging.debug("Team '%s' found in cache", team.code)
-            team_model = memcache.get(key)
-            """ :type: app.models.Team """
         else:
-            team_repository = TeamsRepository()
-            logging.debug("Searching for team '%s'", team.code)
-            team_model = yield team_repository.find_by({
-                "discipline": discipline_key.integer_id(),
-                "code": team.code
-            }).get_async()
+            logging.debug("Searching team '%s' in database", team.code)
+            team_model = yield db_key.get_async(options=context_options)
             """ :type: app.models.Team """
         modified = False
         if team_model:
@@ -321,6 +377,7 @@ class Robot(NDBRemoteFetcher, object):
                 modified = True
         else:
             team_model = Team(
+                key=db_key,
                 code=team.code,
                 discipline=discipline_key,
                 vacancies_offered=team.vacancies_offered,
@@ -330,16 +387,16 @@ class Robot(NDBRemoteFetcher, object):
             )
             modified = True
         if modified:
-            logging.debug("Saving team '%s' on NDB", team.code)
-            yield team_model.put_async()
-        logging.debug("Saving team '%s' in cache", team.code)
-        memcache.replace(key, team_model)
-        raise ndb.Return(team_model)
+            logging.debug("Saving team '%s' on NDB and on cache", team.code)
+            yield team_model.put_async(options=context_options), context.memcache_set(key, team_model)
+        else:
+            logging.debug("Saving team '%s' in cache", team.code)
+            yield context.memcache_set(key, team_model)
 
     @ndb.tasklet
-    def process_page(self, page_number, semester, campus):
+    def fetch_page(self, page_number, semester, campus):
         """
-        Process the page.
+        Fetch the page.
 
         :param page_number: The page number to process
         :type page_number: int
@@ -354,14 +411,12 @@ class Robot(NDBRemoteFetcher, object):
         }, page_number)
         logging.info("Processing page")
         teams = yield self.fetch_teams()
-        result = []
-        for team in teams:
-            logging.debug("Adding team %s to the queue", team.code)
-            result.append(self.process_team(team, campus))
         logging.debug("Processing %d teams", len(teams))
-        _, has_next = yield result, self.has_next_page()
-        logging.debug("Processed %d teams", len(teams))
-        raise ndb.Return(has_next)
+        has_next = yield self.has_next_page()
+        raise ndb.Return({
+            "teams_to_process": teams,
+            "has_next": has_next
+        })
 
     @ndb.tasklet
     def run(self, params):
@@ -370,30 +425,42 @@ class Robot(NDBRemoteFetcher, object):
 
         :return: google.appengine.ext.ndb.Future
         """
+        timeout = 540
+        if modules.get_current_module_name() == "robot":
+            logging.info("Detected that we are at 'robot' module <3")
+            timeout = 3600
+        logging.info("The timeout of this request is of %d seconds", timeout)
+        timeout = time.time() + timeout
         if params:
             params = pickle.loads(params)
+            campus = params["campus"]
             page_number = params["page_number"]
             semester = params["semester"]
             campus = params["campus"]
             logging.info("Processing campus %s and semester %s..", campus['name'], semester['name'])
-            timeout = time.time() + 540
+            teams_to_process = []
+            yield self.login()
             while True:
                 logging.info("Processing page %d", page_number)
-                has_next = yield self.process_page(page_number, semester, campus)
+                data = yield self.fetch_page(page_number, semester, campus)
+                has_next = data["has_next"]
+                teams_to_process.extend(data["teams_to_process"])
                 if has_next:
                     page_number += 1
                     if time.time() >= timeout:
-                        logging.debug("Scheduling page because of timeout..")
-                        taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                            "page_number": page_number,
-                            "semester": semester,
-                            "campus": campus
-                        }), method="POST")
-                        raise ndb.Return("QUEUED")
+                        raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
                 else:
+                    logging.info("Scheduling %d teams to be registered...", len(teams_to_process))
+                    for count, team in enumerate(teams_to_process, start=1):
+                        logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
+                        yield self.process_team(team, campus)
+                        if time.time() >= timeout:
+                            raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
+                    logging.info("Flushing all the things :D")
+                    yield context.flush()
+                    logging.info("All the things is flushed :D")
                     break
         else:
-
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
             semesters = yield self.register_semesters(semesters_data)
             campi = yield self.register_campi(campi_data, semesters)
@@ -408,18 +475,18 @@ class Robot(NDBRemoteFetcher, object):
             )
             logging.debug("Finding campus referenced by the semester..")
             campus_keys = yield campi_repository.find_by({
-                "semester": map(lambda semester: semester["key"].integer_id(), semesters[:2])
+                "semester": map(lambda semester: semester["key"].id(), semesters[:2])
             }).fetch_async(keys_only=True)
             to_remove = []
             for campus_key in campus_keys:
                 logging.debug("Finding disciplines referenced by the campus..")
                 discipline_keys = yield disciplines_repository.find_by({
-                    "campus": campus_key.integer_id()
+                    "campus": campus_key.id()
                 }).fetch_async(keys_only=True)
                 for discipline_key in discipline_keys:
                     logging.debug("Finding teams referenced by the discipline..")
                     teams_keys = yield teams_repository.find_by({
-                        "discipline": discipline_key.integer_id()
+                        "discipline": discipline_key.id()
                     }).fetch_async(keys_only=True)
                     to_remove.extend(teams_keys)
                     to_remove.append(discipline_key)

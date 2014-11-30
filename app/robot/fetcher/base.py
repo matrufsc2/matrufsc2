@@ -1,6 +1,12 @@
 __author__ = 'fernando'
 
 class BaseFetcher(object):
+    def login(self):
+        """
+        Do login on the CAGR
+        """
+        raise NotImplementedError
+
     def fetch(self, data=None, page_number=1):
         """
         Fetch page with the passed in parameters in the POST request, such as campi and semesters
@@ -11,7 +17,7 @@ class BaseFetcher(object):
         :param page_number: The page number to access
         :type page_number: int
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def fetch_campi(self):
         """
@@ -20,7 +26,7 @@ class BaseFetcher(object):
         :return: The campi fetched from the page
         :rtype: list of app.robot.value_objects.Campus
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def fetch_semesters(self):
         """
@@ -29,7 +35,7 @@ class BaseFetcher(object):
         :return: The semesters fetched from the page
         :rtype: list of app.robot.value_objects.Semester
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def fetch_teams(self):
         """
@@ -38,7 +44,12 @@ class BaseFetcher(object):
         :return: The teams found on the page
         :rtype: list of Team
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def has_next_page(self):
-        raise NotImplemented
+        """
+        Check if a new page is available to be crawled
+
+        :return: bool
+        """
+        raise NotImplementedError

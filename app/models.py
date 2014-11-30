@@ -7,7 +7,7 @@ class Semester(ndb.Model, JSONSerializable):
 
     @property
     def id(self):
-        return self.key.integer_id()
+        return self.key.id()
 
     @property
     def campi(self):
@@ -26,7 +26,7 @@ class Campus(ndb.Model, JSONSerializable):
 
     @property
     def id(self):
-        return self.key.integer_id()
+        return self.key.id()
 
     @property
     def disciplines(self):
@@ -47,7 +47,7 @@ class Discipline(ndb.Model, JSONSerializable):
 
     @property
     def id(self):
-        return self.key.integer_id()
+        return self.key.id()
 
     @property
     def teams(self):
@@ -65,7 +65,7 @@ class Teacher(ndb.Model, JSONSerializable):
 
     @property
     def id(self):
-        return self.key.integer_id()
+        return self.key.id()
 
     def to_json(self):
         return {
@@ -83,7 +83,7 @@ class Schedule(ndb.Model, JSONSerializable):
 
     @property
     def id(self):
-        return self.key.integer_id()
+        return self.key.id()
 
     def to_json(self):
         return {
@@ -106,7 +106,7 @@ class Team(ndb.Model, JSONSerializable):
 
     @property
     def id(self):
-        return self.key.integer_id()
+        return self.key.id()
 
     def to_json(self):
         return {

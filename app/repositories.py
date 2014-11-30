@@ -44,9 +44,13 @@ class NDBRepository(Repository):
                 raise FieldNotFound("Field not found in the model: %s"%key)
             if self.__keys__.has_key(key):
                 if isinstance(value, list):
-                    value = map(lambda item: Key(self.__keys__.get(key), int(item)), value)
+                    value = map(
+                        lambda item:
+                            Key(self.__keys__.get(key), item if not item.isdigit() else int(item)),
+                            value
+                    )
                 else:
-                    value = Key(self.__keys__.get(key), int(value))
+                    value = Key(self.__keys__.get(key), value if not value.isdigit() else int(value))
             attr = getattr(model, key)
             if isinstance(value, list):
                 result.append(attr.IN(value))

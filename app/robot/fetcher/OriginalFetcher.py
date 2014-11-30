@@ -47,7 +47,6 @@ class OriginalFetcher(BaseFetcher):
         self.base_request = None
         self.xml = None
         self.view_state = None
-        self.login()
 
     def login(self):
         """

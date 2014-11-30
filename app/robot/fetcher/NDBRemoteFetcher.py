@@ -31,11 +31,17 @@ class NDBRemoteFetcher(BaseFetcher):
                 urllib.urlencode(parameters),
                 "POST",
                 allow_truncated=False,
-                deadline=60)
+                deadline=60
+            )
             content = handler.content
             result = pickle.loads(zlib.decompress(content))
             if isinstance(result, Exception):
                 raise result
+            raise ndb.Return(result)
+
+        @ndb.tasklet
+        def login(self):
+            result = yield self.__fetch_request("login")
             raise ndb.Return(result)
 
         @ndb.tasklet

@@ -28,6 +28,9 @@ class RemoteFetcher(BaseFetcher):
             raise result
         return result
 
+    def login(self):
+        return self.__fetch_request("login")
+
     def has_next_page(self):
         return self.__fetch_request("has_next_page")
 
