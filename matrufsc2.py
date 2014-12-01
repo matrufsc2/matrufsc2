@@ -94,7 +94,7 @@ for model_name in dir(models):
 ###
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    robot = Robot("http://127.0.0.1:5000/%s/")
+    robot = Robot("http://matrufsc2.appspot.com/%s/")
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
