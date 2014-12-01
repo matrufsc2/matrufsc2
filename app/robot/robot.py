@@ -418,6 +418,40 @@ class Robot(NDBRemoteFetcher, object):
         })
 
     @ndb.tasklet
+    def clean_old_data(self, semesters):
+        """
+        Clean old data fro mthe database
+
+        :return:
+        """
+        disciplines_repository = DisciplinesRepository()
+        campi_repository = CampusRepository()
+        teams_repository = TeamsRepository()
+        logging.info(
+            "Deleting data from the recent semesters: %s",
+            ", ".join(map(lambda semester: semester["name"], semesters[:1])),
+        )
+        logging.debug("Finding campus referenced by the semester..")
+        campus_keys = yield campi_repository.find_by({
+            "semester": map(lambda semester: semester["key"].id(), semesters[:1])
+        }).fetch_async(keys_only=True)
+        to_remove = []
+        for campus_key in campus_keys:
+            logging.debug("Finding disciplines referenced by the campus..")
+            discipline_keys = yield disciplines_repository.find_by({
+                "campus": campus_key.id()
+            }).fetch_async(keys_only=True)
+            for discipline_key in discipline_keys:
+                logging.debug("Finding teams referenced by the discipline..")
+                teams_keys = yield teams_repository.find_by({
+                    "discipline": discipline_key.id()
+                }).fetch_async(keys_only=True)
+                to_remove.extend(teams_keys)
+                to_remove.append(discipline_key)
+        logging.info("Deleting everything related (%d objects) to the recent two semesters", len(to_remove))
+        yield ndb.delete_multi_async(to_remove)
+
+    @ndb.tasklet
     def run(self, params):
         """
         Run the robot \o/
@@ -460,36 +494,10 @@ class Robot(NDBRemoteFetcher, object):
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
             semesters = yield self.register_semesters(semesters_data)
             campi = yield self.register_campi(campi_data, semesters)
+            yield self.clean_old_data(semesters)
             count_semesters = 0
-            disciplines_repository = DisciplinesRepository()
-            campi_repository = CampusRepository()
-            teams_repository = TeamsRepository()
-            logging.info(
-                "Deleting data from the recent two semesters: %s and %s",
-                semesters[0]["name"],
-                semesters[1]["name"]
-            )
-            logging.debug("Finding campus referenced by the semester..")
-            campus_keys = yield campi_repository.find_by({
-                "semester": map(lambda semester: semester["key"].id(), semesters[:2])
-            }).fetch_async(keys_only=True)
-            to_remove = []
-            for campus_key in campus_keys:
-                logging.debug("Finding disciplines referenced by the campus..")
-                discipline_keys = yield disciplines_repository.find_by({
-                    "campus": campus_key.id()
-                }).fetch_async(keys_only=True)
-                for discipline_key in discipline_keys:
-                    logging.debug("Finding teams referenced by the discipline..")
-                    teams_keys = yield teams_repository.find_by({
-                        "discipline": discipline_key.id()
-                    }).fetch_async(keys_only=True)
-                    to_remove.extend(teams_keys)
-                    to_remove.append(discipline_key)
-            logging.info("Deleting everything related (%d objects) to the recent two semesters", len(to_remove))
-            yield ndb.delete_multi_async(to_remove)
             for semester in semesters:
-                if count_semesters >= 2 and not semester['new']:
+                if count_semesters >= 1 and not semester['new']:
                     logging.warn("Ignoring semester %s as it's not new to database and its not recent too",
                                  semester['name'])
                     continue
@@ -506,5 +514,6 @@ class Robot(NDBRemoteFetcher, object):
                         "semester": semester,
                         "campus": campus
                     }), method="POST")
+                count_semesters += 1
 
         raise ndb.Return("OK")

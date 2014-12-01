@@ -84,9 +84,17 @@ def getTeam(idValue):
     result = api.get_team(idValue)
     return serialize(result)
 
+###
+from app import models
+for model_name in dir(models):
+    model = getattr(models, model_name)
+    if model_name.startswith("_") or not hasattr(model,'query') or not callable(model.query) :
+        continue
+    print "%s -> %d" %(model_name, model.query().count())
+###
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    robot = Robot("http://matrufsc2.fjorgemota.com/%s/")
+    robot = Robot("http://127.0.0.1:5000/%s/")
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()

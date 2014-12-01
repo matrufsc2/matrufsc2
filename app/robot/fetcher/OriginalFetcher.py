@@ -120,7 +120,7 @@ class OriginalFetcher(BaseFetcher):
                 }) for campus_id in range(1, len(campi))]
 
     def fetch_semesters(self):
-        semesters = ["20142", "20151"]
+        semesters = ["20151"]
         return [Semester(**{
                     "id": semester,
                     "name": "-".join([semester[:4], semester[4:]])
