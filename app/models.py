@@ -3,7 +3,7 @@ from google.appengine.ext import ndb
 
 
 class Semester(ndb.Model, JSONSerializable):
-    name = ndb.StringProperty()
+    name = ndb.StringProperty(indexed=False)
 
     @property
     def id(self):
@@ -21,7 +21,7 @@ class Semester(ndb.Model, JSONSerializable):
 
 
 class Campus(ndb.Model, JSONSerializable):
-    name = ndb.StringProperty()
+    name = ndb.StringProperty(indexed=False)
     semester = ndb.KeyProperty(kind=Semester)
 
     @property
@@ -41,8 +41,8 @@ class Campus(ndb.Model, JSONSerializable):
 
 
 class Discipline(ndb.Model, JSONSerializable):
-    code = ndb.StringProperty()
-    name = ndb.StringProperty()
+    code = ndb.StringProperty(indexed=False)
+    name = ndb.StringProperty(indexed=False)
     campus = ndb.KeyProperty(Campus)
 
     @property
@@ -61,7 +61,7 @@ class Discipline(ndb.Model, JSONSerializable):
         }
 
 class Teacher(ndb.Model, JSONSerializable):
-    name = ndb.StringProperty()
+    name = ndb.StringProperty(indexed=False)
 
     @property
     def id(self):
@@ -75,11 +75,11 @@ class Teacher(ndb.Model, JSONSerializable):
 
 
 class Schedule(ndb.Model, JSONSerializable):
-    hourStart = ndb.IntegerProperty()
-    minuteStart = ndb.IntegerProperty()
-    numberOfLessons = ndb.IntegerProperty()
-    dayOfWeek = ndb.IntegerProperty()
-    room = ndb.StringProperty()
+    hourStart = ndb.IntegerProperty(indexed=False)
+    minuteStart = ndb.IntegerProperty(indexed=False)
+    numberOfLessons = ndb.IntegerProperty(indexed=False)
+    dayOfWeek = ndb.IntegerProperty(indexed=False)
+    room = ndb.StringProperty(indexed=False)
 
     @property
     def id(self):
@@ -97,12 +97,12 @@ class Schedule(ndb.Model, JSONSerializable):
 
 
 class Team(ndb.Model, JSONSerializable):
-    code = ndb.StringProperty()
+    code = ndb.StringProperty(indexed=False)
     discipline = ndb.KeyProperty(kind=Discipline, required=True)
     vacancies_offered = ndb.IntegerProperty(indexed=False)
     vacancies_filled = ndb.IntegerProperty(indexed=False)
-    schedules = ndb.KeyProperty(kind=Schedule, repeated=True)
-    teachers = ndb.KeyProperty(kind=Teacher, repeated=True)
+    schedules = ndb.KeyProperty(kind=Schedule, repeated=True, indexed=False)
+    teachers = ndb.KeyProperty(kind=Teacher, repeated=True, indexed=False)
 
     @property
     def id(self):

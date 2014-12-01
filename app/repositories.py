@@ -36,6 +36,7 @@ class NDBRepository(Repository):
         model = self.__get_model__()
         if not filters:
             return []
+        self.__keys__['key'] = model
         result = []
         if "id" in filters:
             del filters["id"]

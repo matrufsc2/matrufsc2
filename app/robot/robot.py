@@ -53,7 +53,7 @@ class Robot(NDBRemoteFetcher, object):
         to_put = []
         logging.debug("Finding all semesters found in the page..")
         to_get = repository.find_by({
-            "name": map(lambda semester: semester.name, semesters)
+            "key": map(self.generate_semester_key, semesters)
         }).iter()
         """ :type: google.appengine.ext.ndb.QueryIterator """
         while (yield to_get.has_next_async()):
@@ -125,8 +125,7 @@ class Robot(NDBRemoteFetcher, object):
         for campus_data in campi:
             logging.debug("Finding all semesters related to a campus..")
             to_get = repository.find_by({
-                "name": campus_data.name,
-                "semester": map(lambda semester: semester['key'].id(), semesters)
+                "key": map(lambda semester: self.generate_campus_key(campus_data, semester), semesters)
             }).iter()
             """ :type to_get: google.appengine.ext.ndb.QueryIterator """
             to_put = []
@@ -433,29 +432,26 @@ class Robot(NDBRemoteFetcher, object):
         timeout = time.time() + timeout
         if params:
             params = pickle.loads(params)
-            campus = params["campus"]
             page_number = params["page_number"]
             semester = params["semester"]
             campus = params["campus"]
             logging.info("Processing campus %s and semester %s..", campus['name'], semester['name'])
-            teams_to_process = []
             yield self.login()
             while True:
                 logging.info("Processing page %d", page_number)
                 data = yield self.fetch_page(page_number, semester, campus)
                 has_next = data["has_next"]
-                teams_to_process.extend(data["teams_to_process"])
+                teams_to_process = data["teams_to_process"]
+                for count, team in enumerate(teams_to_process, start=1):
+                    logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
+                    yield self.process_team(team, campus)
+                    if time.time() >= timeout:
+                        raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
                 if has_next:
                     page_number += 1
                     if time.time() >= timeout:
                         raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
                 else:
-                    logging.info("Scheduling %d teams to be registered...", len(teams_to_process))
-                    for count, team in enumerate(teams_to_process, start=1):
-                        logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
-                        yield self.process_team(team, campus)
-                        if time.time() >= timeout:
-                            raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
                     logging.info("Flushing all the things :D")
                     yield context.flush()
                     logging.info("All the things is flushed :D")
