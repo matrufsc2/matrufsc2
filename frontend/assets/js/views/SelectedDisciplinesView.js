@@ -42,11 +42,13 @@ define("views/SelectedDisciplinesView", [
 			combinationNumber = combinationTotal > 0 ? this.collection.getSelectedCombination()+1 : 0;
 			return combinationNumber+"/"+combinationTotal;
 		},
-		"nextCombination": function(){
+		"nextCombination": function(e){
 			this.collection.nextCombination();
+			e.preventDefault();
 		},
-		"previousCombination": function(){
+		"previousCombination": function(e){
 			this.collection.previousCombination();
+			e.preventDefault();
 		},
 		"initItemView": function(model){
 			if (this.itemView) {

@@ -10,7 +10,7 @@ define("models/Team", ["underscore", "models/CachedModel", "collections/Teachers
 		},
 		"validator": {
 			"type"     : "object",
-			"required" : ["id", "code", "discipline", "teachers", "schedules", "vacancies_offered", "vacancies_filled"],
+			"required" : ["id", "code", "teachers", "schedules", "vacancies_offered", "vacancies_filled"],
 			"properties": {
 				"id": {
 					"type": "integer"
@@ -80,9 +80,6 @@ define("models/Team", ["underscore", "models/CachedModel", "collections/Teachers
 							}
 						}
 					}
-				},
-				"discipline": {
-					"type": "integer"
 				},
 				"vacancies_offered": {
 					"type": "integer"

@@ -12,27 +12,25 @@ define("views/CalendarView", ["views/BaseView", "templates", "underscore", "fast
 			var events = this.collection.reduce(function(old, discipline){
 				if(discipline.team) {
 					old = old.concat(discipline.team.schedules.map(function(schedule){
-						var start = schedule.getStart();
 						return {
 							"title": discipline.get("code"),
 							"color": discipline.get("_color"),
-							"column": start.day(),
+							"column": schedule.getStart().day(),
 							"enabled": true,
-							"rowStart": hours.indexOf(start.format("HH:mm")),
-							"rowEnd": hours.indexOf(start.format("HH:mm"))+(schedule.get("numberOfLessons")-1)
+							"rowStart": schedule.getStartRow(),
+							"rowEnd": schedule.getEndRow()
 						};
 					}));
 				}
 				if(discipline.hoveredTeam) {
 					old = old.concat(discipline.hoveredTeam.schedules.map(function(schedule){
-						var start = schedule.getStart();
 						return {
 							"title": discipline.get("code"),
 							"color": discipline.get("_color"),
-							"column": start.day(),
+							"column": schedule.getStart().day(),
 							"enabled": false,
-							"rowStart": hours.indexOf(start.format("HH:mm")),
-							"rowEnd": hours.indexOf(start.format("HH:mm"))+(schedule.get("numberOfLessons")-1)
+							"rowStart": schedule.getStartRow(),
+							"rowEnd": schedule.getEndRow()
 						};
 					}));
 				}
@@ -55,7 +53,7 @@ define("views/CalendarView", ["views/BaseView", "templates", "underscore", "fast
 			return {
 				"hours": hours,
 				"events": matrixEvents
-			}
+			};
 		}
 	});
 });
