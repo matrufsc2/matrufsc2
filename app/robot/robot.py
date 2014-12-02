@@ -286,13 +286,15 @@ class Robot(NDBRemoteFetcher, object):
         return key
 
     @ndb.tasklet
-    def get_discipline_key(self, discipline, campus):
+    def save_discipline(self, discipline, campus, teams_keys):
         """
-        Get (or create) the discipline key based on the data of discipline and campus
+        Create the discipline key based on the data of discipline and campus
 
         :param discipline: The discipline data
         :type discipline: app.robot.value_objects.Discipline
         :param campus: The campus data
+        :type campus: app.robot.value_objects.Campus
+        :param teams_keys: The teams keys to add
         :return: The discipline key
         :rtype: google.appengine.ext.ndb.Key
         """
@@ -302,13 +304,13 @@ class Robot(NDBRemoteFetcher, object):
         if value is not None:
             raise ndb.Return(value)
         logging.debug("Searching (or even registering) discipline '%s' in NDB", discipline.code)
-        discipline_model = yield Discipline.get_or_insert_async(
-            key,
-            code=discipline.code,
-            name=discipline.name,
-            campus=campus['key'],
-            context_options=context_options
-        )
+        discipline_model = Discipline()
+        discipline_model.key = ndb.Key(Discipline, key)
+        discipline_model.code = discipline.code
+        discipline_model.name = discipline.name
+        discipline_model.campus = campus['key']
+        discipline_model.teams = teams_keys
+        yield discipline_model.put_async(options=context_options)
         """ type: app.models.Discipline """
         logging.debug("Saving discipline '%s' in cache", discipline.code)
         yield context.memcache_set(key, discipline_model.key)
@@ -346,9 +348,8 @@ class Robot(NDBRemoteFetcher, object):
                       campus['semester_id'])
         key = self.generate_team_key(team, campus)
         logging.debug("Searching for team '%s' in cache", team.code)
-        team_model, discipline_key, teachers, schedules = yield (
+        team_model, teachers, schedules = yield (
             context.memcache_get(key),
-            self.get_discipline_key(team.discipline, campus),
             map(self.get_teacher_key, team.teachers),
             map(self.get_schedule_key, team.schedules)
         )
@@ -378,7 +379,6 @@ class Robot(NDBRemoteFetcher, object):
             team_model = Team(
                 key=db_key,
                 code=team.code,
-                discipline=discipline_key,
                 vacancies_offered=team.vacancies_offered,
                 vacancies_filled=team.vacancies_filled,
                 teachers=teachers,
@@ -391,6 +391,7 @@ class Robot(NDBRemoteFetcher, object):
         else:
             logging.debug("Saving team '%s' in cache", team.code)
             yield context.memcache_set(key, team_model)
+        raise ndb.Return(team_model.key)
 
     @ndb.tasklet
     def fetch_page(self, page_number, semester, campus):
@@ -438,16 +439,13 @@ class Robot(NDBRemoteFetcher, object):
         to_remove = []
         for campus_key in campus_keys:
             logging.debug("Finding disciplines referenced by the campus..")
-            discipline_keys = yield disciplines_repository.find_by({
+            discipline_models = yield disciplines_repository.find_by({
                 "campus": campus_key.id()
-            }).fetch_async(keys_only=True)
-            for discipline_key in discipline_keys:
+            }).fetch_async()
+            for discipline_model in discipline_models:
                 logging.debug("Finding teams referenced by the discipline..")
-                teams_keys = yield teams_repository.find_by({
-                    "discipline": discipline_key.id()
-                }).fetch_async(keys_only=True)
-                to_remove.extend(teams_keys)
-                to_remove.append(discipline_key)
+                to_remove.extend(discipline_model.teams)
+                to_remove.append(discipline_model.key)
         logging.info("Deleting everything related (%d objects) to the recent two semesters", len(to_remove))
         yield ndb.delete_multi_async(to_remove)
 
@@ -469,6 +467,9 @@ class Robot(NDBRemoteFetcher, object):
             page_number = params["page_number"]
             semester = params["semester"]
             campus = params["campus"]
+            discipline = None
+            discipline_entity = None
+            teams = []
             logging.info("Processing campus %s and semester %s..", campus['name'], semester['name'])
             yield self.login()
             while True:
@@ -478,14 +479,28 @@ class Robot(NDBRemoteFetcher, object):
                 teams_to_process = data["teams_to_process"]
                 for count, team in enumerate(teams_to_process, start=1):
                     logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
-                    yield self.process_team(team, campus)
+                    team_key = yield self.process_team(team, campus)
+                    if discipline == team.discipline.code:
+                        logging.debug("Appending team to the list of teams in a discipline")
+                        teams.append(team_key)
+                    else:
+                        if teams:
+                            logging.debug("Saving discipline..")
+                            self.save_discipline(discipline_entity, campus, teams)
+                        discipline_entity = team.discipline
+                        discipline = discipline_entity.code
+                        logging.debug("Detected new discipline: %s", discipline)
+                        teams = [team_key]
                     if time.time() >= timeout:
-                        raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
+                        raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
                 if has_next:
                     page_number += 1
                     if time.time() >= timeout:
-                        raise Exception("Houston, we have a problem. [I this is more fucking slow than Windows]")
+                        raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
                 else:
+                    if teams:
+                        logging.debug("Saving discipline..")
+                        self.save_discipline(discipline_entity, campus, teams)
                     logging.info("Flushing all the things :D")
                     yield context.flush()
                     logging.info("All the things is flushed :D")

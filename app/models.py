@@ -39,27 +39,6 @@ class Campus(ndb.Model, JSONSerializable):
             "name": self.name
         }
 
-
-class Discipline(ndb.Model, JSONSerializable):
-    code = ndb.StringProperty(indexed=False)
-    name = ndb.StringProperty(indexed=False)
-    campus = ndb.KeyProperty(Campus)
-
-    @property
-    def id(self):
-        return self.key.id()
-
-    @property
-    def teams(self):
-        return Team.query(discipline=self.key)
-
-    def to_json(self):
-        return {
-            "id": self.id,
-            "code": self.code,
-            "name": self.name
-        }
-
 class Teacher(ndb.Model, JSONSerializable):
     name = ndb.StringProperty(indexed=False)
 
@@ -98,7 +77,6 @@ class Schedule(ndb.Model, JSONSerializable):
 
 class Team(ndb.Model, JSONSerializable):
     code = ndb.StringProperty(indexed=False)
-    discipline = ndb.KeyProperty(kind=Discipline, required=True)
     vacancies_offered = ndb.IntegerProperty(indexed=False)
     vacancies_filled = ndb.IntegerProperty(indexed=False)
     schedules = ndb.KeyProperty(kind=Schedule, repeated=True, indexed=False)
@@ -112,9 +90,25 @@ class Team(ndb.Model, JSONSerializable):
         return {
             "id": self.id,
             "code": self.code,
-            "discipline": self.discipline.integer_id(),
             "vacancies_offered": self.vacancies_offered,
             "vacancies_filled": self.vacancies_filled,
             "schedules": ndb.get_multi(self.schedules),
             "teachers": ndb.get_multi(self.teachers)
+        }
+
+class Discipline(ndb.Model, JSONSerializable):
+    code = ndb.StringProperty(indexed=False)
+    name = ndb.StringProperty(indexed=False)
+    campus = ndb.KeyProperty(Campus)
+    teams = ndb.KeyProperty(kind=Team, repeated=True, indexed=False)
+
+    @property
+    def id(self):
+        return self.key.id()
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "name": self.name
         }

@@ -6,7 +6,7 @@ from google.appengine.ext.ndb.model import Key
 __author__ = 'fernando'
 
 
-class Repository:
+class Repository(object):
     def __init__(self):
         pass
 
@@ -111,9 +111,30 @@ class DisciplinesRepository(NDBRepository):
 
 class TeamsRepository(NDBRepository):
     __model__ = Team
-    __keys__ = {
-        "discipline": Discipline
-    }
+
+    def find_by(self, filters):
+        """
+        Created query based on the specified filters
+
+        :param filters: The filters to use on the query
+        :type filters: dict
+        :return: The query of the App Engine
+        :rtype: ndb.Query
+        """
+        if filters.has_key("discipline"):
+            disciplines = filters.pop("discipline")
+            if not isinstance(disciplines, list):
+                disciplines = [disciplines]
+            filters['key'] = []
+            disciplines_keys = []
+            for discipline in disciplines:
+                discipline_key = ndb.Key(Discipline, discipline)
+                disciplines_keys.append(discipline_key)
+            results = Discipline.query(Discipline.key.IN(disciplines_keys))
+            for result in results.iter():
+                filters["key"].extend(map(lambda key: key.id(), result.teams))
+        return super(TeamsRepository, self).find_by(filters)
+
 
 
 class TeachersRepository(NDBRepository):
