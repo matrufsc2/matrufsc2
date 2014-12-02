@@ -41,7 +41,7 @@ def serialize(result):
 
 @app.route("/api/campi/")
 def getCampi():
-    result = list(api.get_campi(request.args))
+    result = list(api.get_campi(dict(request.args)))
     return serialize(result)
 
 
@@ -52,7 +52,7 @@ def getCampus(idValue):
 
 @app.route("/api/semesters/")
 def getSemesters():
-    result = list(api.get_semesters(request.args))
+    result = list(api.get_semesters(dict(request.args)))
     return serialize(result)
 
 
@@ -64,7 +64,7 @@ def getSemester(idValue):
 
 @app.route("/api/disciplines/")
 def getDisciplines():
-    result = list(api.get_disciplines(request.args))
+    result = list(api.get_disciplines(dict(request.args)))
     return serialize(result)
 
 
@@ -75,7 +75,7 @@ def getDiscipline(idValue):
 
 @app.route("/api/teams/")
 def getTeams():
-    result = list(api.get_teams(request.args))
+    result = list(api.get_teams(dict(request.args)))
     return serialize(result)
 
 
@@ -94,7 +94,7 @@ for model_name in dir(models):
 ###
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    robot = Robot("http://matrufsc2.appspot.com/%s/")
+    robot = Robot("http://matrufsc2.fjorgemota.com/%s/")
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
