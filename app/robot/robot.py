@@ -1,9 +1,11 @@
 import hashlib
 import logging as _logging
 import time
+import math
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
 from app.repositories import CampusRepository, SemesterRepository, DisciplinesRepository, TeamsRepository
 from app.robot.fetcher.NDBRemoteFetcher import NDBRemoteFetcher
+from google.appengine.api.runtime.runtime import is_shutting_down
 from google.appengine.ext import ndb
 from google.appengine.api import taskqueue, modules
 
@@ -419,34 +421,24 @@ class Robot(NDBRemoteFetcher, object):
         })
 
     @ndb.tasklet
-    def clean_old_data(self, semesters):
+    def clean_old_data(self, campus):
         """
-        Clean old data fro mthe database
+        Clean old data from the database
 
         :return:
         """
+        campus_key = campus['key']
         disciplines_repository = DisciplinesRepository()
-        campi_repository = CampusRepository()
-        teams_repository = TeamsRepository()
-        logging.info(
-            "Deleting data from the recent semesters: %s",
-            ", ".join(map(lambda semester: semester["name"], semesters[:1])),
-        )
-        logging.debug("Finding campus referenced by the semester..")
-        campus_keys = yield campi_repository.find_by({
-            "semester": map(lambda semester: semester["key"].id(), semesters[:1])
-        }).fetch_async(keys_only=True)
         to_remove = []
-        for campus_key in campus_keys:
-            logging.debug("Finding disciplines referenced by the campus..")
-            discipline_models = yield disciplines_repository.find_by({
-                "campus": campus_key.id()
-            }).fetch_async()
-            for discipline_model in discipline_models:
-                logging.debug("Finding teams referenced by the discipline..")
-                to_remove.extend(discipline_model.teams)
-                to_remove.append(discipline_model.key)
-        logging.info("Deleting everything related (%d objects) to the recent two semesters", len(to_remove))
+        logging.debug("Finding disciplines referenced by the campus %s..", campus['name'])
+        discipline_models = yield disciplines_repository.find_by({
+            "campus": campus_key.id()
+        }).fetch_async()
+        for discipline_model in discipline_models:
+            logging.debug("Finding teams referenced by the discipline..")
+            to_remove.extend(discipline_model.teams)
+            to_remove.append(discipline_model.key)
+        logging.info("Deleting everything related (%d objects) to the campus %s", len(to_remove), campus['name'])
         yield ndb.delete_multi_async(to_remove)
 
     @ndb.tasklet
@@ -464,13 +456,19 @@ class Robot(NDBRemoteFetcher, object):
         timeout = time.time() + timeout
         if params:
             params = pickle.loads(params)
-            page_number = params["page_number"]
+            page_number = int(params["page_number"])
             semester = params["semester"]
             campus = params["campus"]
-            discipline = None
+            discipline = params.get("discipline")
             discipline_entity = None
             teams = []
+            skip = params.get("skip")
             logging.info("Processing campus %s and semester %s..", campus['name'], semester['name'])
+            if skip is not None:
+                logging.info("Hooray! Seems like this is a resuming task...Go go go :D")
+            else:
+                logging.info("Hey! Found that this is not a resuming task...Cleaning old task :D")
+                yield self.clean_old_data(campus)
             yield self.login()
             while True:
                 logging.info("Processing page %d", page_number)
@@ -478,11 +476,28 @@ class Robot(NDBRemoteFetcher, object):
                 has_next = data["has_next"]
                 teams_to_process = data["teams_to_process"]
                 for count, team in enumerate(teams_to_process, start=1):
+                    if skip is not None:
+                        if skip >= count:
+                            logging.warn("Ignoring team %d of %d total teams", count, len(teams_to_process))
+                            continue
+                        else:
+                            if team.discipline.code != discipline:
+                                raise Exception(
+                                    "Unexpected discipline found: %(actual)s (expected %(expected)s)" %
+                                        {
+                                            "actual": team.discipline.code,
+                                            "expected": discipline
+                                        }
+                                )
+                            skip = None
                     logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
                     team_key = yield self.process_team(team, campus)
                     if discipline == team.discipline.code:
                         logging.debug("Appending team to the list of teams in a discipline")
                         teams.append(team_key)
+                        if count == 1:
+                            logging.debug("Go on! Touch the robot!!1")
+                            yield ndb.sleep(5)
                     else:
                         if teams:
                             logging.debug("Saving discipline..")
@@ -491,6 +506,27 @@ class Robot(NDBRemoteFetcher, object):
                         discipline = discipline_entity.code
                         logging.debug("Detected new discipline: %s", discipline)
                         teams = [team_key]
+                    if is_shutting_down():
+                        logging.warn("Detected shutdown of the instance. Preparing new task to the queue..")
+                        skip = count - len(teams)
+                        if skip < 0:
+                            logging.debug("Hey, seems like we need to go some pages before...")
+                            page_number_dif = math.ceil((skip*-1)/50.0)
+                            logging.debug("In total, seems like we need to go %d pages before", page_number_dif)
+                            skip += page_number_dif * 50
+                            logging.debug("And, in this page, we need to ignore %d items", skip)
+                            page_number -= page_number_dif
+                        else:
+                            logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
+                                          page_number)
+                        taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                            "page_number": page_number,
+                            "semester": semester,
+                            "campus": campus,
+                            "skip": skip,
+                            "discipline": discipline
+                        }), method="POST")
+                        raise ndb.Return("PAUSED")
                     if time.time() >= timeout:
                         raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
                 if has_next:
@@ -509,7 +545,6 @@ class Robot(NDBRemoteFetcher, object):
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
             semesters = yield self.register_semesters(semesters_data)
             campi = yield self.register_campi(campi_data, semesters)
-            yield self.clean_old_data(semesters)
             count_semesters = 0
             for semester in semesters:
                 if count_semesters >= 1 and not semester['new']:
