@@ -1,14 +1,14 @@
 import json
 from flask import Flask, request
 import os
-from werkzeug.contrib.cache import GAEMemcachedCache
+from google.appengine.api import memcache
 from app import api
 from app.json_serializer import JSONEncoder
 from app.robot.robot import Robot
+import hashlib
 
 app = Flask(__name__)
 
-cache = GAEMemcachedCache()
 
 CACHE_TIMEOUT = 3600
 CACHE_KEY = "view/%s"
@@ -17,16 +17,17 @@ IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.ha
 
 @app.before_request
 def return_cached():
-    # if GET and POST not empty
-    if not request.values:
-        response = cache.get(CACHE_KEY%request.path)
+    if "update" not in request.path:
+        response = memcache.get(CACHE_KEY%hashlib.sha1(request.url).hexdigest())
         if response:
             return response
 
 @app.after_request
-def cache_response(response):
-    if not request.values and "update" not in request.path:
-        cache.set(CACHE_KEY % request.path, response)
+def cae_response(response):
+    if "update" not in request.path:
+        memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response)
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    response.headers["Pragma"] = "cache"
     return response
 
 @app.route("/api/")
@@ -84,14 +85,6 @@ def getTeam(idValue):
     result = api.get_team(idValue)
     return serialize(result)
 
-###
-from app import models
-for model_name in dir(models):
-    model = getattr(models, model_name)
-    if model_name.startswith("_") or not hasattr(model,'query') or not callable(model.query) :
-        continue
-    print "%s -> %d" %(model_name, model.query().count())
-###
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
     robot = Robot("http://matrufsc2.fjorgemota.com/%s/")
