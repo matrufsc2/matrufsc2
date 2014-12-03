@@ -28,7 +28,7 @@ handlers:
   static_dir: frontend/public/css
   http_headers:
     #Cache-Control: private
-    Cache-Control: public, max-age=3600
+    Cache-Control: public, max-age=86400
     Pragma: cache
 
 - url: /font
