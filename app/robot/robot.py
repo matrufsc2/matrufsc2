@@ -495,9 +495,6 @@ class Robot(NDBRemoteFetcher, object):
                     if discipline == team.discipline.code:
                         logging.debug("Appending team to the list of teams in a discipline")
                         teams.append(team_key)
-                        if count == 1:
-                            logging.debug("Go on! Touch the robot!!1")
-                            yield ndb.sleep(5)
                     else:
                         if teams:
                             logging.debug("Saving discipline..")
