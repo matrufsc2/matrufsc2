@@ -57,6 +57,8 @@ class NDBRepository(Repository):
                 result.append(attr.IN(value))
             else:
                 result.append(attr == value)
+        if len(result) == 1:
+            return result[0]
         return ndb.AND(*result)
 
     def find_by(self, filters):
