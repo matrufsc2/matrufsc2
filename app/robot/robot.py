@@ -19,7 +19,7 @@ __author__ = 'fernando'
 logging = _logging.getLogger("robot")
 
 context = ndb.get_context()
-context_options = ndb.ContextOptions(use_cache=False, use_memcache=False)
+context_options = ndb.ContextOptions(use_cache=False)
 
 class Robot(NDBRemoteFetcher, object):
     def __init__(self, base_url):
@@ -46,59 +46,7 @@ class Robot(NDBRemoteFetcher, object):
         key = "matrufsc2-semester-%s" % hashlib.sha1(key).hexdigest()
         return key
 
-    @ndb.tasklet
-    def register_semesters(self, semesters):
-        logging.info("Registering semesters..")
-        repository = SemesterRepository()
-        result = []
-        found_ids = []
-        to_put = []
-        logging.debug("Finding all semesters found in the page..")
-        to_get = repository.find_by({
-            "key": map(self.generate_semester_key, semesters)
-        }).iter()
-        """ :type: google.appengine.ext.ndb.QueryIterator """
-        while (yield to_get.has_next_async()):
-            semester = to_get.next()
-            """ :type: app.models.Semester """
-            semester_id = None
-            for semester_data in semesters:
-                if semester_data.name == semester.name:
-                    semester_id = semester_data.id
-                    break
-            if semester_id is None:
-                raise Exception("Not found semester")
-            result.append({
-                "id": semester_id,
-                "name": semester.name,
-                "new": False,
-                "key": semester.key
-            })
-            found_ids.append(semester_id)
-        for semester in semesters:
-            if semester.id in found_ids:
-                continue
-            logging.debug("Saving semesters to be put in the database..")
-            to_put.append(Semester(key=ndb.Key(Semester, self.generate_semester_key(semester)), name=semester.name))
-        logging.debug("Saving semesters in the database...")
-        new_keys = yield ndb.put_multi_async(to_put)
-        for semester_key, semester_model in zip(new_keys, to_put):
-            semester_id = None
-            for semester_data in semesters:
-                if semester_data.name == semester_model.name:
-                    semester_id = semester_data.id
-                    break
-            if semester_id is None:
-                raise Exception("Not found semester")
-            result.append({
-                "id": semester_id,
-                "name": semester_model.name,
-                "new": True,
-                "key": semester_key
-            })
-            found_ids.append(semester_id)
-        assert len(found_ids) == len(semesters), "Not found all semesters (%d != %d)" % (len(found_ids), len(semesters))
-        raise ndb.Return(result)
+
 
     def generate_campus_key(self, campus, semester):
         """
@@ -111,76 +59,58 @@ class Robot(NDBRemoteFetcher, object):
         """
         key = "%(semester_id)s-%(semester_name)s-%(id)s-%(name)s" % {
             "id": campus.id,
-            "semester_id": semester['id'],
-            "semester_name": semester['name'],
+            "semester_id": semester.id,
+            "semester_name": semester.name,
             "name": campus.name
         }
         key = "matrufsc2-campus-%s" % hashlib.sha1(key).hexdigest()
         return key
 
-    @ndb.tasklet
-    def register_campi(self, campi, semesters):
-        logging.info("Registering campi..")
-        repository = CampusRepository()
-        result = []
+    def update_semester(self, semester, campus_keys):
+        """
+        Get (or create) the campus key based on which is available
 
-        for campus_data in campi:
-            logging.debug("Finding all semesters related to a campus..")
-            to_get = repository.find_by({
-                "key": map(lambda semester: self.generate_campus_key(campus_data, semester), semesters)
-            }).iter()
-            """ :type to_get: google.appengine.ext.ndb.QueryIterator """
-            to_put = []
-            found_semesters = []
-            while (yield to_get.has_next_async()):
-                campus = to_get.next()
-                semester = None
-                for semester_data in semesters:
-                    if campus.semester.id() == semester_data['key'].id():
-                        semester = semester_data
-                        break
-                if semester is None:
-                    raise Exception("Not found semester")
-                result.append({
-                    "id": campus_data.id,
-                    "name": campus_data.name,
-                    "semester_id": semester['id'],
-                    "semester_key": semester['key'],
-                    "new": False,
-                    "key": campus.key
-                })
-                found_semesters.append(semester['id'])
-            for semester in semesters:
-                if semester['id'] in found_semesters:
-                    continue
-                logging.debug("Registering campus to be saved...")
-                to_put.append(Campus(
-                    key=ndb.Key(Campus, self.generate_campus_key(campus_data, semester)),
-                    name=campus_data.name,
-                    semester=semester['key']
-                ))
-            logging.debug("Saving campi..")
-            new_keys = yield ndb.put_multi_async(to_put)
-            for campus_key, campus_model in zip(new_keys, to_put):
-                """ :type campus_model: app.models.Campus """
-                semester = None
-                for semester_data in semesters:
-                    if semester_data['key'].id() == campus_model.semester.id():
-                        semester = semester_data
-                        break
-                if semester is None:
-                    raise Exception("Not found semester")
-                result.append({
-                    "id": campus_data.id,
-                    "name": campus_data.name,
-                    "semester_id": semester['id'],
-                    "semester_key": semester['key'],
-                    "new": True,
-                    "key": campus_key
-                })
-                found_semesters.append(semester['id'])
-            assert len(found_semesters) == len(semesters), "Not found all semesters"
-        raise ndb.Return(result)
+        :param semester: The semester used to generate the key
+        :param campus_keys: The campus to save in the database
+        """
+        db_key = self.generate_semester_key(semester)
+        campus_keys = sorted(campus_keys)
+        semester_model = yield Semester.get_or_insert_async(
+            db_key,
+            campi=campus_keys,
+            context_options=context_options
+        )
+        """ :type: app.models.Semester """
+        if sorted(semester_model.campi) != campus_keys:
+            logging.debug("Detected changed list of disciplines..saving it to the database..")
+            semester_model.campi = campus_keys
+            yield semester_model.put_async(options=context_options)
+        raise ndb.Return(semester_model.key)
+
+    def get_campus_key(self, campus, semester, disciplines_keys):
+        """
+        Get (or create) the campus key based on which is available
+
+        :param campus: The campus data to use in the creation
+        :param semester: The semester used to generate the key
+        :param disciplines_keys: The disciplines to save in the database
+        :return: The key of the campus created (or updated in the database)
+        """
+        db_key = self.generate_campus_key(campus, semester)
+        disciplines_keys = sorted(disciplines_keys)
+        campus_model = yield Campus.get_or_insert_async(
+            db_key,
+            name=campus.name,
+            disciplines=disciplines_keys,
+            context_options=context_options
+        )
+        """ :type: app.models.Campus """
+        if sorted(campus_model.disciplines) != disciplines_keys:
+            logging.debug("Detected changed list of disciplines..saving it to the database..")
+            campus_model.disciplines = disciplines_keys
+            yield campus_model.put_async(options=context_options)
+        raise ndb.Return(campus_model.key)
+
 
     def generate_schedule_key(self, schedule):
         """
@@ -211,10 +141,6 @@ class Robot(NDBRemoteFetcher, object):
         :rtype: google.appengine.ext.ndb.Key
         """
         key = self.generate_schedule_key(schedule)
-        logging.debug("Searching schedule '%s' in cache", key)
-        value = yield context.memcache_get(key)
-        if value is not None:
-            raise ndb.Return(value)
         logging.debug("Searching (or even registering) schedule in NDB")
         schedule_model = yield Schedule.get_or_insert_async(
             key,
@@ -226,8 +152,6 @@ class Robot(NDBRemoteFetcher, object):
             context_options=context_options
         )
         """ type: app.models.Schedule """
-        logging.debug("Saving schedule '%s' in cache", key)
-        yield context.memcache_set(key, schedule_model.key)
         raise ndb.Return(schedule_model.key)
 
     def generate_teacher_key(self, teacher):
@@ -256,10 +180,6 @@ class Robot(NDBRemoteFetcher, object):
         """
         logging.debug("Searching teacher '%s'", teacher.name)
         key = self.generate_teacher_key(teacher)
-        logging.debug("Searching teacher '%s' in cache", teacher.name.decode("ISO-8859-1"))
-        value = yield context.memcache_get(key)
-        if value:
-            raise ndb.Return(value)
         logging.debug("Searching (or even registering) teacher '%s' in NDB", teacher.name.decode("ISO-8859-1"))
         teacher_model = yield Teacher.get_or_insert_async(
             key,
@@ -267,28 +187,28 @@ class Robot(NDBRemoteFetcher, object):
             context_options=context_options
         )
         """ type: app.models.Teacher """
-        logging.debug("Saving teacher '%s' in cache", teacher.name.decode("ISO-8859-1"))
-        yield context.memcache_set(key, teacher_model.key)
         raise ndb.Return(teacher_model.key)
 
-    def generate_discipline_key(self, discipline, campus):
+    def generate_discipline_key(self, discipline, campus, semester):
         """
         Gets a discipline key to use to save the cache and other nice things
 
         :param discipline: The discipline to base the key on
         :param campus: The campus to base the key on
+        :param semester: The semester to base the key on
         :return: The key of the discipline
-        ;rtype: str
+        :rtype: str
         """
-        key = '%(campus)s-%(discipline_code)s' % {
-            "campus": campus["key"].id(),
+        key = '%(semester)s-%(campus)s-%(discipline_code)s' % {
+            "semester": semester.id,
+            "campus": campus.id,
             "discipline_code": discipline.code
         }
         key = "matrufsc2-discipline-%s" % hashlib.sha1(key).hexdigest()
         return key
 
     @ndb.tasklet
-    def save_discipline(self, discipline, campus, teams_keys):
+    def get_discipline_key(self, discipline, campus, semester, teams_keys):
         """
         Create the discipline key based on the data of discipline and campus
 
@@ -296,40 +216,49 @@ class Robot(NDBRemoteFetcher, object):
         :type discipline: app.robot.value_objects.Discipline
         :param campus: The campus data
         :type campus: app.robot.value_objects.Campus
+        :param semester: The semester data
+        :type semester: app.robot.value_objects.Semester
         :param teams_keys: The teams keys to add
         :return: The discipline key
         :rtype: google.appengine.ext.ndb.Key
         """
         logging.debug("Searching discipline '%s' in cache", discipline.code)
-        key = self.generate_discipline_key(discipline, campus)
-        value = yield context.memcache_get(key)
-        if value is not None:
-            raise ndb.Return(value)
+        key = self.generate_discipline_key(discipline, campus, semester)
+        teams_keys = sorted(teams_keys)
         logging.debug("Searching (or even registering) discipline '%s' in NDB", discipline.code)
-        discipline_model = Discipline()
-        discipline_model.key = ndb.Key(Discipline, key)
-        discipline_model.code = discipline.code
-        discipline_model.name = discipline.name
-        discipline_model.campus = campus['key']
-        discipline_model.teams = teams_keys
-        yield discipline_model.put_async(options=context_options)
-        """ type: app.models.Discipline """
-        logging.debug("Saving discipline '%s' in cache", discipline.code)
-        yield context.memcache_set(key, discipline_model.key)
+        discipline_model = yield Discipline.get_or_insert_async(
+            key,
+            code=discipline.code,
+            name=discipline.name,
+            teams=teams_keys,
+            context_options=context_options
+        )
+        """ :type: app.models.Discipline """
+        modified = False
+        if discipline_model.name != discipline.name:
+            discipline_model.name = discipline.name
+            modified = True
+        if sorted(discipline_model.teams) != teams_keys:
+            discipline_model.teams = teams_keys
+            modified = True
+        if modified:
+            logging.debug("The discipline has been modified....saving it to the database..")
+            yield discipline_model.put_async(options=context_options)
         raise ndb.Return(discipline_model.key)
 
-    def generate_team_key(self, team, campus):
+    def generate_team_key(self, team, campus, semester):
         """
         Generate a team key to use with cache and other nice things
 
         :param team: The team which the key is based on
         :param campus: The campus which the key is based on
+        :param semester: The semester which the key is based on
         :return: The key generated for the team
         :rtype: str
         """
         key = '%(semester_id)s-%(campus)s-%(discipline_code)s-%(team_code)s'% {
-            "semester_id": campus['semester_key'].id(),
-            'campus': campus['key'].id(),
+            "semester_id": semester.id,
+            'campus': campus.id,
             'discipline_code': team.discipline.code,
             'team_code': team.code
         }
@@ -337,7 +266,7 @@ class Robot(NDBRemoteFetcher, object):
         return key
 
     @ndb.tasklet
-    def process_team(self, team, campus):
+    def get_team_key(self, team, campus, semester):
         """
         Get (or create) a team and return its model instance
 
@@ -346,53 +275,44 @@ class Robot(NDBRemoteFetcher, object):
         :return: The team model
         :rtype: app.models.Team
         """
-        logging.debug("Getting information about team %s in campus %s and semesters %s", team.code, campus['name'],
-                      campus['semester_id'])
-        key = self.generate_team_key(team, campus)
+        logging.debug("Getting information about team %s in campus %s and semesters %s", team.code, campus.name,
+                      semester.name)
+        key = self.generate_team_key(team, campus, semester)
         logging.debug("Searching for team '%s' in cache", team.code)
-        team_model, teachers, schedules = yield (
-            context.memcache_get(key),
+        teachers, schedules = yield (
             map(self.get_teacher_key, team.teachers),
             map(self.get_schedule_key, team.schedules)
         )
         """ :type: app.models.Team|None """
-        db_key = ndb.Key(Team, key)
-        if team_model is not None:
-            logging.debug("Team '%s' found in cache", team.code)
-        else:
-            logging.debug("Searching team '%s' in database", team.code)
-            team_model = yield db_key.get_async(options=context_options)
-            """ :type: app.models.Team """
+        teachers = sorted(teachers)
+        schedules = sorted(schedules)
+        logging.debug("Searching (or even registering) team '%s' in database", team.code)
+        team_model = yield Team.get_or_insert_async(
+            key,
+            code=team.code,
+            vacancies_offered=team.vacancies_offered,
+            vacancies_filled=team.vacancies_filled,
+            teachers=teachers,
+            schedules=schedules,
+            context_options=context_options
+        )
+        """ :type: app.models.Team """
         modified = False
-        if team_model:
-            if team_model.vacancies_offered != team.vacancies_offered:
-                team_model.vacancies_offered = team.vacancies_offered
-                modified = True
-            if team_model.vacancies_filled != team.vacancies_filled:
-                team_model.vacancies_filled = team.vacancies_filled
-                modified = True
-            if team_model.teachers != teachers:
-                team_model.teachers = teachers
-                modified = True
-            if team_model.schedules != schedules:
-                team_model.schedules = schedules
-                modified = True
-        else:
-            team_model = Team(
-                key=db_key,
-                code=team.code,
-                vacancies_offered=team.vacancies_offered,
-                vacancies_filled=team.vacancies_filled,
-                teachers=teachers,
-                schedules=schedules
-            )
+        if team_model.vacancies_offered != team.vacancies_offered:
+            team_model.vacancies_offered = team.vacancies_offered
+            modified = True
+        if team_model.vacancies_filled != team.vacancies_filled:
+            team_model.vacancies_filled = team.vacancies_filled
+            modified = True
+        if sorted(team_model.teachers) != teachers:
+            team_model.teachers = teachers
+            modified = True
+        if sorted(team_model.schedules) != schedules:
+            team_model.schedules = schedules
             modified = True
         if modified:
             logging.debug("Saving team '%s' on NDB and on cache", team.code)
-            yield team_model.put_async(options=context_options), context.memcache_set(key, team_model)
-        else:
-            logging.debug("Saving team '%s' in cache", team.code)
-            yield context.memcache_set(key, team_model)
+            yield team_model.put_async(options=context_options)
         raise ndb.Return(team_model.key)
 
     @ndb.tasklet
@@ -408,8 +328,8 @@ class Robot(NDBRemoteFetcher, object):
         """
         logging.debug("Setting parameters of the request...")
         yield self.fetch({
-            "selectSemestre": semester["id"],
-            "selectCampus": campus["id"],
+            "selectSemestre": semester.id,
+            "selectCampus": campus.id
         }, page_number)
         logging.info("Processing page")
         teams = yield self.fetch_teams()
@@ -419,27 +339,6 @@ class Robot(NDBRemoteFetcher, object):
             "teams_to_process": teams,
             "has_next": has_next
         })
-
-    @ndb.tasklet
-    def clean_old_data(self, campus):
-        """
-        Clean old data from the database
-
-        :return:
-        """
-        campus_key = campus['key']
-        disciplines_repository = DisciplinesRepository()
-        to_remove = []
-        logging.debug("Finding disciplines referenced by the campus %s..", campus['name'])
-        discipline_models = yield disciplines_repository.find_by({
-            "campus": campus_key.id()
-        }).fetch_async()
-        for discipline_model in discipline_models:
-            logging.debug("Finding teams referenced by the discipline..")
-            to_remove.extend(discipline_model.teams)
-            to_remove.append(discipline_model.key)
-        logging.info("Deleting everything related (%d objects) to the campus %s", len(to_remove), campus['name'])
-        yield ndb.delete_multi_async(to_remove)
 
     @ndb.tasklet
     def run(self, params):
@@ -458,109 +357,124 @@ class Robot(NDBRemoteFetcher, object):
             params = pickle.loads(params)
             page_number = int(params["page_number"])
             semester = params["semester"]
-            campus = params["campus"]
+            """ :type: app.robot.value_objects.Semester """
             discipline = params.get("discipline")
+            campi = params.get("campi", [])
+            """ :type: list of app.robot.value_objects.Campus """
             discipline_entity = None
+            disciplines = params.get("disciplines", [])
+            campi_keys = []
             teams = []
             skip = params.get("skip")
-            logging.info("Processing campus %s and semester %s..", campus['name'], semester['name'])
+            logging.info("Processing  semester %s..", semester.name)
             if skip is not None:
                 logging.info("Hooray! Seems like this is a resuming task...Go go go :D")
             else:
                 logging.info("Hey! Found that this is not a resuming task...Cleaning old task :D")
-                yield self.clean_old_data(campus)
-            yield self.login()
-            while True:
-                logging.info("Processing page %d", page_number)
-                data = yield self.fetch_page(page_number, semester, campus)
-                has_next = data["has_next"]
-                teams_to_process = data["teams_to_process"]
-                for count, team in enumerate(teams_to_process, start=1):
-                    if skip is not None:
-                        if skip >= count:
-                            logging.warn("Ignoring team %d of %d total teams", count, len(teams_to_process))
-                            continue
+            for campus_id, campus in enumerate(campi):
+                yield self.login()
+                logging.info("Processing campus %s", campus.name)
+                while True:
+                    logging.info("Processing page %d", page_number)
+                    data = yield self.fetch_page(page_number, semester, campus)
+                    has_next = data["has_next"]
+                    teams_to_process = data["teams_to_process"]
+                    for count, team in enumerate(teams_to_process, start=1):
+                        if skip is not None:
+                            if skip >= count:
+                                logging.warn("Ignoring team %d of %d total teams", count, len(teams_to_process))
+                                continue
+                            else:
+                                if team.discipline.code != discipline:
+                                    raise Exception(
+                                        "Unexpected discipline found: %(actual)s (expected %(expected)s)" %
+                                            {
+                                                "actual": team.discipline.code,
+                                                "expected": discipline
+                                            }
+                                    )
+                                skip = None
+                        logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
+                        team_key = yield self.get_team_key(team, campus, semester)
+                        if discipline == team.discipline.code:
+                            logging.debug("Appending team to the list of teams in a discipline")
+                            teams.append(team_key)
                         else:
-                            if team.discipline.code != discipline:
-                                raise Exception(
-                                    "Unexpected discipline found: %(actual)s (expected %(expected)s)" %
-                                        {
-                                            "actual": team.discipline.code,
-                                            "expected": discipline
-                                        }
+                            if teams:
+                                logging.debug("Saving discipline..")
+                                discipline_key = yield self.get_discipline_key(
+                                    discipline_entity,
+                                    campus,
+                                    semester,
+                                    teams
                                 )
-                            skip = None
-                    logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
-                    team_key = yield self.process_team(team, campus)
-                    if discipline == team.discipline.code:
-                        logging.debug("Appending team to the list of teams in a discipline")
-                        teams.append(team_key)
+                                disciplines.append(discipline_key)
+                            discipline_entity = team.discipline
+                            discipline = discipline_entity.code
+                            logging.debug("Detected new discipline: %s", discipline)
+                            teams = [team_key]
+                        if is_shutting_down():
+                            logging.warn("Detected shutdown of the instance. Preparing new task to the queue..")
+                            skip = count - len(teams)
+                            if skip < 0:
+                                logging.debug("Hey, seems like we need to go some pages before...")
+                                page_number_dif = math.ceil((skip*-1)/50.0)
+                                logging.debug("In total, seems like we need to go %d pages before", page_number_dif)
+                                skip += page_number_dif * 50
+                                logging.debug("And, in this page, we need to ignore %d items", skip)
+                                page_number -= page_number_dif
+                            else:
+                                logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
+                                              page_number)
+                            taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                                "page_number": page_number,
+                                "semester": semester,
+                                "campi": campi[campus_id:],
+                                "skip": skip,
+                                "discipline": discipline,
+                                "disciplines": disciplines
+                            }), method="POST")
+                            raise ndb.Return("PAUSED")
+                        if time.time() >= timeout:
+                            raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
+                    if has_next:
+                        page_number += 1
+                        if time.time() >= timeout:
+                            raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
                     else:
                         if teams:
                             logging.debug("Saving discipline..")
-                            self.save_discipline(discipline_entity, campus, teams)
-                        discipline_entity = team.discipline
-                        discipline = discipline_entity.code
-                        logging.debug("Detected new discipline: %s", discipline)
-                        teams = [team_key]
-                    if is_shutting_down():
-                        logging.warn("Detected shutdown of the instance. Preparing new task to the queue..")
-                        skip = count - len(teams)
-                        if skip < 0:
-                            logging.debug("Hey, seems like we need to go some pages before...")
-                            page_number_dif = math.ceil((skip*-1)/50.0)
-                            logging.debug("In total, seems like we need to go %d pages before", page_number_dif)
-                            skip += page_number_dif * 50
-                            logging.debug("And, in this page, we need to ignore %d items", skip)
-                            page_number -= page_number_dif
-                        else:
-                            logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
-                                          page_number)
-                        taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                            "page_number": page_number,
-                            "semester": semester,
-                            "campus": campus,
-                            "skip": skip,
-                            "discipline": discipline
-                        }), method="POST")
-                        raise ndb.Return("PAUSED")
-                    if time.time() >= timeout:
-                        raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
-                if has_next:
-                    page_number += 1
-                    if time.time() >= timeout:
-                        raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
-                else:
-                    if teams:
-                        logging.debug("Saving discipline..")
-                        self.save_discipline(discipline_entity, campus, teams)
-                    logging.info("Flushing all the things :D")
-                    yield context.flush()
-                    logging.info("All the things is flushed :D")
-                    break
+                            discipline_key = yield self.get_discipline_key(discipline_entity, campus, semester, teams)
+                            disciplines.append(discipline_key)
+                        logging.info("Flushing all the things :D")
+                        yield context.flush()
+                        logging.info("All the things is flushed :D")
+                        break
+                campi_keys.append(
+                    self.get_campus_key(
+                        campus,
+                        semester,
+                        disciplines
+                    )
+                )
+                disciplines = []
+                page_number = 1
+            self.update_semester(semester, campi_keys)
+
         else:
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
-            semesters = yield self.register_semesters(semesters_data)
-            campi = yield self.register_campi(campi_data, semesters)
             count_semesters = 0
-            for semester in semesters:
-                if count_semesters >= 1 and not semester['new']:
+            for semester in semesters_data:
+                if count_semesters >= 1:
                     logging.warn("Ignoring semester %s as it's not new to database and its not recent too",
                                  semester['name'])
                     continue
-                for campus in campi:
-                    logging.info("Processing semester %s..", semester['name'])
-                    if campus['semester_id'] != semester['id']:
-                        logging.debug("Ignoring campus with different semester")
-                        continue
-                    logging.info("Processing campus %s and semester %s..", campus['name'], semester['name'])
-                    page_number = 1
-                    logging.debug("Scheduling task..")
-                    taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                        "page_number": page_number,
-                        "semester": semester,
-                        "campus": campus
-                    }), method="POST")
+                logging.info("Scheduling task for  semester %s..", semester.name)
+                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                    "page_number": 1,
+                    "semester": semester,
+                    "campi": campi_data
+                }), method="POST")
                 count_semesters += 1
 
         raise ndb.Return("OK")

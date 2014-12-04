@@ -20,6 +20,7 @@ class Repository(object):
 class NDBRepository(Repository):
     __model__ = None
     __keys__ = {}
+    __parent__ = None
     def __get_model__(self):
         """
         Returns the model on which this repository is based on
@@ -70,6 +71,18 @@ class NDBRepository(Repository):
         :return: The query of the App Engine
         :rtype: ndb.Query
         """
+        if self.__parent__ and filters.has_key(self.__parent__['key']):
+            parent_entities = filters.pop(self.__parent__['key'])
+            if not isinstance(parent_entities, list):
+                parent_entities = [parent_entities]
+            filters['key'] = []
+            parent_keys = []
+            for parent_entity in parent_entities:
+                parent_key = ndb.Key(self.__parent__['model'], parent_entity)
+                parent_keys.append(parent_key)
+            results = self.__parent__['model'].query(self.__parent__['model'].key.IN(parent_keys))
+            for result in results.iter():
+                filters["key"].extend(map(lambda key: key.id(), getattr(result, self.__parent__['child_attribute'])))
         return self.__get_model__().query(self.__create_filter__(filters))
 
     def find_by_id(self, id_value):
@@ -99,43 +112,29 @@ class SemesterRepository(NDBRepository):
 
 class CampusRepository(NDBRepository):
     __model__ = Campus
-    __keys__ = {
-        "semester": Semester
+    __parent__ = {
+        "key": "semester",
+        "model": Semester,
+        "child_atribute": "campi"
     }
 
 
 class DisciplinesRepository(NDBRepository):
     __model__ = Discipline
-    __keys__ = {
-        "campus": Campus
+    __parent__ = {
+        "key": "campus",
+        "model": Campus,
+        "child_atribute": "disciplines"
     }
 
 
 class TeamsRepository(NDBRepository):
     __model__ = Team
-
-    def find_by(self, filters):
-        """
-        Created query based on the specified filters
-
-        :param filters: The filters to use on the query
-        :type filters: dict
-        :return: The query of the App Engine
-        :rtype: ndb.Query
-        """
-        if filters.has_key("discipline"):
-            disciplines = filters.pop("discipline")
-            if not isinstance(disciplines, list):
-                disciplines = [disciplines]
-            filters['key'] = []
-            disciplines_keys = []
-            for discipline in disciplines:
-                discipline_key = ndb.Key(Discipline, discipline)
-                disciplines_keys.append(discipline_key)
-            results = Discipline.query(Discipline.key.IN(disciplines_keys))
-            for result in results.iter():
-                filters["key"].extend(map(lambda key: key.id(), result.teams))
-        return super(TeamsRepository, self).find_by(filters)
+    __parent__ = {
+        "key": "discipline",
+        "model": Discipline,
+        "child_atribute": "teams"
+    }
 
 
 

@@ -4,14 +4,11 @@ from google.appengine.ext import ndb
 
 class Semester(ndb.Model, JSONSerializable):
     name = ndb.StringProperty(indexed=False)
+    campi = ndb.KeyProperty(kind="Campus", repeated=True, indexed=False)
 
     @property
     def id(self):
         return self.key.id()
-
-    @property
-    def campi(self):
-        return Campus.query(semester=self.key)
 
     def to_json(self):
         return {
@@ -22,21 +19,53 @@ class Semester(ndb.Model, JSONSerializable):
 
 class Campus(ndb.Model, JSONSerializable):
     name = ndb.StringProperty(indexed=False)
-    semester = ndb.KeyProperty(kind=Semester)
+    disciplines = ndb.KeyProperty(kind="Discipline", repeated=True, indexed=False)
 
     @property
     def id(self):
         return self.key.id()
 
-    @property
-    def disciplines(self):
-        return Discipline.query(campus=self.key)
-
-
     def to_json(self):
         return {
             "id": self.id,
             "name": self.name
+        }
+
+class Discipline(ndb.Model, JSONSerializable):
+    code = ndb.StringProperty(indexed=False)
+    name = ndb.StringProperty(indexed=False)
+    teams = ndb.KeyProperty(kind="Team", repeated=True, indexed=False)
+
+    @property
+    def id(self):
+        return self.key.id()
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "name": self.name
+        }
+
+class Team(ndb.Model, JSONSerializable):
+    code = ndb.StringProperty(indexed=False)
+    vacancies_offered = ndb.IntegerProperty(indexed=False)
+    vacancies_filled = ndb.IntegerProperty(indexed=False)
+    schedules = ndb.KeyProperty(kind="Schedule", repeated=True, indexed=False)
+    teachers = ndb.KeyProperty(kind="Teacher", repeated=True, indexed=False)
+
+    @property
+    def id(self):
+        return self.key.id()
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "vacancies_offered": self.vacancies_offered,
+            "vacancies_filled": self.vacancies_filled,
+            "schedules": ndb.get_multi(self.schedules),
+            "teachers": ndb.get_multi(self.teachers)
         }
 
 class Teacher(ndb.Model, JSONSerializable):
@@ -74,41 +103,3 @@ class Schedule(ndb.Model, JSONSerializable):
             "room": self.room
         }
 
-
-class Team(ndb.Model, JSONSerializable):
-    code = ndb.StringProperty(indexed=False)
-    vacancies_offered = ndb.IntegerProperty(indexed=False)
-    vacancies_filled = ndb.IntegerProperty(indexed=False)
-    schedules = ndb.KeyProperty(kind=Schedule, repeated=True, indexed=False)
-    teachers = ndb.KeyProperty(kind=Teacher, repeated=True, indexed=False)
-
-    @property
-    def id(self):
-        return self.key.id()
-
-    def to_json(self):
-        return {
-            "id": self.id,
-            "code": self.code,
-            "vacancies_offered": self.vacancies_offered,
-            "vacancies_filled": self.vacancies_filled,
-            "schedules": ndb.get_multi(self.schedules),
-            "teachers": ndb.get_multi(self.teachers)
-        }
-
-class Discipline(ndb.Model, JSONSerializable):
-    code = ndb.StringProperty(indexed=False)
-    name = ndb.StringProperty(indexed=False)
-    campus = ndb.KeyProperty(Campus)
-    teams = ndb.KeyProperty(kind=Team, repeated=True, indexed=False)
-
-    @property
-    def id(self):
-        return self.key.id()
-
-    def to_json(self):
-        return {
-            "id": self.id,
-            "code": self.code,
-            "name": self.name
-        }
