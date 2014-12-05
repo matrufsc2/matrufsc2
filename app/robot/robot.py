@@ -66,6 +66,7 @@ class Robot(NDBRemoteFetcher, object):
         key = "matrufsc2-campus-%s" % hashlib.sha1(key).hexdigest()
         return key
 
+    @ndb.tasklet
     def update_semester(self, semester, campus_keys):
         """
         Get (or create) the campus key based on which is available
@@ -73,20 +74,24 @@ class Robot(NDBRemoteFetcher, object):
         :param semester: The semester used to generate the key
         :param campus_keys: The campus to save in the database
         """
+        logging.info("Saving/updating semester %s", semester.name)
         db_key = self.generate_semester_key(semester)
         campus_keys = sorted(campus_keys)
+        logging.debug("Getting (or even inserting) semester from the database")
         semester_model = yield Semester.get_or_insert_async(
             db_key,
+            name=semester.name,
             campi=campus_keys,
             context_options=context_options
         )
         """ :type: app.models.Semester """
         if sorted(semester_model.campi) != campus_keys:
-            logging.debug("Detected changed list of disciplines..saving it to the database..")
+            logging.debug("Detected changed list of campus..saving it to the database..")
             semester_model.campi = campus_keys
             yield semester_model.put_async(options=context_options)
         raise ndb.Return(semester_model.key)
 
+    @ndb.tasklet
     def get_campus_key(self, campus, semester, disciplines_keys):
         """
         Get (or create) the campus key based on which is available
@@ -98,6 +103,7 @@ class Robot(NDBRemoteFetcher, object):
         """
         db_key = self.generate_campus_key(campus, semester)
         disciplines_keys = sorted(disciplines_keys)
+        logging.debug("Getting (or even saving) campus '%s' on the database", campus.name)
         campus_model = yield Campus.get_or_insert_async(
             db_key,
             name=campus.name,
@@ -363,7 +369,7 @@ class Robot(NDBRemoteFetcher, object):
             """ :type: list of app.robot.value_objects.Campus """
             discipline_entity = None
             disciplines = params.get("disciplines", [])
-            campi_keys = []
+            campi_keys = params.get("campi_keys", [])
             teams = []
             skip = params.get("skip")
             logging.info("Processing  semester %s..", semester.name)
@@ -430,6 +436,7 @@ class Robot(NDBRemoteFetcher, object):
                                 "page_number": page_number,
                                 "semester": semester,
                                 "campi": campi[campus_id:],
+                                "campi_keys": campi_keys,
                                 "skip": skip,
                                 "discipline": discipline,
                                 "disciplines": disciplines
@@ -450,16 +457,16 @@ class Robot(NDBRemoteFetcher, object):
                         yield context.flush()
                         logging.info("All the things is flushed :D")
                         break
-                campi_keys.append(
-                    self.get_campus_key(
-                        campus,
-                        semester,
-                        disciplines
-                    )
+                campus_key = yield self.get_campus_key(
+                    campus,
+                    semester,
+                    disciplines
                 )
+                campi_keys.append(campus_key)
                 disciplines = []
+                teams = []
                 page_number = 1
-            self.update_semester(semester, campi_keys)
+            yield self.update_semester(semester, campi_keys)
 
         else:
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()

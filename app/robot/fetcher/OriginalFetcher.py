@@ -117,7 +117,7 @@ class OriginalFetcher(BaseFetcher):
         return [Campus(**{
                     "id": campus_id,
                     "name": campi[campus_id]
-                }) for campus_id in range(1, len(campi))]
+                }) for campus_id in range(0, len(campi))]
 
     def fetch_semesters(self):
         semesters = ["20151"]

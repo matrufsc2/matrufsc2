@@ -25,7 +25,11 @@ def return_cached():
 @app.after_request
 def cae_response(response):
     if "update" not in request.path:
-        memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response)
+        try:
+            memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response)
+        except:
+            pass
+
     response.headers["Cache-Control"] = "public, max-age=3600"
     response.headers["Pragma"] = "cache"
     return response
@@ -87,7 +91,7 @@ def getTeam(idValue):
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    robot = Robot("http://127.0.0.1:5000/%s/")
+    robot = Robot("http://matrufsc2.fjorgemota.comgit/%s/")
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()

@@ -83,6 +83,8 @@ class NDBRepository(Repository):
             results = self.__parent__['model'].query(self.__parent__['model'].key.IN(parent_keys))
             for result in results.iter():
                 filters["key"].extend(map(lambda key: key.id(), getattr(result, self.__parent__['child_attribute'])))
+            if not filters['key']:
+                return []
         return self.__get_model__().query(self.__create_filter__(filters))
 
     def find_by_id(self, id_value):
@@ -115,7 +117,7 @@ class CampusRepository(NDBRepository):
     __parent__ = {
         "key": "semester",
         "model": Semester,
-        "child_atribute": "campi"
+        "child_attribute": "campi"
     }
 
 
@@ -124,7 +126,7 @@ class DisciplinesRepository(NDBRepository):
     __parent__ = {
         "key": "campus",
         "model": Campus,
-        "child_atribute": "disciplines"
+        "child_attribute": "disciplines"
     }
 
 
@@ -133,7 +135,7 @@ class TeamsRepository(NDBRepository):
     __parent__ = {
         "key": "discipline",
         "model": Discipline,
-        "child_atribute": "teams"
+        "child_attribute": "teams"
     }
 
 
