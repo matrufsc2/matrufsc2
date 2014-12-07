@@ -80,6 +80,7 @@ def fetch_campi():
 @app.route("/has_next_page/", methods=["POST"])
 def has_next_page():
     try:
+        fetch()
         result = fetcher.has_next_page()
     except Exception, e:
         logger.exception("Error when verifying if there is a new page")

@@ -284,7 +284,6 @@ class Robot(NDBRemoteFetcher, object):
         logging.debug("Getting information about team %s in campus %s and semesters %s", team.code, campus.name,
                       semester.name)
         key = self.generate_team_key(team, campus, semester)
-        logging.debug("Searching for team '%s' in cache", team.code)
         teachers, schedules = yield (
             map(self.get_teacher_key, team.teachers),
             map(self.get_schedule_key, team.schedules)
@@ -346,6 +345,129 @@ class Robot(NDBRemoteFetcher, object):
             "has_next": has_next
         })
 
+    def calculate_timeout(self):
+        timeout = 540
+        if modules.get_current_module_name() == "robot":
+            logging.info("Detected that we are at 'robot' module <3")
+            timeout = 3600
+        logging.info("The timeout of this request is of %d seconds", timeout)
+        timeout = time.time() + timeout
+        return timeout
+
+    @ndb.tasklet
+    def run_worker(self, params):
+        timeout = self.calculate_timeout()
+        params = pickle.loads(params)
+        page_number = int(params["page_number"])
+        semester = params["semester"]
+        """ :type: app.robot.value_objects.Semester """
+        campus = params["campus"]
+        discipline = params.get("discipline")
+        last_login = params.get("last_login", 0)
+        discipline_entity = params.get("discipline_entity")
+        disciplines = params.get("disciplines", set())
+        teams = params.get("teams", [])
+        skip = params.get("skip")
+        logging.info("Processing semester %s and campus %s..", semester.name, campus.name)
+        if skip is not None:
+            logging.info("Hooray! Seems like this is a resuming task...Go go go :D")
+        else:
+            logging.info("Hey! Found that this is not a resuming task...Cleaning old task :D")
+        if (last_login+600) < time.time():
+            yield self.login()
+            last_login = time.time()
+        logging.info("Processing campus %s", campus.name)
+        logging.info("Processing page %d", page_number)
+        data = yield self.fetch_page(page_number, semester, campus)
+        has_next = data["has_next"]
+        teams_to_process = data["teams_to_process"]
+        for count, team in enumerate(teams_to_process, start=1):
+            if skip is not None:
+                if skip >= count:
+                    logging.warn("Ignoring team %d of %d total teams", count, len(teams_to_process))
+                    continue
+                else:
+                    if team.discipline.code != discipline:
+                        raise Exception(
+                            "Unexpected discipline found: %(actual)s (expected %(expected)s)" %
+                                {
+                                    "actual": team.discipline.code,
+                                    "expected": discipline
+                                }
+                        )
+                    discipline = team.discipline
+                    skip = None
+            logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
+            team_key = yield self.get_team_key(team, campus, semester)
+            if discipline == team.discipline.code:
+                logging.debug("Appending team to the list of teams in a discipline")
+                teams.append(team_key)
+            else:
+                if teams:
+                    logging.debug("Saving discipline..")
+                    yield self.get_discipline_key(
+                        discipline_entity,
+                        campus,
+                        semester,
+                        teams
+                    )
+                    disciplines.add(discipline)
+                discipline_entity = team.discipline
+                discipline = discipline_entity.code
+                logging.debug("Detected new discipline: %s", discipline)
+                teams = [team_key]
+            if is_shutting_down():
+                logging.warn("Detected shutdown of the instance. Preparing new task to the queue..")
+                skip = count - len(teams)
+                if skip < 0:
+                    logging.debug("Hey, seems like we need to go some pages before...")
+                    page_number_dif = math.ceil((skip*-1)/50.0)
+                    logging.debug("In total, seems like we need to go %d pages before", page_number_dif)
+                    skip += page_number_dif * 50
+                    logging.debug("And, in this page, we need to ignore %d items", skip)
+                    page_number -= page_number_dif
+                else:
+                    logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
+                                  page_number)
+                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                    "page_number": page_number,
+                    "semester": semester,
+                    "campus": campus,
+                    "skip": skip,
+                    "discipline": discipline,
+                    "disciplines": disciplines,
+                    "last_login": last_login
+                }), method="POST")
+                raise ndb.Return("PAUSED")
+            if time.time() >= timeout:
+                raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
+        logging.info("Flushing all the things :D")
+        yield context.flush()
+        logging.info("All the things is flushed :D")
+        if has_next and page_number < 120:
+            logging.info("Scheduling task to process the next page..(page %d)", page_number+1)
+            taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                "page_number": page_number + 1,
+                "semester": semester,
+                "campus": campus,
+                "discipline": discipline,
+                "discipline_entity": discipline_entity,
+                "teams": teams,
+                "disciplines": disciplines,
+                "last_login": last_login
+            }), method="POST")
+        else:
+            if teams:
+                logging.debug("Saving discipline..")
+                yield self.get_discipline_key(discipline_entity, campus, semester, teams)
+                disciplines.add(discipline)
+            yield self.get_campus_key(
+                campus,
+                semester,
+                (ndb.Key(Discipline, self.generate_discipline_key(Discipline(code=discipline), campus, semester))
+                 for discipline in disciplines)
+            )
+
     @ndb.tasklet
     def run(self, params):
         """
@@ -353,121 +475,10 @@ class Robot(NDBRemoteFetcher, object):
 
         :return: google.appengine.ext.ndb.Future
         """
-        timeout = 540
-        if modules.get_current_module_name() == "robot":
-            logging.info("Detected that we are at 'robot' module <3")
-            timeout = 3600
-        logging.info("The timeout of this request is of %d seconds", timeout)
-        timeout = time.time() + timeout
         if params:
-            params = pickle.loads(params)
-            page_number = int(params["page_number"])
-            semester = params["semester"]
-            """ :type: app.robot.value_objects.Semester """
-            discipline = params.get("discipline")
-            campi = params.get("campi", [])
-            """ :type: list of app.robot.value_objects.Campus """
-            discipline_entity = None
-            disciplines = params.get("disciplines", [])
-            campi_keys = params.get("campi_keys", [])
-            teams = []
-            skip = params.get("skip")
-            logging.info("Processing  semester %s..", semester.name)
-            if skip is not None:
-                logging.info("Hooray! Seems like this is a resuming task...Go go go :D")
-            else:
-                logging.info("Hey! Found that this is not a resuming task...Cleaning old task :D")
-            for campus_id, campus in enumerate(campi):
-                yield self.login()
-                logging.info("Processing campus %s", campus.name)
-                while True:
-                    logging.info("Processing page %d", page_number)
-                    data = yield self.fetch_page(page_number, semester, campus)
-                    has_next = data["has_next"]
-                    teams_to_process = data["teams_to_process"]
-                    for count, team in enumerate(teams_to_process, start=1):
-                        if skip is not None:
-                            if skip >= count:
-                                logging.warn("Ignoring team %d of %d total teams", count, len(teams_to_process))
-                                continue
-                            else:
-                                if team.discipline.code != discipline:
-                                    raise Exception(
-                                        "Unexpected discipline found: %(actual)s (expected %(expected)s)" %
-                                            {
-                                                "actual": team.discipline.code,
-                                                "expected": discipline
-                                            }
-                                    )
-                                skip = None
-                        logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
-                        team_key = yield self.get_team_key(team, campus, semester)
-                        if discipline == team.discipline.code:
-                            logging.debug("Appending team to the list of teams in a discipline")
-                            teams.append(team_key)
-                        else:
-                            if teams:
-                                logging.debug("Saving discipline..")
-                                discipline_key = yield self.get_discipline_key(
-                                    discipline_entity,
-                                    campus,
-                                    semester,
-                                    teams
-                                )
-                                disciplines.append(discipline_key)
-                            discipline_entity = team.discipline
-                            discipline = discipline_entity.code
-                            logging.debug("Detected new discipline: %s", discipline)
-                            teams = [team_key]
-                        if is_shutting_down():
-                            logging.warn("Detected shutdown of the instance. Preparing new task to the queue..")
-                            skip = count - len(teams)
-                            if skip < 0:
-                                logging.debug("Hey, seems like we need to go some pages before...")
-                                page_number_dif = math.ceil((skip*-1)/50.0)
-                                logging.debug("In total, seems like we need to go %d pages before", page_number_dif)
-                                skip += page_number_dif * 50
-                                logging.debug("And, in this page, we need to ignore %d items", skip)
-                                page_number -= page_number_dif
-                            else:
-                                logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
-                                              page_number)
-                            taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                                "page_number": page_number,
-                                "semester": semester,
-                                "campi": campi[campus_id:],
-                                "campi_keys": campi_keys,
-                                "skip": skip,
-                                "discipline": discipline,
-                                "disciplines": disciplines
-                            }), method="POST")
-                            raise ndb.Return("PAUSED")
-                        if time.time() >= timeout:
-                            raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
-                    if has_next:
-                        page_number += 1
-                        if time.time() >= timeout:
-                            raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
-                    else:
-                        if teams:
-                            logging.debug("Saving discipline..")
-                            discipline_key = yield self.get_discipline_key(discipline_entity, campus, semester, teams)
-                            disciplines.append(discipline_key)
-                        logging.info("Flushing all the things :D")
-                        yield context.flush()
-                        logging.info("All the things is flushed :D")
-                        break
-                campus_key = yield self.get_campus_key(
-                    campus,
-                    semester,
-                    disciplines
-                )
-                campi_keys.append(campus_key)
-                disciplines = []
-                teams = []
-                page_number = 1
-            yield self.update_semester(semester, campi_keys)
-
+            response = yield self.run_worker(params)
+            if response:
+                raise ndb.Return(response)
         else:
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
             count_semesters = 0
@@ -476,12 +487,15 @@ class Robot(NDBRemoteFetcher, object):
                     logging.warn("Ignoring semester %s as it's not new to database and its not recent too",
                                  semester['name'])
                     continue
-                logging.info("Scheduling task for  semester %s..", semester.name)
-                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                    "page_number": 1,
-                    "semester": semester,
-                    "campi": campi_data
-                }), method="POST")
+                for campus in campi_data:
+                    logging.info("Scheduling task for semester %s and campus %s..", semester.name, campus.name)
+                    taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                        "page_number": 1,
+                        "semester": semester,
+                        "campus": campus
+                    }), method="POST")
                 count_semesters += 1
+                yield self.update_semester(semester, (ndb.Key(Campus, self.generate_campus_key(campus, semester))
+                                                for campus in campi_data))
 
         raise ndb.Return("OK")

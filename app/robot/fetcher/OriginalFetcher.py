@@ -96,19 +96,18 @@ class OriginalFetcher(BaseFetcher):
             'AJAX:EVENTS_COUNT': '1',
         }
         name_form = "formBusca"
-        data['dataScroller1'] = str(page_number)
+        data['dataScroller1'] = page_number
         for key, value in data.iteritems():
             key = ":".join([name_form, key])
-            form_data[key] = value
-        logging.debug("Doin request...")
-        resp = self.opener.open(self.base_request, urllib.urlencode(form_data))
+            form_data[key] = str(value)
+        form_data = urllib.urlencode(form_data)
+        logging.debug("Doing request with parameters %s...", form_data)
+        resp = self.opener.open(self.base_request, form_data)
         logging.debug("Reading data...")
         if resp.info().get('Content-Encoding') == 'gzip':
             buf = StringIO(resp.read())
-            f = gzip.GzipFile(fileobj=buf)
-            self.buffer = f.read()
-        else:
-            self.buffer = resp.read()
+            resp = gzip.GzipFile(fileobj=buf)
+        self.buffer = resp.read()
         logging.debug("Parsing XML..")
         self.xml = ElementTree.fromstring(self.buffer)
 
