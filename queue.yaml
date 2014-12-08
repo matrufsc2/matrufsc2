@@ -1,6 +1,6 @@
 queue:
 - name: default
-  rate: 1/m
+  rate: 100/m
   max_concurrent_requests: 1
   target: robot
   retry_parameters:
