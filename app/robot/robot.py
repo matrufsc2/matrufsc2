@@ -1,3 +1,4 @@
+import collections
 import hashlib
 import logging as _logging
 import time
@@ -329,7 +330,7 @@ class Robot(NDBRemoteFetcher, object):
         :type page_number: int
         :param semester: The semester to request
         :param campus: The campus to request
-        :return: google.appengine.ext.ndb.Future
+        :rtype: google.appengine.ext.ndb.Future
         """
         logging.debug("Setting parameters of the request...")
         yield self.fetch({
@@ -361,7 +362,9 @@ class Robot(NDBRemoteFetcher, object):
         page_number = int(params["page_number"])
         semester = params["semester"]
         """ :type: app.robot.value_objects.Semester """
-        campus = params["campus"]
+        campi = params["campi"]
+        """ :type: collections.deque """
+        campus = campi.popleft()
         discipline = params.get("discipline")
         last_login = params.get("last_login", 0)
         discipline_entity = params.get("discipline_entity")
@@ -426,17 +429,17 @@ class Robot(NDBRemoteFetcher, object):
                     skip += page_number_dif * 50
                     logging.debug("And, in this page, we need to ignore %d items", skip)
                     page_number -= page_number_dif
-                else:
-                    logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
+                logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
                                   page_number)
+                campi.appendleft(campus)
                 taskqueue.add(url="/secret/update/", payload=pickle.dumps({
                     "page_number": page_number,
                     "semester": semester,
-                    "campus": campus,
+                    "campi": campi,
                     "skip": skip,
                     "discipline": discipline,
                     "disciplines": disciplines,
-                    "last_login": last_login
+                    "last_login": last_login+60
                 }), method="POST")
                 raise ndb.Return("PAUSED")
             if time.time() >= timeout:
@@ -446,15 +449,16 @@ class Robot(NDBRemoteFetcher, object):
         logging.info("All the things is flushed :D")
         if has_next and page_number < 120:
             logging.info("Scheduling task to process the next page..(page %d)", page_number+1)
+            campi.appendleft(campus)
             taskqueue.add(url="/secret/update/", payload=pickle.dumps({
                 "page_number": page_number + 1,
                 "semester": semester,
-                "campus": campus,
+                "campi": campi,
                 "discipline": discipline,
                 "discipline_entity": discipline_entity,
                 "teams": teams,
                 "disciplines": disciplines,
-                "last_login": last_login
+                "last_login": last_login+60
             }), method="POST")
         else:
             if teams:
@@ -467,6 +471,14 @@ class Robot(NDBRemoteFetcher, object):
                 (ndb.Key(Discipline, self.generate_discipline_key(Discipline(code=discipline), campus, semester))
                  for discipline in disciplines)
             )
+            if campi:
+                logging.debug("Hey, we have %d campus to process yet...registering...", len(campi))
+                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                        "page_number": 1,
+                        "semester": semester,
+                        "campi": campi,
+                        "last_login": last_login
+                    }), method="POST")
 
     @ndb.tasklet
     def run(self, params):
@@ -482,17 +494,20 @@ class Robot(NDBRemoteFetcher, object):
         else:
             semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
             count_semesters = 0
+            yield self.login()
+            last_login = time.time()
             for semester in semesters_data:
                 if count_semesters >= 1:
                     logging.warn("Ignoring semester %s as it's not new to database and its not recent too",
                                  semester['name'])
                     continue
-                for campus in campi_data:
-                    logging.info("Scheduling task for semester %s and campus %s..", semester.name, campus.name)
-                    taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+
+                logging.info("Scheduling task for semester %s..", semester.name)
+                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
                         "page_number": 1,
                         "semester": semester,
-                        "campus": campus
+                        "campi": collections.deque(campi_data),
+                        "last_login": last_login
                     }), method="POST")
                 count_semesters += 1
                 yield self.update_semester(semester, (ndb.Key(Campus, self.generate_campus_key(campus, semester))

@@ -27,11 +27,13 @@ class NDBRemoteFetcher(BaseFetcher):
             logging.debug("Requesting remote fetcher via NDB with parameters %s to URL %s", repr(parameters), url)
             ctx = ndb.get_context()
             handler = yield ctx.urlfetch(
-                url,
-                urllib.urlencode(parameters),
-                "POST",
+                url=url,
+                payload=urllib.urlencode(parameters),
+                method="POST",
+                headers={'Cache-Control':'no-cache,max-age=0', 'Pragma':'no-cache'},
                 allow_truncated=False,
-                deadline=60
+                deadline=60,
+                follow_redirects=False
             )
             content = handler.content
             result = pickle.loads(zlib.decompress(content))

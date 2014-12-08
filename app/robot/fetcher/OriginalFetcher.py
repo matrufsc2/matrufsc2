@@ -1,3 +1,4 @@
+import hashlib
 from bs4 import BeautifulSoup
 import urllib2
 import urllib
@@ -28,9 +29,9 @@ class OriginalFetcher(BaseFetcher):
     created by Ramiro Polla
     """
 
-    __slots__ = ["opener", "auth", "xml", "buffer", "base_request", "view_state"]
+    __slots__ = ["create_opener", "opener", "auth", "xml", "buffer", "base_request", "view_state"]
 
-    def __init__(self, auth, opener=urllib2.build_opener(
+    def __init__(self, auth, create_opener=lambda: urllib2.build_opener(
         urllib2.HTTPCookieProcessor(cookielib.CookieJar()),
         urllib2.HTTPSHandler(debuglevel=0)
     )):
@@ -41,7 +42,8 @@ class OriginalFetcher(BaseFetcher):
         :type auth: app.robot.fetcher.auth.BaseAuth.BaseAuth
         :param opener: The opener to use to connect to CAGR
         """
-        self.opener = opener
+        self.opener = None
+        self.create_opener = create_opener
         self.auth = auth
         self.buffer = ""
         self.base_request = None
@@ -54,6 +56,7 @@ class OriginalFetcher(BaseFetcher):
         """
         if not self.auth or not self.auth.has_data():
             raise Exception("OriginalFetcher needs auth data")
+        self.opener = self.create_opener()
         logging.info("Doing login \o/")
         resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/aluno')
         soup = BeautifulSoup(resp)
@@ -73,7 +76,12 @@ class OriginalFetcher(BaseFetcher):
         soup = BeautifulSoup(resp)
         self.view_state = soup.find('input', {'name':'javax.faces.ViewState'})['value']
         self.base_request = urllib2.Request('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/index.xhtml')
-        self.base_request.add_header('Accept-encoding', 'gzip')
+        self.base_request.add_header('Accept-Encoding', 'gzip')
+        self.base_request.add_header("Referer", "https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/")
+        self.base_request.add_header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+        self.base_request.add_header("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0")
+        self.base_request.add_header("Pragma", "no-cache")
+        self.base_request.add_header("Cache-Control", "no-cache")
 
     def fetch(self, data=None, page_number=1):
         form_data = {
@@ -101,6 +109,7 @@ class OriginalFetcher(BaseFetcher):
             key = ":".join([name_form, key])
             form_data[key] = str(value)
         form_data = urllib.urlencode(form_data)
+        self.buffer = None
         logging.debug("Doing request with parameters %s...", form_data)
         resp = self.opener.open(self.base_request, form_data)
         logging.debug("Reading data...")
@@ -115,8 +124,8 @@ class OriginalFetcher(BaseFetcher):
         campi = [ 'EaD', 'FLO', 'JOI', 'CBS', 'ARA', 'BLN' ]
         return [Campus(**{
                     "id": campus_id,
-                    "name": campi[campus_id]
-                }) for campus_id in range(0, len(campi))]
+                    "name": campus
+                }) for campus_id, campus in enumerate(campi[1:], start=1)]
 
     def fetch_semesters(self):
         semesters = ["20151"]

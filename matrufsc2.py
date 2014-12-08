@@ -23,7 +23,7 @@ def return_cached():
             return response
 
 @app.after_request
-def cae_response(response):
+def cache_response(response):
     if "update" not in request.path:
         try:
             memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response)

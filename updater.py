@@ -31,7 +31,7 @@ def acquire_lock():
 
 def fetch():
     data = request.form.to_dict()
-    page_number = int(data.pop("page_number", 1))
+    page_number = int(data.pop("page_number"))
     fetcher.fetch(data, page_number)
 
 @app.after_request
