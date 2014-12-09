@@ -10,7 +10,7 @@ import hashlib
 app = Flask(__name__)
 
 
-CACHE_TIMEOUT = 3600
+CACHE_TIMEOUT = 60
 CACHE_KEY = "view/%s"
 
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.has_key("DEV")
@@ -18,7 +18,7 @@ IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.ha
 @app.before_request
 def return_cached():
     if "update" not in request.path:
-        response = memcache.get(CACHE_KEY%hashlib.sha1(request.url).hexdigest())
+        response = memcache.get(CACHE_KEY % hashlib.sha1(request.url).hexdigest())
         if response:
             return response
 
@@ -26,10 +26,9 @@ def return_cached():
 def cache_response(response):
     if "update" not in request.path:
         try:
-            memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response)
+            memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response, CACHE_TIMEOUT)
         except:
             pass
-
     response.headers["Cache-Control"] = "public, max-age=3600"
     response.headers["Pragma"] = "cache"
     return response
