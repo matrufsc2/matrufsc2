@@ -62,14 +62,15 @@ class NDBRepository(Repository):
             return result[0]
         return ndb.AND(*result)
 
+    @ndb.tasklet
     def find_by(self, filters):
         """
         Created query based on the specified filters
 
         :param filters: The filters to use on the query
         :type filters: dict
-        :return: The query of the App Engine
-        :rtype: ndb.Query
+        :return: The results of the query to NDB in App Engine
+        :rtype: ndb.Future
         """
         if self.__parent__ and filters.has_key(self.__parent__['key']):
             parent_entities = filters.pop(self.__parent__['key'])
@@ -81,31 +82,40 @@ class NDBRepository(Repository):
                 parent_key = ndb.Key(self.__parent__['model'], parent_entity)
                 parent_keys.append(parent_key)
             results = self.__parent__['model'].query(self.__parent__['model'].key.IN(parent_keys))
-            for result in results.iter():
+            iterator = results.iter()
+            while (yield iterator.has_next_async()):
+                result = iterator.next()
                 filters["key"].extend(map(lambda key: key.id(), getattr(result, self.__parent__['child_attribute'])))
             if not filters['key']:
-                return []
-        return self.__get_model__().query(self.__create_filter__(filters))
+                raise ndb.Return([])
+        keys = yield self.__get_model__().query(self.__create_filter__(filters)).fetch_async(keys_only=True)
+        results = yield ndb.get_multi_async(keys)
+        raise ndb.Return(results)
 
+    @ndb.tasklet
     def find_by_id(self, id_value):
         """
         Get an unique model based on the specified id
 
         :param id_value: The ID of the element to get
         :type id_value: int|string
-        :return: The query of the App Engine
-        :rtype: ndb.Query
+        :return: The results of the query to NDB in App Engine
+        :rtype: ndb.Future
         """
-        return self.__get_model__().get_by_id(id_value)
+        entity = yield self.__get_model__().get_by_id_async(id_value)
+        raise ndb.Return(entity)
 
+    @ndb.tasklet
     def find_all(self):
         """
         Get all the models on the table
 
-        :return: The query of the App Engine
-        :rtype: ndb.Query
+        :return: The results of the query to NDB in App Engine
+        :rtype: ndb.Future
         """
-        return self.__get_model__().query()
+        keys = yield self.__get_model__().query().fetch_async(keys_only=True)
+        results = yield ndb.get_multi_async(keys)
+        raise ndb.Return(results)
 
 
 class SemesterRepository(NDBRepository):
