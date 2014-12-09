@@ -3,6 +3,7 @@ import os
 
 __author__ = 'fernando'
 
+
 class EnvAuth(BaseAuth):
     __slots__ = ["key"]
 

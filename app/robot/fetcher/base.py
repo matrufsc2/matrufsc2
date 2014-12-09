@@ -1,5 +1,6 @@
 __author__ = 'fernando'
 
+
 class BaseFetcher(object):
     def login(self):
         """

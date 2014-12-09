@@ -4,11 +4,12 @@ import logging as _logging
 import time
 import math
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
-from app.repositories import CampusRepository, SemesterRepository, DisciplinesRepository, TeamsRepository
 from app.robot.fetcher.NDBRemoteFetcher import NDBRemoteFetcher
 from google.appengine.api.runtime.runtime import is_shutting_down
 from google.appengine.ext import ndb
 from google.appengine.api import taskqueue, modules
+import cloudstorage as gcs
+from google.appengine.api import app_identity
 
 try:
     import cPickle as pickle
@@ -21,6 +22,7 @@ logging = _logging.getLogger("robot")
 
 context = ndb.get_context()
 context_options = ndb.ContextOptions(use_cache=False)
+
 
 class Robot(NDBRemoteFetcher, object):
     def __init__(self, base_url):
@@ -46,7 +48,6 @@ class Robot(NDBRemoteFetcher, object):
         }
         key = "matrufsc2-semester-%s" % hashlib.sha1(key).hexdigest()
         return key
-
 
 
     def generate_campus_key(self, campus, semester):
@@ -169,7 +170,7 @@ class Robot(NDBRemoteFetcher, object):
         :return: The key of the teacher
         ;rtype: str
         """
-        key = "%(teacher_name)s"% {
+        key = "%(teacher_name)s" % {
             "teacher_name": teacher.name
         }
         key = "matrufsc2-teacher-%s" % hashlib.sha1(key).hexdigest()
@@ -263,7 +264,7 @@ class Robot(NDBRemoteFetcher, object):
         :return: The key generated for the team
         :rtype: str
         """
-        key = '%(semester_id)s-%(campus)s-%(discipline_code)s-%(team_code)s'% {
+        key = '%(semester_id)s-%(campus)s-%(discipline_code)s-%(team_code)s' % {
             "semester_id": semester.id,
             'campus': campus.id,
             'discipline_code': team.discipline.code,
@@ -334,9 +335,9 @@ class Robot(NDBRemoteFetcher, object):
         """
         logging.debug("Setting parameters of the request...")
         yield self.fetch({
-            "selectSemestre": semester.id,
-            "selectCampus": campus.id
-        }, page_number)
+                             "selectSemestre": semester.id,
+                             "selectCampus": campus.id
+                         }, page_number)
         logging.info("Processing page")
         teams = yield self.fetch_teams()
         logging.debug("Processing %d teams", len(teams))
@@ -354,6 +355,23 @@ class Robot(NDBRemoteFetcher, object):
         logging.info("The timeout of this request is of %d seconds", timeout)
         timeout = time.time() + timeout
         return timeout
+
+    def clear_gcs(self):
+        logging.info("Clearing GCS cache..")
+        retry = gcs.RetryParams(
+            initial_delay=0.2,
+            max_delay=2.0,
+            backoff_factor=2,
+            max_retry_period=15,
+            urlfetch_timeout=60
+        )
+        bucket_name = app_identity.get_default_gcs_bucket_name()
+        bucket = "/" + bucket_name
+        folder = "/".join([bucket, "cache"])
+        file_instances = gcs.listbucket(folder, retry_params=retry)
+        for file_instance in file_instances:
+            logging.debug("Deleting file %s", file_instance.filename)
+            gcs.delete(file_instance.filename, retry_params=retry)
 
     @ndb.tasklet
     def run_worker(self, params):
@@ -376,7 +394,7 @@ class Robot(NDBRemoteFetcher, object):
             logging.info("Hooray! Seems like this is a resuming task...Go go go :D")
         else:
             logging.info("Hey! Found that this is not a resuming task...Cleaning old task :D")
-        if (last_login+600) < time.time():
+        if (last_login + 600) < time.time():
             yield self.login()
             last_login = time.time()
         logging.info("Processing campus %s", campus.name)
@@ -393,10 +411,10 @@ class Robot(NDBRemoteFetcher, object):
                     if team.discipline.code != discipline:
                         raise Exception(
                             "Unexpected discipline found: %(actual)s (expected %(expected)s)" %
-                                {
-                                    "actual": team.discipline.code,
-                                    "expected": discipline
-                                }
+                            {
+                                "actual": team.discipline.code,
+                                "expected": discipline
+                            }
                         )
                     discipline = team.discipline
                     skip = None
@@ -424,13 +442,13 @@ class Robot(NDBRemoteFetcher, object):
                 skip = count - len(teams)
                 if skip < 0:
                     logging.debug("Hey, seems like we need to go some pages before...")
-                    page_number_dif = math.ceil((skip*-1)/50.0)
+                    page_number_dif = math.ceil((skip * -1) / 50.0)
                     logging.debug("In total, seems like we need to go %d pages before", page_number_dif)
                     skip += page_number_dif * 50
                     logging.debug("And, in this page, we need to ignore %d items", skip)
                     page_number -= page_number_dif
                 logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
-                                  page_number)
+                              page_number)
                 campi.appendleft(campus)
                 taskqueue.add(url="/secret/update/", payload=pickle.dumps({
                     "page_number": page_number,
@@ -439,7 +457,7 @@ class Robot(NDBRemoteFetcher, object):
                     "skip": skip,
                     "discipline": discipline,
                     "disciplines": disciplines,
-                    "last_login": last_login+60
+                    "last_login": last_login + 60
                 }), method="POST")
                 raise ndb.Return("PAUSED")
             if time.time() >= timeout:
@@ -448,7 +466,7 @@ class Robot(NDBRemoteFetcher, object):
         yield context.flush()
         logging.info("All the things is flushed :D")
         if has_next and page_number < 120:
-            logging.info("Scheduling task to process the next page..(page %d)", page_number+1)
+            logging.info("Scheduling task to process the next page..(page %d)", page_number + 1)
             campi.appendleft(campus)
             taskqueue.add(url="/secret/update/", payload=pickle.dumps({
                 "page_number": page_number + 1,
@@ -458,7 +476,7 @@ class Robot(NDBRemoteFetcher, object):
                 "discipline_entity": discipline_entity,
                 "teams": teams,
                 "disciplines": disciplines,
-                "last_login": last_login+60
+                "last_login": last_login + 60
             }), method="POST")
         else:
             if teams:
@@ -474,11 +492,13 @@ class Robot(NDBRemoteFetcher, object):
             if campi:
                 logging.debug("Hey, we have %d campus to process yet...registering...", len(campi))
                 taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                        "page_number": 1,
-                        "semester": semester,
-                        "campi": campi,
-                        "last_login": last_login
-                    }), method="POST")
+                    "page_number": 1,
+                    "semester": semester,
+                    "campi": campi,
+                    "last_login": last_login
+                }), method="POST")
+            else:
+                self.clear_gcs()
 
     @ndb.tasklet
     def run(self, params):
@@ -504,13 +524,13 @@ class Robot(NDBRemoteFetcher, object):
 
                 logging.info("Scheduling task for semester %s..", semester.name)
                 taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                        "page_number": 1,
-                        "semester": semester,
-                        "campi": collections.deque(campi_data),
-                        "last_login": last_login
-                    }), method="POST")
+                    "page_number": 1,
+                    "semester": semester,
+                    "campi": collections.deque(campi_data),
+                    "last_login": last_login
+                }), method="POST")
                 count_semesters += 1
                 yield self.update_semester(semester, (ndb.Key(Campus, self.generate_campus_key(campus, semester))
-                                                for campus in campi_data))
+                                                      for campus in campi_data))
 
         raise ndb.Return("OK")

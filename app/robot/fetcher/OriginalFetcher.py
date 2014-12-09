@@ -23,6 +23,7 @@ except:
 
 __author__ = 'fernando'
 
+
 class OriginalFetcher(BaseFetcher):
     """
     Fetcher inspired on the [original fetcher](https://github.com/ramiropolla/matrufsc_dbs/blob/master/py/get_turmas.py)
@@ -74,12 +75,13 @@ class OriginalFetcher(BaseFetcher):
         logging.info('Getting view state')
         resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/')
         soup = BeautifulSoup(resp)
-        self.view_state = soup.find('input', {'name':'javax.faces.ViewState'})['value']
+        self.view_state = soup.find('input', {'name': 'javax.faces.ViewState'})['value']
         self.base_request = urllib2.Request('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/index.xhtml')
         self.base_request.add_header('Accept-Encoding', 'gzip')
         self.base_request.add_header("Referer", "https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/")
         self.base_request.add_header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-        self.base_request.add_header("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0")
+        self.base_request.add_header("User-Agent",
+                                     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0")
         self.base_request.add_header("Pragma", "no-cache")
         self.base_request.add_header("Cache-Control", "no-cache")
 
@@ -101,7 +103,7 @@ class OriginalFetcher(BaseFetcher):
             'formBusca': 'formBusca',
             'autoScroll': '',
             'javax.faces.ViewState': self.view_state,
-            'AJAX:EVENTS_COUNT': '1',
+            'AJAX:EVENTS_COUNT': '1'
         }
         name_form = "formBusca"
         data['dataScroller1'] = page_number
@@ -121,18 +123,18 @@ class OriginalFetcher(BaseFetcher):
         self.xml = ElementTree.fromstring(self.buffer)
 
     def fetch_campi(self):
-        campi = [ 'EaD', 'FLO', 'JOI', 'CBS', 'ARA', 'BLN' ]
+        campi = ['EaD', 'FLO', 'JOI', 'CBS', 'ARA', 'BLN']
         return [Campus(**{
-                    "id": campus_id,
-                    "name": campus
-                }) for campus_id, campus in enumerate(campi[1:], start=1)]
+            "id": campus_id,
+            "name": campus
+        }) for campus_id, campus in enumerate(campi[1:], start=1)]
 
     def fetch_semesters(self):
         semesters = ["20151"]
         return [Semester(**{
-                    "id": semester,
-                    "name": "-".join([semester[:4], semester[4:]])
-                }) for semester in semesters]
+            "id": semester,
+            "name": "-".join([semester[:4], semester[4:]])
+        }) for semester in semesters]
 
     def find_id(self, element_id, parent=None):
         if parent is None:
@@ -163,16 +165,16 @@ class OriginalFetcher(BaseFetcher):
             "(?P<dayOfWeek>\d)\.(?P<hourStart>\d{2})(?P<minuteStart>\d{2})\-(?P<numberOfLessons>\d) \/ (?P<room>.+)")
         for row in self.xml[1][1][2]:
             team = {}
-            team["code"] = row[4].text # str
+            team["code"] = row[4].text  # str
 
-            team["vacancies_offered"] = int(row[7].text) # int
+            team["vacancies_offered"] = int(row[7].text)  # int
             try:
-                saldo_vagas   = int(row[10].text) # int or <span>LOTADA</span>
+                saldo_vagas = int(row[10].text)  # int or <span>LOTADA</span>
             except TypeError:
-                saldo_vagas   = 0
+                saldo_vagas = 0
             team["vacancies_filled"] = team["vacancies_offered"] - saldo_vagas
 
-            schedules_rows = []   # str split by <br />, may be emtpy
+            schedules_rows = []  # str split by <br />, may be emtpy
             if row[12].text:
                 schedules_rows.append(row[12].text)
             for sub in row[12]:
@@ -196,38 +198,38 @@ class OriginalFetcher(BaseFetcher):
                 schedules.append(Schedule(**obj))
             team["schedules"] = schedules
 
-            teachers = []    # str split by <br />, may be emtpy, some
-                                # entries may be inside <a>
+            teachers = []  # str split by <br />, may be emtpy, some
+            # entries may be inside <a>
             if len(row[13]):
                 if not row[13][0].text:
                     teachers.append(row[13].text)
-            
+
             for sub in row[13]:
                 if sub.attrib:
                     teachers.append(sub.text)
                 elif sub.tail:
                     teachers.append(sub.tail)
             team["teachers"] = map(
-                    lambda teacher_name: Teacher(name=teacher_name),
-                    filter(
-                        None,
+                lambda teacher_name: Teacher(name=teacher_name),
+                filter(
+                    None,
+                    map(
+                        str.strip,
                         map(
-                            str.strip,
-                            map(
-                                lambda s: str(s.encode("ISO-8859-1")),
-                                teachers
-                            )
+                            lambda s: str(s.encode("ISO-8859-1")),
+                            teachers
                         )
                     )
                 )
+            )
 
             discipline = {}
-            discipline["code"] = row[3].text # str
-            nome_disciplina   = row[5].text # str split by <br />
+            discipline["code"] = row[3].text  # str
+            nome_disciplina = row[5].text  # str split by <br />
             for sub in row[5]:
                 nome_disciplina = nome_disciplina + ' ' + sub.tail
 
-            try:    # nome_disciplina may be str or unicode
+            try:  # nome_disciplina may be str or unicode
                 nome_disciplina_ascii = unicodedata.normalize('NFKD', nome_disciplina).encode('ascii', 'ignore')
             except TypeError:
                 nome_disciplina_ascii = nome_disciplina

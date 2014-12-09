@@ -10,14 +10,13 @@ from gaenv_lib.selenium.webdriver.common.by import By
 
 logging = logging.getLogger("SeleniumFetcher")
 
-
-
 __author__ = 'fernando'
+
 
 class SeleniumFetcher(BaseFetcher):
     __slots__ = ["browser", "auth", "waiter", "last_data", "base_url"]
 
-    def __init__(self, browser, auth = None):
+    def __init__(self, browser, auth=None):
         """
         Initializes the robot
 
@@ -103,7 +102,7 @@ class SeleniumFetcher(BaseFetcher):
                 self.wait_loading()
                 self.waiter.until(lambda driver: self.page_number == next_page_number)
                 return
-        raise Exception("Not found 'next' page link in %d columns"%len(columns))
+        raise Exception("Not found 'next' page link in %d columns" % len(columns))
 
     def fetch(self, data=None, page_number=1):
         logging.info("Fetching basic information..")
@@ -111,11 +110,11 @@ class SeleniumFetcher(BaseFetcher):
             self.browser.get(self.base_url)
             self.last_data = None
         if self.page_number > page_number:
-            self.last_data = -1 #Just to resend the page
+            self.last_data = -1  # Just to resend the page
         assert self.browser.page_source, UFSCBlockException()
         if data != self.last_data:
             name_form = "formBusca"
-            form = self.browser.find_element_by_css_selector("form[name='%s']"%name_form)
+            form = self.browser.find_element_by_css_selector("form[name='%s']" % name_form)
             assert form, UFSCBlockException()
             for key, value in data.iteritems():
                 form_input = form.find_element_by_id(":".join([name_form, key]))
@@ -140,9 +139,9 @@ class SeleniumFetcher(BaseFetcher):
         select = self.browser.find_element_by_id("formBusca:selectCampus")
         assert select, "Element not found in the table"
         return [Campus(**{
-                    "id": option.get_attribute("value"),
-                    "name": option.text
-                }) for option in select.find_elements_by_tag_name("option")]
+            "id": option.get_attribute("value"),
+            "name": option.text
+        }) for option in select.find_elements_by_tag_name("option")]
 
     def fetch_semesters(self):
         """
@@ -155,9 +154,9 @@ class SeleniumFetcher(BaseFetcher):
         select = self.browser.find_element_by_id("formBusca:selectSemestre")
         assert select, "Element not found in the table"
         return [Semester(**{
-                    "id": option.get_attribute("value"),
-                    "name": option.text
-                }) for option in select.find_elements_by_tag_name("option")]
+            "id": option.get_attribute("value"),
+            "name": option.text
+        }) for option in select.find_elements_by_tag_name("option")]
 
     def fetch_teams(self):
         """

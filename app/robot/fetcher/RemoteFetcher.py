@@ -1,12 +1,14 @@
 import urllib
 import zlib
 from app.robot.fetcher.base import BaseFetcher
+
 try:
     import cPickle as pickle
 except:
     import pickle
 
 __author__ = 'fernando'
+
 
 class RemoteFetcher(BaseFetcher):
     __slots__ = ["last_data", "last_page_number", "base_url"]
@@ -21,7 +23,7 @@ class RemoteFetcher(BaseFetcher):
         if self.last_data:
             parameters.update(self.last_data.copy())
         parameters["page_number"] = self.last_page_number
-        handler = urllib.urlopen(self.base_url%path, urllib.urlencode(parameters))
+        handler = urllib.urlopen(self.base_url % path, urllib.urlencode(parameters))
         content = handler.read()
         result = pickle.loads(zlib.decompress(content))
         if isinstance(result, Exception):
