@@ -72,23 +72,38 @@ class NDBRepository(Repository):
         :return: The results of the query to NDB in App Engine
         :rtype: ndb.Future
         """
+        if not filters:
+            results = yield self.find_all()
+            raise ndb.Return(results)
         if self.__parent__ and filters.has_key(self.__parent__['key']):
             parent_entities = filters.pop(self.__parent__['key'])
             if not isinstance(parent_entities, list):
                 parent_entities = [parent_entities]
+            old_keys = filters.get('key', None)
+            if not old_keys:
+                old_keys = []
+            if old_keys and not isinstance(old_keys, list):
+                old_keys = [old_keys]
+            old_keys = set(old_keys) 
             filters['key'] = []
             parent_keys = []
             for parent_entity in parent_entities:
                 parent_key = ndb.Key(self.__parent__['model'], parent_entity)
                 parent_keys.append(parent_key)
-            results = self.__parent__['model'].query(self.__parent__['model'].key.IN(parent_keys))
-            iterator = results.iter()
-            while (yield iterator.has_next_async()):
-                result = iterator.next()
+            results = yield ndb.get_multi_async(parent_keys)
+            for result in results:
+                if not result:
+                    continue
                 filters["key"].extend(map(lambda key: key.id(), getattr(result, self.__parent__['child_attribute'])))
             if not filters['key']:
                 raise ndb.Return([])
-        keys = yield self.__get_model__().query(self.__create_filter__(filters)).fetch_async(keys_only=True)
+            if old_keys:
+                filters['key'] = list(set(filters['key']).intersection(old_keys))
+        if len(filters) > 1:
+            keys = yield self.__get_model__().query(self.__create_filter__(filters)).fetch_async(keys_only=True)
+        else:
+            # Only parent key was found, search directly on the filters found
+            keys = [ndb.Key(self.__get_model__(), key_id) for key_id in filters['key']]
         results = yield ndb.get_multi_async(keys)
         raise ndb.Return(results)
 
