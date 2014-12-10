@@ -13,6 +13,8 @@ Estaremos aprimorando o código com o passar do tempo. No momento, estaremos foc
 
 ===========================================================================
 
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/matrufsc2/matrufsc2?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 **LICENÇA**
 
 Leia o arquivo [LICENSE](https://github.com/matrufsc2/matrufsc2/blob/develop/LICENSE.md).
