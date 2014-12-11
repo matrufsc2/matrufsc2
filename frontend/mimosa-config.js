@@ -62,7 +62,7 @@ exports.config = {
     "folders": [{
       "folder"  : "css/",
       "output"  : "css/main.css",
-      "exclude" : null,
+      "exclude" : ["vendor/mocha/mocha.css"],
       "order"   : null
     }],
     "removeCombined": {

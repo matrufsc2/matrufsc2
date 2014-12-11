@@ -67,7 +67,7 @@ define("views/SelectedDisciplinesView", [
 				Chaplin.CollectionView.prototype.render.apply(this, []);
 				this.updateCombinationStatus();
 			}, this);
-		},
+		}
 	});
 	_.extend(SelectedDisciplinesView.prototype, 
 		_.omit(

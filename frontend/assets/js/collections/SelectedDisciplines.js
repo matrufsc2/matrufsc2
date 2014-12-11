@@ -78,6 +78,11 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				}
 				return old;
 			}, []).length);
+			this.map(function(discipline) {
+				discipline.set("_blink", false);
+				discipline.unset("_title");
+			});
+			var disciplinesConflicted = {};
 			this.combinationsAvailable = _.filter(combinations, function(combination){
 				var disciplines = [];
 				for(var c=combination.length; c--;) {
@@ -87,7 +92,10 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 					disciplines.push(combination[c].discipline.id);
 				}
 				var schedules = combination.reduce(function(old, team) {
-					return old.concat(team.schedules.clone().models);
+					return old.concat(team.schedules.clone().map(function(schedule) {
+						schedule.team = team;
+						return schedule;
+					}));
 				}, []);
 				for(var verifySchedule = schedules.length; verifySchedule--;) {
 					var schedule = schedules[verifySchedule];
@@ -96,12 +104,31 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 							continue;
 						}
 						if (schedule.conflictsWith(schedules[count])){
+							var disciplineId = schedule.team.discipline.id;
+							disciplinesConflicted[disciplineId] = disciplinesConflicted[disciplineId] || [];
+							disciplinesConflicted[disciplineId].push(schedule.team.id);
 							return false;
 						}
 					}
 				}
 				return true;
 			});
+			if (this.combinationsAvailable.length === 0 && teams.length > 0) {
+				_.each(disciplinesConflicted, function(teamsDiscipline, discipline_id) {
+					var teamsSelected = _.filter(teams, function(team){
+						return team.discipline.id === discipline_id;
+					});
+					var disciplineConflict = _.every(teamsSelected, function(team) {
+						return teamsDiscipline.indexOf(team.id) > -1;
+					});
+					if (disciplineConflict) {
+						var discipline = this.get(discipline_id);
+						discipline.set("_blink", true);
+						discipline.set("_title", "Esta disciplina esta impedindo a geracao de uma combinacao valida");
+					}
+				}, this);
+			}
+
 		},
 		"combinationCount": function(){
 			return this.combinationsAvailable.length;

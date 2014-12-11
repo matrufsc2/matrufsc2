@@ -1,4 +1,4 @@
-<td><%- discipline.get("code") %></td>
+<td title="<%- discipline.get('_title') %>" class="<%- discipline.has('_title') ? 'has-tip': '' %>" data-tooltip><%- discipline.get("code") %></td>
 <td><%- discipline.team ? discipline.team.get("code") : '-'  %></td>
 <td><%- discipline.semester ? discipline.semester.get("name") : '-' %></td>
 <td><a href='#'><i class="icon-up"></i></a></td>
