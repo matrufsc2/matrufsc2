@@ -14,7 +14,7 @@
   },
   "scripts": {
     "start": "./node_modules/.bin/mimosa watch -s",
-    "build": "./node_modules/.bin/mimosa build -o -m",
+    "build": "./node_modules/.bin/mimosa build -o",
     "test": "./node_modules/.bin/testem",
     "auto-test": "bash test.sh"
   }

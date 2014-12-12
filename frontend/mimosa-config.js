@@ -43,7 +43,9 @@ exports.config = {
             "controllers/HomeController"
           ],
           "insertRequire" : ["boot"],
-          "out"           : "main.js"
+          "out"           : "main.js",
+          "generateSourceMaps": true,
+          "preserveLicenseComments": false
       }
     }
   },
