@@ -100,58 +100,57 @@ def serialize(result):
         return "", 404, {"Content-Type": "application/json"}
     return json.dumps(result, cls=JSONEncoder), 200, {"Content-Type": "application/json"}
 
-
-@app.route("/api/campi/")
-def getCampi():
-    result = list(api.get_campi(dict(request.args)))
-    return serialize(result)
-
-
-@app.route("/api/campi/<idValue>/")
-def getCampus(idValue):
-    result = api.get_campus(idValue)
-    return serialize(result)
-
-
 @app.route("/api/semesters/")
-def getSemesters():
+def get_semesters():
     result = list(api.get_semesters(dict(request.args)))
     return serialize(result)
 
 
 @app.route("/api/semesters/<idValue>/")
-def getSemester(idValue):
+def get_semester(idValue):
     result = api.get_semester(idValue)
     return serialize(result)
 
 
+@app.route("/api/campi/")
+def get_campi():
+    result = list(api.get_campi(dict(request.args)))
+    return serialize(result)
+
+
+@app.route("/api/campi/<idValue>/")
+def get_campus(idValue):
+    result = api.get_campus(idValue)
+    return serialize(result)
+
+
 @app.route("/api/disciplines/")
-def getDisciplines():
+def get_disciplines():
     result = list(api.get_disciplines(dict(request.args)))
     return serialize(result)
 
 
 @app.route("/api/disciplines/<idValue>/")
-def getDiscipline(idValue):
+def get_discipline(idValue):
     result = api.get_discipline(idValue)
     return serialize(result)
 
 
 @app.route("/api/teams/")
-def getTeams():
+def get_teams():
     result = list(api.get_teams(dict(request.args)))
     return serialize(result)
 
 
 @app.route("/api/teams/<idValue>/")
-def getTeam(idValue):
+def get_team(idValue):
     result = api.get_team(idValue)
     return serialize(result)
 
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    robot = Robot("http://matrufsc2.fjorgemota.com/%s/")
+    robot = Robot("http://127.0.0.1:5000/%s/")
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
