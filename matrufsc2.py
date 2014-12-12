@@ -1,5 +1,5 @@
 import json
-from flask import Flask, request, g
+from flask import Flask, request, g, got_request_exception
 import os
 from google.appengine.api import memcache
 from app import api
@@ -8,6 +8,8 @@ from app.robot.robot import Robot
 import hashlib, logging
 import cloudstorage as gcs
 from google.appengine.api import app_identity
+import rollbar
+import rollbar.contrib.flask
 
 try:
     import cPickle as pickle
@@ -16,12 +18,23 @@ except ImportError:
 
 app = Flask(__name__)
 
+
+IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.has_key("DEV")
+
+rollbar.init(
+    'ba9bf3c858294e0882d57a243084e20d',
+    'production' if not IN_DEV else "development",
+    root=os.path.dirname(os.path.realpath(__file__)),
+    allow_logging_basic_config=False
+)
+
+got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+
 logging = logging.getLogger("matrufsc2")
 
 CACHE_TIMEOUT = 600
 CACHE_KEY = "view/%s"
 
-IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.has_key("DEV")
 
 
 def get_filename(filename):

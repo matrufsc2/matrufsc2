@@ -4,8 +4,11 @@ from app.robot.fetcher.auth.EnvAuth import EnvAuth
 
 __author__ = 'fernando'
 
-from flask import Flask, request
+from flask import Flask, request, got_request_exception
 import logging
+import rollbar
+import rollbar.contrib.flask
+import os
 try:
     import cPickle as pickle
 except:
@@ -22,6 +25,16 @@ logger.setLevel("DEBUG")
 logger.addHandler(logging.StreamHandler())
 
 app = Flask(__name__)
+
+rollbar.init(
+    'ba9bf3c858294e0882d57a243084e20d',
+    'fetcher',
+    root=os.path.dirname(os.path.realpath(__file__)),
+    allow_logging_basic_config=False
+)
+
+got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+
 fetcher = OriginalFetcher(EnvAuth("USER_PASSWORD"))
 lock = Lock()
 

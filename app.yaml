@@ -16,6 +16,10 @@ automatic_scaling:
 builtins:
 - appstats: on
 
+libraries:
+- name: ssl
+  version: latest
+
 handlers:
 - url: /js
   static_dir: frontend/public/js
