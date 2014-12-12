@@ -19,6 +19,7 @@ define("views/SelectedDisciplineView", [
 			this.status = options.status;
 			this.blinkId = null;
 			this.blinkOn = false;
+			this.listenTo(this.model.teams, "syncStateChange", this.render);
 		},
 		"getTemplateData": function(){
 			return {
