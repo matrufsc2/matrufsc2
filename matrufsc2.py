@@ -21,20 +21,20 @@ app = Flask(__name__)
 
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.has_key("DEV")
 
-rollbar.init(
-    'ba9bf3c858294e0882d57a243084e20d',
-    'production' if not IN_DEV else "development",
-    root=os.path.dirname(os.path.realpath(__file__)),
-    allow_logging_basic_config=False
-)
+if IN_DEV:
+    rollbar.init(
+        'ba9bf3c858294e0882d57a243084e20d',
+        'production',
+        root=os.path.dirname(os.path.realpath(__file__)),
+        allow_logging_basic_config=False
+    )
 
-got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
+    got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
 
 logging = logging.getLogger("matrufsc2")
 
 CACHE_TIMEOUT = 600
 CACHE_KEY = "view/%s"
-
 
 
 def get_filename(filename):
@@ -163,7 +163,11 @@ def get_team(idValue):
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    robot = Robot("http://matrufsc2.fjorgemota.com/%s/")
+    if IN_DEV:
+        robot_url = "http://127.0.0.1:5000/%s/"
+    else:
+        robot_url = "http://matrufsc2.fjorgemota.com/%s/"
+    robot = Robot(robot_url)
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
