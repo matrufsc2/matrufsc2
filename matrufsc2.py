@@ -21,7 +21,7 @@ app = Flask(__name__)
 
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.has_key("DEV")
 
-if IN_DEV:
+if not IN_DEV:
     rollbar.init(
         'ba9bf3c858294e0882d57a243084e20d',
         'production',
