@@ -1,4 +1,4 @@
-define("collections/BaseCollection", ["underscore", "chaplin", "oboe", "bluebird"], function(_, Chaplin, oboe, Promise) {
+define("collections/BaseCollection", ["underscore", "chaplin", "bluebird"], function(_, Chaplin, Promise) {
 	"use strict";
 	var BaseCollection = Chaplin.Collection.extend({
 		"fetch": function(options, callback){
@@ -12,41 +12,27 @@ define("collections/BaseCollection", ["underscore", "chaplin", "oboe", "bluebird
 			});
 			var context = options.context || this;
 			var collection = this;
-			var idAttribute = (new collection.model()).idAttribute;
+			var oldSuccess = options.success;
+			var oldError = options.error;
 			return (new Promise(function(resolve, reject) {
 				collection.beginSync();
-				var req = oboe({
-					"url": _.result(collection, "url"),
-					"method": options.type,
-					"headers": options.headers,
-					"cached": options.cache !== false,
-					"body": options.data
-				});
-				req.node("[*]", _.throttle(function() {
-					// Progressive set.
-					collection.set(_.filter(req.root(), function(model){
-						return _.has(model, idAttribute);
-					}));
-				}, 50));
-				req.done(function(){
-					collection.set(_.filter(req.root(), function(model){
-						// Allow only models with an ID defined to be set-ed.
-						return _.has(model, idAttribute);
-					}));
-					collection.trigger("sync", collection, req.root(), options);
-					resolve();
-				});
-				req.fail(function(err){
-					reject(err.thrown);
-				});
+				options.success = resolve;
+				options.error = reject;
+				Chaplin.Collection.prototype.fetch.call(collection, options);
 			}))
 			.bind(context)
 			.nodeify(callback)
 			.then(function(){
 				collection.finishSync();
+				if (_.isFunction(oldSuccess)) {
+					oldSuccess.apply(context, _.toArray(arguments));
+				}
 			}, function(){
-				collection.unsync();
-			});;
+				collection.abortSync();
+				if (_.isFunction(oldError)) {
+					oldError.apply(context, _.toArray(arguments));
+				}
+			});
 		}
 	});
 	_.extend(BaseCollection.prototype, Chaplin.SyncMachine);

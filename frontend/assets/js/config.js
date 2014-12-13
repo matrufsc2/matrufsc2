@@ -6,7 +6,6 @@ require.config({
 		"backbone"     : "vendor/backbone/backbone",
 		"chaplin"      : "vendor/chaplin/chaplin",
 		"tv4"          : "vendor/tv4/tv4",
-		"oboe"         : "vendor/oboe/oboe-browser",
 		"es5-shim"     : "vendor/es5-shim/es5-shim",
 		"moment"       : "vendor/moment/moment",
 		"foundation"   : "vendor/foundation/foundation",
@@ -23,10 +22,6 @@ require.config({
 		"testem"       : "../testem"
 	},
 	"shim" : {
-		"oboe": {
-			"deps": ["es5-shim"],
-			"exports" : "oboe"
-		},
 		"query-engine": {
 			"deps"    : ["backbone"],
 			"exports" : "QueryEngine"

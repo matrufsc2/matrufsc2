@@ -1,4 +1,4 @@
-define("models/BaseModel", ["underscore", "chaplin", "tv4", "oboe", "bluebird"], function(_, Chaplin, tv4, oboe, Promise) {
+define("models/BaseModel", ["underscore", "chaplin", "tv4", "bluebird"], function(_, Chaplin, tv4, Promise) {
 	"use strict";
 	var BaseModel = Chaplin.Model.extend({
 		"validator": {
@@ -27,32 +27,26 @@ define("models/BaseModel", ["underscore", "chaplin", "tv4", "oboe", "bluebird"],
 			});
 			var context = options.context || this;
 			var model = this;
+			var oldSuccess = options.success;
+			var oldError = options.error;
 			return (new Promise(function(resolve, reject) {
 				model.beginSync();
-				var req = oboe({
-					"url": _.result(model, "url"),
-					"method": options.type,
-					"headers": options.headers,
-					"cached": options.cache,
-					"body": options.data
-				});
-				req.node("[*]", function(){
-					// Progressive set when a node is fully loaded.
-					model.set(req.root(), options);
-				});
-				req.done(function(){
-					model.set(req.root(), options);
-					model.trigger("sync", model, req.root(), options);
-					resolve();
-				});
-				req.fail(reject);
+				options.success = resolve;
+				options.error = reject;
+				Chaplin.Model.prototype.fetch.call(model, options);
 			}))
 			.bind(context)
 			.nodeify(callback)
 			.then(function(){
 				model.finishSync();
+				if (_.isFunction(oldSuccess)) {
+					oldSuccess.apply(context, _.toArray(arguments));
+				}
 			}, function(){
 				model.unsync();
+				if (_.isFunction(oldError)) {
+					oldError.apply(context, _.toArray(arguments));
+				}
 			});
 		}
 	});
