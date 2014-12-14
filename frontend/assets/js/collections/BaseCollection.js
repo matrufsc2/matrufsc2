@@ -14,25 +14,31 @@ define("collections/BaseCollection", ["underscore", "chaplin", "bluebird"], func
 			var collection = this;
 			var oldSuccess = options.success;
 			var oldError = options.error;
+			var xhr;
 			return (new Promise(function(resolve, reject) {
 				collection.beginSync();
 				options.success = resolve;
 				options.error = reject;
-				Chaplin.Collection.prototype.fetch.call(collection, options);
+				xhr = Chaplin.Collection.prototype.fetch.call(collection, options);
 			}))
-			.bind(context)
-			.nodeify(callback)
-			.then(function(){
-				collection.finishSync();
-				if (_.isFunction(oldSuccess)) {
-					oldSuccess.apply(context, _.toArray(arguments));
-				}
-			}, function(){
-				collection.abortSync();
-				if (_.isFunction(oldError)) {
-					oldError.apply(context, _.toArray(arguments));
-				}
-			});
+				.cancellable()
+				.catch(Promise.CancellationError, function(e) {
+					xhr.abort();
+					throw e; //Don't swallow it
+				})
+				.bind(context)
+				.nodeify(callback)
+				.then(function(){
+					collection.finishSync();
+					if (_.isFunction(oldSuccess)) {
+						oldSuccess.apply(context, _.toArray(arguments));
+					}
+				}, function(){
+					collection.abortSync();
+					if (_.isFunction(oldError)) {
+						oldError.apply(context, _.toArray(arguments));
+					}
+				});
 		}
 	});
 	_.extend(BaseCollection.prototype, Chaplin.SyncMachine);

@@ -65,7 +65,7 @@ define("views/SelectedDisciplineView", [
 					"opacity": view.blinkOn ? 1 : 0.5
 				}, 500, function(){
 					view.blinkId = setTimeout(blink, 100);
-				})
+				});
 			}, 500);
 		},
 		"stopBlink": function() {

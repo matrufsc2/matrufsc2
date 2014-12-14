@@ -11,7 +11,9 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 			this.disciplines = options.disciplines;
 			this.campi = options.campi;
 			this.semesters = options.semesters;
-			this.listenEvents();
+			this.disciplinesRequest = null;
+			this.campiRequest = null;
+			this.semestersRequest = null;
 		},
 		"listenEvents": function() {
 			this.listenTo(this.semesters, "sync", function(){
@@ -36,7 +38,7 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				}, {"silent": true});
 				this.campi.reset();
 				this.campi.url = url;
-				this.campi.fetch({
+				this.campiRequest = this.campi.fetch({
 					"context": this
 				}).then(function(){
 					this.campi.map(function(campus){
@@ -62,10 +64,23 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				}
 				this.disciplines.reset();
 				this.disciplines.url = url;
-				this.disciplines.fetch({
+				this.disciplinesRequest = this.disciplines.fetch({
 					"context": this
 				});
 			}, this);
+			this.semestersRequest = this.semesters.fetch();
+		},
+		"dispose": function(){
+			if(this.semestersRequest !== null) {
+				this.semestersRequest.cancel();
+			}
+			if(this.campiRequest !== null) {
+				this.campiRequest.cancel();
+			}
+			if(this.disciplinesRequest !== null) {
+				this.disciplinesRequest.cancel();
+			}
+			CachedModel.prototype.dispose.call(this);
 		}
 	});
 });

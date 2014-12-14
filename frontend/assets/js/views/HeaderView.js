@@ -28,8 +28,8 @@ define("views/HeaderView", [
 					"tip_location_patterns": {
 						"top": [],
 						"bottom": [],
-						"left": ['right', 'top', 'bottom'],
-						"right": ['left', 'top', 'bottom']
+						"left": ["right", "top", "bottom"],
+						"right": ["left", "top", "bottom"]
 					}
 				});
 			}
@@ -48,7 +48,7 @@ define("views/HeaderView", [
 			$(e.currentTarget).focus().select();
 		},
 		"isHome": function(){
-			return $(this.$("a[href='/']")).parents("li").is(".active")
+			return $(this.$("a[href='/']")).parents("li").is(".active");
 		},
 		"activateMenuItem": function(route) {
 			this.route = route;

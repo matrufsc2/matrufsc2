@@ -29,25 +29,31 @@ define("models/BaseModel", ["underscore", "chaplin", "tv4", "bluebird"], functio
 			var model = this;
 			var oldSuccess = options.success;
 			var oldError = options.error;
+			var xhr;
 			return (new Promise(function(resolve, reject) {
 				model.beginSync();
 				options.success = resolve;
 				options.error = reject;
-				Chaplin.Model.prototype.fetch.call(model, options);
+				xhr = Chaplin.Model.prototype.fetch.call(model, options);
 			}))
-			.bind(context)
-			.nodeify(callback)
-			.then(function(){
-				model.finishSync();
-				if (_.isFunction(oldSuccess)) {
-					oldSuccess.apply(context, _.toArray(arguments));
-				}
-			}, function(){
-				model.unsync();
-				if (_.isFunction(oldError)) {
-					oldError.apply(context, _.toArray(arguments));
-				}
-			});
+				.cancellable()
+				.catch(Promise.CancellationError, function(e) {
+					xhr.abort();
+					throw e; //Don't swallow it
+				})
+				.bind(context)
+				.nodeify(callback)
+				.then(function(){
+					model.finishSync();
+					if (_.isFunction(oldSuccess)) {
+						oldSuccess.apply(context, _.toArray(arguments));
+					}
+				}, function(){
+					model.unsync();
+					if (_.isFunction(oldError)) {
+						oldError.apply(context, _.toArray(arguments));
+					}
+				});
 		}
 	});
 	_.extend(BaseModel.prototype, Chaplin.SyncMachine);
