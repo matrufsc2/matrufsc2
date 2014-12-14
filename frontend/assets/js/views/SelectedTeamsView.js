@@ -3,10 +3,9 @@ define("views/SelectedTeamsView", [
 		"views/BaseView",
 		"chaplin",
 		"underscore",
-		"fastdom",
 		"views/SelectedTeamView",
 		"collections/Teams"
-], function(templates, BaseView, Chaplin, _, fastdom, selectedTeamView, Teams){
+], function(templates, BaseView, Chaplin, _, selectedTeamView, Teams){
 	"use strict";
 	var SelectedTeamsView = BaseView.extend({
 		"template" : templates.selectedTeams,
@@ -114,9 +113,7 @@ define("views/SelectedTeamsView", [
 		"render": function(){
 			this.group();
 			BaseView.prototype.render.apply(this, []);
-			fastdom.write(function() {
-				Chaplin.CollectionView.prototype.render.apply(this, []);
-			}, this);
+			Chaplin.CollectionView.prototype.render.apply(this, []);
 		},
 	});
 	_.extend(SelectedTeamsView.prototype,

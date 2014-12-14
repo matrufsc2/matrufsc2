@@ -15,7 +15,7 @@ define("views/FiltersView", [
 			if(count >= limit){
 				return false;
 			}
-			var result = onGet(model).toLowerCase().match(diacritic.clean(query.term).toLowerCase());
+			var result = onGet(model).toLowerCase().indexOf(diacritic.clean(query.term).toLowerCase()) != -1;
 			if(result){
 				++count;
 			}

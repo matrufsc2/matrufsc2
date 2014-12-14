@@ -1,4 +1,4 @@
-define("views/BaseView", ["underscore", "chaplin", "fastdom", "foundation"], function(_, Chaplin, fastdom) {
+define("views/BaseView", ["underscore", "chaplin", "foundation"], function(_, Chaplin) {
   "use strict";
   var BaseView = Chaplin.View.extend({
     "autoRender": true,
@@ -15,16 +15,12 @@ define("views/BaseView", ["underscore", "chaplin", "fastdom", "foundation"], fun
       return template;
     },
     "render": function(){
-      fastdom.write(function(){
-        Chaplin.View.prototype.render.apply(this, []);
-        this.attach();
-        this.trigger("render");
-      }, this);
+      Chaplin.View.prototype.render.apply(this, []);
+      this.attach();
+      this.trigger("render");
     },
     "applyFoundation": function(){
-        fastdom.write(function(){
-          this.$el.foundation();
-        }, this);
+      this.$el.foundation();
     }
   });
   return BaseView;
