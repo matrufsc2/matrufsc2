@@ -1,36 +1,57 @@
 application: matrufsc2
 version: 1
+module: default
 runtime: python27
 api_version: 1
 threadsafe: yes
 default_expiration: "1h"
+instance_class: F1
+automatic_scaling:
+  min_idle_instances: 0
+  max_idle_instances: 1
+  min_pending_latency: automatic 
+  max_pending_latency: 30ms
+  max_concurrent_requests: 80
+
+builtins:
+- appstats: on
+
+libraries:
+- name: ssl
+  version: latest
 
 handlers:
-- url: /([0-9]+)\.json
-  static_files: static/dados/\1.json
-  upload: static/dados/.*.json
-  http_headers:
-    Cache-Control: public, max-age=3600
-    Pragma: cache
-
 - url: /js
-  static_dir: static/js
+  static_dir: frontend/public/js
   http_headers:
+    #Cache-Control: private
     Cache-Control: public, max-age=3600
     Pragma: cache
 
 - url: /css
-  static_dir: static/css
+  static_dir: frontend/public/css
   http_headers:
+    #Cache-Control: private
+    Cache-Control: public, max-age=86400
+    Pragma: cache
+
+- url: /font
+  static_dir: frontend/public/font
+  http_headers:
+    #Cache-Control: private
     Cache-Control: public, max-age=3600
     Pragma: cache
 
-- url: (.*)\.cgi
-  script: matrufsc2.application
+- url: /api/.*
+  script: matrufsc2.app
 
-- url: .*
-  static_files: static/index.html
-  upload: static/index.html
+- url: /secret/update/
+  script: matrufsc2.app
+  login: admin
+
+- url: /.*
+  static_files: frontend/views/index-optimize.html
+  upload: frontend/views/index-optimize.html
   http_headers:
     Cache-Control: public, max-age=3600
     Pragma: cache

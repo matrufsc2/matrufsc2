@@ -1,0 +1,5 @@
+cron:
+- description: Update the database
+  url: /secret/update/
+  target: robot
+  schedule: every day 02:00

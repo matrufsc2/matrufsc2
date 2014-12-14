@@ -1,0 +1,19 @@
+application: matrufsc2
+version: 1
+module: robot
+runtime: python27
+api_version: 1
+threadsafe: no
+instance_class: B2
+basic_scaling:
+  max_instances: 1
+  idle_timeout: 1m
+
+libraries:
+- name: ssl
+  version: latest
+
+handlers:
+- url: /secret/update/
+  script: matrufsc2.app
+  login: admin
