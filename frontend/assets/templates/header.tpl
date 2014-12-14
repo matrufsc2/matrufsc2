@@ -1,4 +1,4 @@
- <div class="top-bar" data-topbar>
+ <div class="top-bar" data-topbar role="navigation">
     <ul class="title-area">
         <li class="name">
             <h1><a href="/">MatrUFSC2</a></h1>

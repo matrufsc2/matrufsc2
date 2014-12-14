@@ -1,10 +1,9 @@
 define("views/HeaderView", [
 	"templates",
 	"views/BaseView",
-	"fastdom",
 	"jquery",
 	"underscore"
-], function(templates, BaseView, fastdom, $, _){
+], function(templates, BaseView, $, _){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.header,
@@ -23,9 +22,8 @@ define("views/HeaderView", [
 		"startTour": function(e){
 			e.preventDefault();
 			if (this.isHome() === false) {
-				return this.$("#go-to-home").foundation("reveal", "open");
-			}
-			fastdom.write(function(){
+				this.$("#go-to-home").foundation("reveal", "open");
+			} else {
 				$(document).foundation("joyride", "start", {
 					"tip_location_patterns": {
 						"top": [],
@@ -34,7 +32,7 @@ define("views/HeaderView", [
 						"right": ['left', 'top', 'bottom']
 					}
 				});
-			});	
+			}
 		},
 		"share": function(e) {
 			e.preventDefault();
@@ -58,10 +56,9 @@ define("views/HeaderView", [
 		},
 		"render": function(){
 			BaseView.prototype.render.call(this);
-			fastdom.write(function(){
-				this.$("li.active").removeClass("active");
-				this.$("a[href='/"+this.route.path+"']").parents("li").addClass("active");
-			}, this);
+			this.applyFoundation();
+			this.$("li.active").removeClass("active");
+			this.$("a[href='/"+this.route.path+"']").parents("li").addClass("active");
 		}
 	});
 });

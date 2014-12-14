@@ -3,9 +3,8 @@ define("views/SelectedDisciplinesView", [
 		"views/BaseView",
 		"chaplin",
 		"underscore",
-		"fastdom",
 		"views/SelectedDisciplineView"
-], function(templates, BaseView, Chaplin, _, fastdom, selectedDisciplineView){
+], function(templates, BaseView, Chaplin, _, selectedDisciplineView){
 	"use strict";
 	var SelectedDisciplinesView = BaseView.extend({
 		"template" : templates.selectedDisciplines,
@@ -33,9 +32,7 @@ define("views/SelectedDisciplinesView", [
 			this.updateCombinationStatus();
 		},
 		"updateCombinationStatus": function(){
-			fastdom.write(function(){
-				this.$("#combinationStatus").html(this.getCombinationStatus());
-			}, this);
+			this.$("#combinationStatus").html(this.getCombinationStatus());
 		},
 		"getCombinationStatus": function(){
 			var combinationTotal, combinationNumber;
@@ -64,10 +61,8 @@ define("views/SelectedDisciplinesView", [
 		},
 		"render": function(){
 			BaseView.prototype.render.apply(this, []);
-			fastdom.write(function() {
-				Chaplin.CollectionView.prototype.render.apply(this, []);
-				this.updateCombinationStatus();
-			}, this);
+			Chaplin.CollectionView.prototype.render.apply(this, []);
+			this.updateCombinationStatus();
 		}
 	});
 	_.extend(SelectedDisciplinesView.prototype, 

@@ -15,7 +15,6 @@ require.config({
 		"query-engine" : "vendor/query-engine/index",
 		"sinon"        : "vendor/sinon/index",
 		"bluebird"     : "vendor/bluebird/bluebird",
-		"fastdom"      : "vendor/fastdom/index",
 		"select2"	   : "vendor/select2/select2",
 		"please"       : "vendor/pleasejs/Please",
 		"diacritic"    : "vendor/diacritic/diacritics",
