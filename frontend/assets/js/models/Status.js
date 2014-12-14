@@ -15,8 +15,7 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 		},
 		"listenEvents": function() {
 			this.listenTo(this.semesters, "sync", function(){
-				if(this.semesters.length === 0 || this.get("semester") !== null || this.get("semester") ===
-					this.semesters.at(0).id) {
+				if(this.semesters.length === 0 || this.get("semester") !== null) {
 					return;
 				}
 				this.set({
@@ -45,7 +44,7 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				});
 			}, this);
 			this.listenTo(this.campi, "sync", function(){
-				if(this.campi.length === 0 || this.get("campus") !== null || this.get("campus") === this.campi.at(0).id) {
+				if(this.campi.length === 0 || this.get("campus") !== null) {
 					return;
 				}
 				this.set({

@@ -14,7 +14,8 @@ define("views/SelectedDisciplinesView", [
 		"tagName": "table",
 		"listen": {
       		"addedToDOM": "applyFoundation",
-      		"change:combination collection": "updateViews"
+      		"change:combination collection": "updateViews",
+      		"sort collection": "renderAllItems"
 		},
 		"events": {
 			"click #nextCombination": "nextCombination",

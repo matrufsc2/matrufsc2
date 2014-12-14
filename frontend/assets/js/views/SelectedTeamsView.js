@@ -50,11 +50,11 @@ define("views/SelectedTeamsView", [
 			}
 			var onGetSchedule = function(schedule) {
 				return schedule.get("hourStart")+""+schedule.get("minuteStart")+":"+schedule.get("dayOfWeek")+":"+schedule.get("classRepeat");
-			}
+			};
 			var onGetTeam = function(team) {
 				var schedules = _.map(team.schedules.sortBy(onGetSchedule), onGetSchedule).join("|");
 				return schedules;
-			}
+			};
 			this.collection.comparator = onGetTeam;
 			this.collection.sort({
 				"silent": true

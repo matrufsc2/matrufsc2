@@ -50,6 +50,10 @@ exports.config = {
     }
   },
   "bower": {
+    "bowerDir": {
+      "path": ".mimosa/bower/bower_components",
+      "clean": false
+    },
     "copy": {
       "mainOverrides": {
         "mocha"     : ["mocha.js", "mocha.css"],

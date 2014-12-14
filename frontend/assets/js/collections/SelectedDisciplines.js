@@ -40,7 +40,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 					color = Please.make_color({
 						"saturation": 0.5,
 						"value": 0.8
-					})
+					});
 					if(collection.findWhere({"_color": color}) !== undefined) {
 						color = null;
 						continue;
@@ -153,10 +153,9 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				return;
 			}
 			this.map(function(discipline){
-				var team = _.findWhere(combination, {
+				discipline.team = _.findWhere(combination, {
 					"discipline": discipline
 				});
-				discipline.team = team;
 				discipline.semester = this.semesters.get(this.status.get("semester"));
 				discipline.campus = this.campi.get(this.status.get("campus"));
 			}, this);
@@ -186,8 +185,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 		},
 		"move": function(model, delta) {
 			var index = this.indexOf(model);
-			if ((delta < 0 && index+delta >= 0) || (delta > 0 && index+delta < this.length)) {
-				this.moveTo(this.at(index+delta), index-delta);// Moves the old model
+			if ((delta < 0 && index > 0) || (delta > 0 && index < (this.length-1))) {
 				this.moveTo(model, index+delta);//Moves the actual model
 			}
 		},
@@ -196,7 +194,9 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				return;
 			}
 			this.remove(model, {"silent": true});
-			this.add(model, {"at": index});
+			model.collection = this;
+			this.add(model, {"at": index, "silent": true});
+			this.trigger("sort");
 		},
 		"moveUp": function(model) {
 			this.move(model, -1);

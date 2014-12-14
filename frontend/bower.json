@@ -27,7 +27,7 @@
     "chaplin": "~1.0.0",
     "es5-shim": "~3.4.0",
     "tv4": "~1.0.17",
-    "foundation": "~5.4.7",
+    "foundation": "~5.5.0",
     "requirejs": "~2.1.11",
     "almond": "~0.2.9",
     "modernizr": "~2.8.1",

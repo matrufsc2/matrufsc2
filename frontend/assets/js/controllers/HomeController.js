@@ -48,77 +48,98 @@ define("controllers/HomeController", [
 				"semesters": this.semesters,
 				"status" : this.status
 			});
-			var statusSessionKeys = ["semester","campus","discipline", "selectedDisciplines", "disabledTeams", "selectedCombination"];
-			var statusSession = _.pick(request.query, statusSessionKeys);
-			var updateStatusSession = _.bind(function() {
-				this.status.on("change", function () {
-					_.extend(statusSession, this.status.pick(["semester", "campus", "discipline"]));
-					var url = Chaplin.utils.reverse("Home#index", statusSession, {"trigger": false});
-					Backbone.history.navigate(url, {"trigger": false, "replace": false});
-				}, this);
-				this.selectedDisciplines.on("add change remove change:combination", function () {
-					var selectedDisciplines = [];
-					var allDisabledTeams = [];
-					this.selectedDisciplines.each(function (discipline) {
-						var disabledTeams = [];
-						selectedDisciplines.push(discipline.id);
-						discipline.teams.each(function (team) {
-							if (team.get("_selected")) {
+			var statusSessionKeys = [
+				"semester",
+				"campus",
+				"discipline",
+				"selectedDisciplines",
+				"disabledTeams",
+				"selectedCombination"
+			];
+			var statusSession = _.pick(request.query, statusSessionKeys) || {};
+			var updateURL = _.bind(function() {
+				var urlQuery = {};
+				urlQuery.semester = this.status.get("semester");
+				urlQuery.campus = this.status.get("campus");
+				urlQuery.discipline = this.status.get("discipline");
+				var selectedDisciplines = [];
+				var disabledTeams = [];
+				this.selectedDisciplines.each(function (discipline) {
+					selectedDisciplines.push(discipline.id);
+					discipline.teams.each(function (team) {
+						if (team.get("_selected")) {
+							return;
+						}
+						disabledTeams.push(team.id);
+					});
+				});
+				urlQuery.selectedDisciplines = selectedDisciplines;
+				urlQuery.disabledTeams = disabledTeams;
+				urlQuery.selectedCombination = this.selectedDisciplines.getSelectedCombination();
+				var url = Chaplin.utils.reverse("Home#index", urlQuery);
+				Backbone.history.navigate(url, {"trigger": false, "replace": false});
+			}, this);
+			if (_.size(statusSession) >= 2) {
+				// Well, Here we can load based on data in the querystring :D
+				if (statusSession.selectedDisciplines && !_.isArray(statusSession.selectedDisciplines)) {
+					statusSession.selectedDisciplines = [statusSession.selectedDisciplines];
+				}
+				if (statusSession.disabledTeams && !_.isArray(statusSession.disabledTeams)) {
+					statusSession.disabledTeams = [statusSession.disabledTeams];
+				}
+				this.semesters.once("sync", function(){
+					this.status.once("change:campus", function() {
+						this.disciplines.on("sync", function disciplinesLoaded(){
+							if (!_.has(statusSession, "selectedDisciplines")) {
+								this.status.on("change", updateURL);
+								this.selectedDisciplines.on("change change:combination", updateURL);
 								return;
 							}
-							disabledTeams.push(team.id);
-						});
-						allDisabledTeams.push(disabledTeams.join(","));
-					});
-					statusSession.selectedDisciplines = selectedDisciplines;
-					statusSession.disabledTeams = allDisabledTeams;
-					statusSession.selectedCombination = this.selectedDisciplines.getSelectedCombination();
-					var url = Chaplin.utils.reverse("Home#index", statusSession, {"trigger": false});
-					Backbone.history.navigate(url, {"trigger": false, "replace": false});
-				}, this);
-			}, this);
-			if(_.size(statusSession) === statusSessionKeys.length) {
-				this.disciplines.once("sync", function(){
-					var selectedDisciplinesIDs = statusSession.selectedDisciplines || [];
-					Promise.all(_.filter(_.map(selectedDisciplinesIDs, function(selectedDisciplineID, key) {
-						var discipline = this.disciplines.get(selectedDisciplineID);
-						if(!discipline){
-							return false;
-						}
-						var teams = statusSession.disabledTeams ? statusSession.disabledTeams[key]||"" : "";
-						teams = teams.split(",");
-						return discipline.select().then(function(){
-							for(var c=0,l=teams.length,team;c<l; ++c){
-								team = teams[c];
-								team = this.teams.findWhere({
-									"id": parseInt(team)
-								});
-								if(!!team) {
-									team.set({
-										"_selected": false
-									});
+							_.each(statusSession.selectedDisciplines || [], function(selectedDiscipline){
+								var discipline = this.disciplines.get(selectedDiscipline);
+								if (!discipline) {
+									return;
 								}
-							}
+								this.disciplines.off("sync", disciplinesLoaded, this);
+								discipline.select().bind(this).then(function(){
+									Promise.all(
+										_.map(statusSession.disabledTeams || [], function(disabledTeam) {
+											var team = discipline.teams.get(disabledTeam);
+											if (team) {
+												team.set({"_selected": false});
+												return this.selectedDisciplines.updateCombinations();
+											} else {
+												return Promise.resolve();
+											}
+										}, this)
+										)
+										.then(
+											this.selectedDisciplines.updateCombinations(
+												parseInt(statusSession.selectedCombination) || 0
+											)
+										)
+										.bind(this).then(function(){
+											this.selectedDisciplines.trigger("change:combination");
+											if (_.has(statusSession, "discipline")) {
+												this.status.set({
+													"discipline": statusSession.discipline
+												});
+											}
+										});
+								});
+							}, this);
+						}, this);
+						this.status.set({
+							"campus": statusSession.campus
 						});
-					}, this), function(discipline) {
-						return !!discipline;
-					})).bind(this).then(function(){
-						this.selectedDisciplines.updateCombinations(parseInt(statusSession.selectedCombination)).then(function(){
-							this.status.set({
-								"discipline": statusSession.discipline
-							});
-							updateStatusSession();
-						});
+					}, this);
+					this.status.set({
+						"semester": statusSession.semester
 					});
 				}, this);
-				this.campi.once("sync", function(){
-					this.status.set(_.pick(statusSession, "campus"));
-					this.disciplines.trigger("sync");
-				}, this);
-				this.status.set(_.pick(statusSession, "semester"));
-				this.campi.trigger("sync");
 			} else {
-				updateStatusSession();
+				this.status.on("change", updateURL);
+				this.selectedDisciplines.on("change change:combination", updateURL);
 			}
 			this.semesters.fetch();
 			this.status.listenEvents();
