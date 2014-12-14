@@ -14,6 +14,7 @@ define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView,
 					old = old.concat(discipline.team.schedules.map(function(schedule){
 						return {
 							"title": discipline.get("code"),
+							"name": discipline.get("name"),
 							"color": discipline.get("_color"),
 							"column": schedule.getStart().day(),
 							"enabled": true,
@@ -27,6 +28,7 @@ define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView,
 						return {
 							"title": discipline.get("code"),
 							"color": discipline.get("_color"),
+							"name": discipline.get("name"),
 							"column": schedule.getStart().day(),
 							"enabled": false,
 							"rowStart": schedule.getStartRow(),
@@ -45,6 +47,7 @@ define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView,
 					}
 					matrixEvents[row][event.column] = {
 						"title": event.title,
+						"name": event.name,
 						"color": event.color,
 						"enabled": event.enabled
 					};

@@ -30,9 +30,18 @@ define("views/SelectedDisciplinesView", [
 				this.renderItem(discipline); // Forces update of the view
 			}, this);
 			this.updateCombinationStatus();
+			this.updateTotalHours();
 		},
 		"updateCombinationStatus": function(){
 			this.$("#combinationStatus").html(this.getCombinationStatus());
+		},
+		"updateTotalHours": function(){
+			this.$("#totalHours").html(this.getTotalHours());
+		},
+		"getTotalHours": function() {
+			return this.collection.reduce(function(total, discipline){
+				return total + (discipline.team ? discipline.team.getNumberOfLessons() : 0);
+			}, 0);
 		},
 		"getCombinationStatus": function(){
 			var combinationTotal, combinationNumber;
@@ -63,6 +72,7 @@ define("views/SelectedDisciplinesView", [
 			BaseView.prototype.render.apply(this, []);
 			Chaplin.CollectionView.prototype.render.apply(this, []);
 			this.updateCombinationStatus();
+			this.updateTotalHours();
 		}
 	});
 	_.extend(SelectedDisciplinesView.prototype,

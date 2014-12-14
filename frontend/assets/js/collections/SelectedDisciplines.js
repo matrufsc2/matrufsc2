@@ -40,7 +40,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				while(!color) {
 					color = Please.make_color({
 						"saturation": 0.5,
-						"value": 0.8
+						"value": (Math.floor(Math.random()*25)+75)/100
 					});
 					if(collection.findWhere({"_color": color}) !== undefined) {
 						color = null;
