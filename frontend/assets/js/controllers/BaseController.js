@@ -6,9 +6,6 @@ define("controllers/BaseController", ["chaplin", "views/SiteView", "views/Header
       this.reuse("header", {
         "compose": function(){
           return new HeaderView(route)
-        },
-        "check": function(){
-          return true;
         }
       });
       this.reuse("footer", FooterView);

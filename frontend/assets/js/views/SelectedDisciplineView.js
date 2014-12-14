@@ -1,9 +1,8 @@
 define("views/SelectedDisciplineView", [
 		"templates",
 		"jquery",
-		"fastdom",
 		"views/BaseView"
-		], function(templates, $, fastdom, BaseView){
+		], function(templates, $, BaseView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.selectedDiscipline,
@@ -86,9 +85,7 @@ define("views/SelectedDisciplineView", [
 			} else {
 				this.stopBlink();
 			}
-			fastdom.write(function(){
-				this.$el.css("background-color", this.model.get("_color"));
-			}, this);
+			this.$el.css("background-color", this.model.get("_color"));
 		}
 	});
 });

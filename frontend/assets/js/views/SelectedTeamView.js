@@ -2,9 +2,8 @@ define("views/SelectedTeamView", [
 		"templates",
 		"jquery",
 		"underscore", 
-		"fastdom",
 		"views/BaseView"
-		], function(templates, $, _, fastdom, BaseView){
+		], function(templates, $, _, BaseView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.selectedTeam,
@@ -45,19 +44,16 @@ define("views/SelectedTeamView", [
 		},
 		"render": function(){
 			BaseView.prototype.render.apply(this, []);
-			fastdom.write(function(){
-				var el = this.$("td");
-				if(this.model.startGrouping){
-					el.css("border-top", "4px #000000 solid");
-				} else {
-					el.css("border-top", "");
-				}
-				el.css({
-					"background-color": this.discipline.get("_color"),
-					"opacity": this.model.get("_selected") ? 1 : 0.5
-				});
-
-			}, this);
+			var el = this.$("td");
+			if(this.model.startGrouping){
+				el.css("border-top", "4px #000000 solid");
+			} else {
+				el.css("border-top", "");
+			}
+			el.css({
+				"background-color": this.discipline.get("_color"),
+				"opacity": this.model.get("_selected") ? 1 : 0.5
+			});
 		},
 		"dispose": function(){
 			var view = this;
