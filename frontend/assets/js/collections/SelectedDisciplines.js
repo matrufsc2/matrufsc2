@@ -33,6 +33,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 		},
 		"updateCombinations": function(defaultCombination){
 			var collection = this;
+			collection.teamsRequests = [];
 			return Promise.all(this.map(function(discipline) {
 				discipline.collection = collection;
 				var color = discipline.get("_color");
@@ -49,7 +50,9 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 						"_color": color
 					});
 				}
-				return discipline.teams.fetch();
+				var teamRequest = discipline.teams.fetch();
+				collection.teamsRequests.push(teamRequest);
+				return teamRequest;
 			}))
 			.bind(this)
 			.then(function(){
@@ -203,6 +206,11 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 		},
 		"moveDown": function(model) {
 			this.move(model, 1);
+		},
+		"dispose": function(){
+			_.each(this.teamsRequests, function(teamRequest){
+				teamRequest.cancel();
+			});
 		}
 	});
 });

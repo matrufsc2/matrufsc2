@@ -27,6 +27,7 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 		"initialize": function(){
 			this.teams = new Teams();
 			this.teams.url = "/api/teams/?discipline="+this.id;
+			this.teamsRequest = null;
 			this.team = null;
 			this.hoveredTeam = null;
 			CachedModel.prototype.initialize.apply(this, _.toArray(arguments));
@@ -39,13 +40,14 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			this.set({
 				"_selected": true
 			});
-			return this.teams.fetch().bind(this).then(function(){
+			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
 				this.teams.map(function(model){
 					model.set({
 						"_selected": true
 					});
 				});
 			});
+			return this.teamsRequest;
 		},
 		"unselect": function(){
 			if (this.id === -1) {
@@ -55,13 +57,14 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			this.set({
 				"_selected": false
 			});
-			return this.teams.fetch().bind(this).then(function(){
+			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
 				this.teams.map(function(model){
 					model.set({
 						"_selected": false
 					});
 				});
 			});
+			return this.teamsRequest;
 		},
 		"moveUp": function (){
 			if(!this.collection) {
@@ -89,6 +92,12 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 				throw "Cannot get a position in the collection without a collection defined";
 			}
 			return this.position() === this.collection.length - 1;
+		},
+		"dispose": function(){
+			if (this.teamsRequest !== null) {
+				this.teamsRequest.cancel();
+			}
+			CachedModel.prototype.dispose.call(this);
 		}
 	});
 });
