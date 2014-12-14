@@ -58,6 +58,9 @@ define("controllers/HomeController", [
 			];
 			var statusSession = _.pick(request.query, statusSessionKeys) || {};
 			var updateURL = _.bind(function() {
+				if (this.disposed || !this.status || !this.selectedDisciplines) {
+					return;
+				}
 				var urlQuery = {};
 				urlQuery.semester = this.status.get("semester");
 				urlQuery.campus = this.status.get("campus");
@@ -141,7 +144,6 @@ define("controllers/HomeController", [
 				this.status.on("change", updateURL);
 				this.selectedDisciplines.on("change change:combination", updateURL);
 			}
-			this.semesters.fetch();
 			this.status.listenEvents();
 		}
 	});
