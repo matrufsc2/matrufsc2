@@ -1,0 +1,14 @@
+{
+  "test_page": "views/test.html",
+  "routes": {
+    "/js/vendor": "public/js/vendor",
+    "/js/tests": "public/js/tests",
+    "/js": "public/js-instrumented",
+	  "/css": "public/css"
+  },
+  "src_files": [
+   	"assets/js/**/*.js"
+  ],
+  "before_tests": "mimosa build && istanbul instrument -x 'vendor/**' -x 'tests/**' --output public/js-instrumented public/js",
+  "after_tests": "istanbul report"
+}

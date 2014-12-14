@@ -1,6 +1,10 @@
-**INTRODUÇÃO**
+# MatrUFSC2
 
 O MatrUFSC2 nasceu com a intenção de ser um substituto ao MatrUFSC original. Criado sob principios da web moderna, usaremos bibliotecas e arquiteturas avançadas para levar ao usuário recursos inovadores e fáceis de usar.
+
+Note que o backend (no caso, o código deste repositório) agora é uma aplicação do Google App Engine e, portanto, **não** é mais compatível com servidores WSGI por padrão. (e isso pode vir a mudar no futuro)
+
+# Objetivos
 
 Como novidades ao projeto original, temos como objetivo:
 
@@ -9,32 +13,45 @@ Como novidades ao projeto original, temos como objetivo:
 - Aprimorar a experiência do usuário ao permitir simulação mesmo quando o usuário estiver offline.
 - Criar testes automatizados para detectarmos problemas antes mesmo dos usuários notá-los.
 
-Estaremos aprimorando o código com o passar do tempo. No momento, estaremos focando em re-escrever o backend para então fornecermos um ambiente frontend consistente, que, a principio, será baseado no framework [ChaplinJS](http://chaplinjs.org), e que ajudará na otimização do projeto com o uso de boas práticas.
+Estaremos aprimorando o código com o passar do tempo. No momento, estaremos focando em re-escrever o [frontend](http://github.com/matrufsc2/frontend) e o backend para fornecermos uma experiência concisa tanto para o desenvolvedor quanto para o usuário.
 
-===========================================================================
 
-**LICENÇA**
+## LICENÇA
 
 Leia o arquivo [LICENSE](https://github.com/matrufsc2/matrufsc2/blob/develop/LICENSE.md).
 
-===========================================================================
-1. Instalação
+## Dependências
 
-Para rodar o CAPIM, é necessário ter os seguintes programas/pacotes
-instalados no servidor:
+Segue as dependências do projeto:
 
-- Python 2.7 (Python 3 não é o foco atualmente)
+- [Python 2.7](http://python.org)
+- [NodeJS](http://nodejs.org)
+- [SDK do Google App Engine](https://developers.google.com/appengine/downloads)
+- [pip](http://pip.readthedocs.org/en/latest/)
 
-No ubuntu, os comandos são:
+## Instalação
 
-$ sudo apt-get install python-pip
+- Clone o projeto rodando:
 
-$ sudo pip install -r requirements.txt
+```sh
+    git clone git@github.com:matrufsc2/matrufsc2.git && cd matrufsc2
+```
+- Instale suas dependências:
 
-$ python matrufsc2.py
+```sh
+    pip install -r requirements.txt
+```
 
-Como usamos Bottle, ao executar o último comando você já poderá acessar http://127.0.0.1:8080/ para ver a aplicação funcionando.
+- Precisamos instalar as dependências do frontend! Basta executar o seguinte comando para fazê-lo:
 
-2. Banco de dados
+```sh
+    cd frontend && npm install && npm run-script build
+```
 
-O banco de dados é baixado e atualizado automaticamente conforme os semestres passam. Como a UFSC disponibiliza os dados publicamente, o sistema faz o download diariamente dos dados, um processo que deve durar menos de 1 minuto com uma boa conexão, e usa as API's disponíveis para executar os dados. (assim, manteremos compatibilidade tanto com Google App Engine quanto com servidores WSGI normais).
+- Rode o seguinte comando:
+
+```sh
+    <caminho para a SDK do Google>/dev_appserver.py .
+```
+
+Pronto! O Servidor estará em execução no endereço http://127.0.0.1:8080/
