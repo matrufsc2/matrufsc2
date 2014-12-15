@@ -59,12 +59,10 @@ define("views/SelectedDisciplineView", [
 			e.preventDefault();
 		},
 		"dispose": function(){
-			var view = this;
-			this.$el.animate({
-				"opacity": 0
-			}, 400, function(){
-				BaseView.prototype.dispose.apply(view, []);
-			});
+			if (this.blinkId !== null) {
+				return;
+			}
+			clearTimeout(this.blinkId);
 		},
 		"startBlink": function() {
 			if (this.blinkId !== null) {
@@ -72,6 +70,9 @@ define("views/SelectedDisciplineView", [
 			}
 			var view = this;
 			this.blinkId = setTimeout(function blink(){
+				if (view.disposed) {
+					return;
+				}
 				view.blinkOn = !view.blinkOn;
 				view.$el.animate({
 					"opacity": view.blinkOn ? 1 : 0.5
