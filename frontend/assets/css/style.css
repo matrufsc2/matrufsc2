@@ -3,8 +3,11 @@
 	border-top: 1px dotted #ccc;
 	padding-top: 5px;
 }
-#disciplines-resume table, #calendar table{
+.home-page table {
 	width: 100%;
+}
+.home-page table thead *{
+	padding: 0;
 }
 #teams-table-container {
 	padding-left: 0;

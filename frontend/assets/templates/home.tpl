@@ -4,8 +4,8 @@
 		<div class="small-12 columns" id="disciplines-resume"></div>
 	</div> 
 	<div id="calendar-container" class="row">
-		<div class="small-6 medium-8 columns" id="calendar"></div>
-		<div class="small-6 medium-4 columns" id="teams-table-container"></div>
+		<div class="small-12 medium-7 columns" id="calendar"></div>
+		<div class="small-12 medium-5 columns" id="teams-table-container"></div>
 	</div>
 </div>
 <ol class="joyride-list" data-joyride>

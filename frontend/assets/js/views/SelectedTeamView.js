@@ -11,7 +11,8 @@ define("views/SelectedTeamView", [
 		"events": {
 			"mouseover": "focusTeam",
 			"mouseout": "unfocusTeam",
-			"click #selectedTeam": "updateSelectedTeam"
+			"click .selectedTeam": "updateSelectedTeam",
+			"change model": "render"
 		},
 		"initialize": function(options) {
 			_.extend(this, _.pick(options, ["discipline", "selectedDisciplines"]));
@@ -29,9 +30,9 @@ define("views/SelectedTeamView", [
 			this.discipline.hoveredTeam = null;
 			this.selectedDisciplines.trigger("change:combination");
 		},
-		"updateSelectedTeam": function(){
+		"updateSelectedTeam": function(e){
 			this.model.set({
-				"_selected": this.$("#selectedTeam").is(":checked")
+				"_selected": this.$(e.currentTarget).is(":checked")
 			});
 			this.selectedDisciplines.updateCombinations();
 			this.selectedDisciplines.trigger("change:combination");

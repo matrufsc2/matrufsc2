@@ -9,10 +9,10 @@ define("views/SelectedDisciplineView", [
 		"tagName": "tr",
 		"events": {
 			"click .icon-delete": "unselect",
+			"click .selectedDiscipline": "updateTeams",
 			"click .icon-up": "moveUp",
 			"click .icon-down": "moveDown",
-			"click td:lt(4)": "select",
-			"change model": "render"
+			"click td:lt(4)": "select"
 		},
 		"initialize": function(options) {
 			this.status = options.status;
@@ -37,6 +37,18 @@ define("views/SelectedDisciplineView", [
 				"discipline": null
 			});
 			e.preventDefault();
+		},
+		"updateTeams": function(e){
+			var isEnabled = this.$(e.currentTarget).is(":checked");
+			this.model.teams.each(function(team) {
+				team.set({
+					"_selected": isEnabled
+				});
+			});
+			this.model.collection.updateCombinations();
+			this.model.collection.trigger("change:combination");
+			this.render();
+			this.status.trigger("change:discipline");
 		},
 		"moveUp": function(e){
 			this.model.moveUp();

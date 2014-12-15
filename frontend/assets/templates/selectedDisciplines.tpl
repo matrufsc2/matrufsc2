@@ -1,8 +1,9 @@
 <thead>
 	<tr>
+        <th></th>
 		<th>Código</th>
 		<th>Turma</th>
-		<th>Número de horas</th>
+		<th>Horas-Aula</th>
 		<th>Período</th>
 		<th class="text-right">
 			<a href="#" id="previousCombination"><i class="icon-left"></i></a>
@@ -16,9 +17,9 @@
 <tbody></tbody>
 <tfoot>
 	<tr>
-        <td></td>
+        <td colspan="2"></td>
         <td>
-            Horas por semana:
+            Total:
         </td>
         <td id="totalHours" class="text-center"></td>
         <td colspan="3"></td>

@@ -60,9 +60,9 @@ define("views/SelectedDisciplinesView", [
 		"initItemView": function(model){
 			if (this.itemView) {
 				return new this.itemView({
-					autoRender: false,
-					model: model,
-					status: this.status
+					"autoRender": false,
+					"model": model,
+					"status": this.status
 				});
 			} else {
 				throw new Error("The CollectionView#itemView property " + "must be defined or the initItemView() must be overridden.");
