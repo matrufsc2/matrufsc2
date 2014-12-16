@@ -58,7 +58,7 @@ define("controllers/HomeController", [
 			];
 			var statusSession = _.pick(request.query, statusSessionKeys) || {};
 			function purify(id, type) {
-				return id.replace("matrufsc2-"+type+"-", "");
+				return (id || "").replace("matrufsc2-"+type+"-", "");
 			}
 			function unpurify(id, type) {
 				return "matrufsc2-"+type+"-"+purify(id, type);
