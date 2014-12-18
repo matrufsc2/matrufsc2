@@ -36,8 +36,6 @@ define("views/SelectedDisciplineView", [
 			this.status.set({
 				"discipline": null
 			});
-			this.model.collection.updateCombinations();
-			this.model.collection.trigger("change:combination");
 			e.preventDefault();
 		},
 		"updateTeams": function(e){
