@@ -82,7 +82,6 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				return old;
 			}, []).length);
 			this.map(function(discipline) {
-				discipline.set("_blink", false);
 				discipline.unset("_title");
 			});
 			var disciplinesConflicted = {};
@@ -126,7 +125,6 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 					});
 					if (disciplineConflict) {
 						var discipline = this.get(discipline_id);
-						discipline.set("_blink", true);
 						discipline.set("_title", "Esta disciplina esta impedindo a geracao de uma combinacao valida");
 					}
 				}, this);

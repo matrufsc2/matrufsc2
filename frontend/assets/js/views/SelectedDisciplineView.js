@@ -16,8 +16,6 @@ define("views/SelectedDisciplineView", [
 		},
 		"initialize": function(options) {
 			this.status = options.status;
-			this.blinkId = null;
-			this.blinkOn = false;
 			this.listenTo(this.model.teams, "syncStateChange", this.render);
 		},
 		"getTemplateData": function(){
@@ -29,6 +27,8 @@ define("views/SelectedDisciplineView", [
 			this.status.set({
 				"discipline": this.model.id
 			});
+			this.model.collection.updateCombinations();
+			this.model.collection.trigger("change:combination");
 			e.preventDefault();
 		},
 		"unselect": function(e){
@@ -36,6 +36,8 @@ define("views/SelectedDisciplineView", [
 			this.status.set({
 				"discipline": null
 			});
+			this.model.collection.updateCombinations();
+			this.model.collection.trigger("change:combination");
 			e.preventDefault();
 		},
 		"updateTeams": function(e){
@@ -58,45 +60,8 @@ define("views/SelectedDisciplineView", [
 			this.model.moveDown();
 			e.preventDefault();
 		},
-		"dispose": function(){
-			var view = this;
-			this.$el.animate({
-				"opacity": 0
-			}, 400, function(){
-				BaseView.prototype.dispose.apply(view, []);
-			});
-		},
-		"startBlink": function() {
-			if (this.blinkId !== null) {
-				return;
-			}
-			var view = this;
-			this.blinkId = setTimeout(function blink(){
-				view.blinkOn = !view.blinkOn;
-				view.$el.animate({
-					"opacity": view.blinkOn ? 1 : 0.5
-				}, 500, function(){
-					view.blinkId = setTimeout(blink, 100);
-				});
-			}, 500);
-		},
-		"stopBlink": function() {
-			if (this.blinkId === null) {
-				return;
-			}
-			clearTimeout(this.blinkId);
-			this.blinkId = null;
-			this.$el.animate({
-				"opacity": 1
-			}, 500);
-		},
 		"render": function(){
 			BaseView.prototype.render.apply(this, []);
-			if (this.model.get("_blink")) {
-				this.startBlink();
-			} else {
-				this.stopBlink();
-			}
 			this.$el.css("background-color", this.model.get("_color"));
 		}
 	});
