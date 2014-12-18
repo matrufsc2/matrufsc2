@@ -367,7 +367,7 @@ class Robot(NDBRemoteFetcher, object):
         )
         bucket_name = app_identity.get_default_gcs_bucket_name()
         bucket = "/" + bucket_name
-        folder = "/".join([bucket, "cache"])
+        folder = "/".join([bucket, "view"])
         file_instances = gcs.listbucket(folder, retry_params=retry)
         for file_instance in file_instances:
             logging.debug("Deleting file %s", file_instance.filename)
