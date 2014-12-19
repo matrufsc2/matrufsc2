@@ -6,9 +6,13 @@
 .home-page table {
 	width: 100%;
 }
-.home-page table thead *{
-	padding: 0;
-}
+
+@media only screen and (min-width: 40.063em)  and (max-width: 90em) {
+	.home-page table *{
+		padding: 0;
+	}
+
+} /* min-width 641px, medium screens */
 #teams-table-container {
 	padding-left: 0;
 }
