@@ -252,8 +252,7 @@ def index():
             prerender_headers= {"X-Prerender-Token": "{{prerender_token}}"}
         handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,
                         deadline=60, follow_redirects=False)
-        content = handler.read()
-        handler.close()
+        content = handler.content
     else:
         if IN_DEV:
             prerender_filename = "frontend/views/index.html"
