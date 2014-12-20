@@ -70,7 +70,7 @@ def can_prerender():
 
 @app.before_request
 def return_cached():
-    if "update" not in request.path:
+    if request.method == "GET":
         prerender = can_prerender()
         url_hash = hashlib.sha1(request.url).hexdigest()
         cache_key = CACHE_KEY % (int(prerender), url_hash)
@@ -101,9 +101,9 @@ def return_cached():
 def cache_response(response):
     if g.get("ignoreMiddleware"):
         return response
-    response.headers["Cache-Control"] = "public, max-age=3600"
-    response.headers["Pragma"] = "cache"
-    if "update" not in request.path:
+    if request.method == "GET":
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["Pragma"] = "cache"
         prerender = can_prerender()
         url_hash = hashlib.sha1(request.url).hexdigest()
         cache_key = CACHE_KEY % (int(prerender), url_hash)
@@ -120,6 +120,10 @@ def cache_response(response):
             gcs_file.close()
         except:
             pass
+    else:
+        response.headers["Cache-Control"] = "private"
+        response.headers["Pragma"] = "no-cache"
+
     return response
 
 
@@ -222,7 +226,7 @@ def short():
             "shortUrl": short_url
         })
     else:
-        return "", 406, {"Content-Type": "application/json"}
+        return "{}", 406, {"Content-Type": "application/json"}
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
