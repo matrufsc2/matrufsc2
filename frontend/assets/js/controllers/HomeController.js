@@ -70,6 +70,16 @@ define("controllers/HomeController", [
 				var urlQuery = {};
 				urlQuery.semester = purify(this.status.get("semester"), "semester");
 				urlQuery.campus = purify(this.status.get("campus"), "campus");
+				var title = "";
+				if (this.status.get("semester")) {
+					var semester = this.semesters.get(this.status.get("semester"));
+					title += "Semestre " + semester.get("name");
+					if (this.status.get("campus")) {
+						var campus = this.campi.get(this.status.get("campus"));
+						title += " - Campus "+campus.get("name");
+					}
+				}
+				this.adjustTitle(title);
 				if(this.status.get("discipline")) {
 					urlQuery.discipline = purify(this.status.get("discipline"), "discipline");
 				}

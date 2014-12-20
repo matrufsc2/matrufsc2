@@ -63,13 +63,13 @@
 		<p>Nesse caso, há duas opções: Clicar no icone <i class="icon-delete"></i> e tirar a(s) disciplina(s) da lista de disciplinas
 		selecionadas, ou então fazer experimentos com as outras disciplinas para encontrar uma combinação válida.</p>
 	</li>
-	<li data-text="Próximo" data-prev-text="Anterior" data-id="calendar" data-options="tip_location: top">
+	<li data-text="Próximo" data-prev-text="Anterior" data-id="calendar">
 		<h4>Quadro de horários</h4>
 		<p>Aqui é mostrado, de forma visual e intuitiva, os horários das turmas que você selecionou. Note que cada
 		bloco mostrado aqui contém o código da disciplina, e não da turma selecionada. Mas voce pode ver facilmente as turmas
 		consideradas aqui na lista de disciplinas selecionadas, mostrada logo acima.</p>
 	</li>
-	<li data-text="Próximo" data-prev-text="Anterior" data-id="teams-table-container" data-options="tip_location: top">
+	<li data-text="Próximo" data-prev-text="Anterior" data-id="teams-table-container">
 		<h4>Lista de Turmas</h4>
 		<p>Esta tabela é a lista de turmas. Ela só é preenchida quando você seleciona uma disciplina, clicando no código dela, na
 		lista de disciplinas selecionadas. Aqui, você pode desativar ou ativar as turmas que você tem interesse em pegar. Note que,
@@ -84,6 +84,6 @@
 		<h4>Fim</h4>
 		<p>Por enquanto é isso. Não se esqueça de, após simular seu quadro de horários aqui, <b>efetivar realmente sua matrícula no <a href="http://cagr.ufsc.br/" target="_blank">CAGR</a></b>. Isso é super importante caso você seja estudante da UFSC e queira estudar na UFSC semestre que vem!</p>
 		<p>Boa sorte na matrícula! :D</p>
-		<p><em>Equipe MatrUFSC</em></p>
+		<p><em>Equipe MatrUFSC2</em></p>
 	</li>
 </ol>
