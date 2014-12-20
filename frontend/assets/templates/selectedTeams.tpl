@@ -1,8 +1,6 @@
 <thead>
 	<tr>
-		<th>
-			Opções
-		</th>
+		<th></th>
 		<th>
 			Turma
 		</th>

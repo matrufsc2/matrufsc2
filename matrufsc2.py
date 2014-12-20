@@ -1,7 +1,11 @@
 import json
+import urllib
 from flask import Flask, request, g, got_request_exception
 import os
+import re
+import urllib2
 from google.appengine.api import memcache
+from google.appengine.api.urlfetch import fetch
 from app import api
 from app.json_serializer import JSONEncoder
 from app.robot.robot import Robot
@@ -18,8 +22,10 @@ except ImportError:
 
 app = Flask(__name__)
 
+bots_re = re.compile("(baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link preview|showyoubot|outbrain|pinterest|slackbot)", re.IGNORECASE)
+prerender_re = re.compile("Prerender", re.IGNORECASE)
 
-IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower() or os.environ.has_key("DEV")
+IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower()
 
 if not IN_DEV:
     rollbar.init(
@@ -34,7 +40,7 @@ if not IN_DEV:
 logging = logging.getLogger("matrufsc2")
 
 CACHE_TIMEOUT = 600
-CACHE_KEY = "view/%s"
+CACHE_KEY = "view/%d/%s"
 
 
 def get_filename(filename):
@@ -51,17 +57,29 @@ retry = gcs.RetryParams(initial_delay=0.2,
 
 gcs.set_default_retry_params(retry)
 
+def can_prerender():
+    prerender = False
+    if request.args.has_key("_escaped_fragment_"):
+        prerender = True
+    user_agent = request.user_agent.string
+    if bots_re.search(user_agent):
+        prerender = True
+    if prerender_re.search(user_agent):
+        prerender = False
+    return prerender
 
 @app.before_request
 def return_cached():
-    if "update" not in request.path:
+    if request.method == "GET":
+        prerender = can_prerender()
         url_hash = hashlib.sha1(request.url).hexdigest()
-        response = memcache.get(CACHE_KEY % url_hash)
+        cache_key = CACHE_KEY % (int(prerender), url_hash)
+        response = memcache.get(cache_key)
         if response:
             logging.debug("Found item on memcached..Returning")
             g.ignoreMiddleware = True
             return response
-        filename = get_filename("cache/%s.json" % url_hash)
+        filename = get_filename(cache_key)
         try:
             gcs_file = gcs.open(filename, 'r')
             response = pickle.loads(gcs_file.read())
@@ -69,7 +87,7 @@ def return_cached():
             logging.debug("Found item on GCS..Returning")
             try:
                 logging.debug("Saving item on memcached..")
-                memcache.set(CACHE_KEY % hashlib.sha1(request.url).hexdigest(), response, CACHE_TIMEOUT)
+                memcache.set(cache_key, response, CACHE_TIMEOUT)
             except:
                 pass
             g.ignoreMiddleware = True
@@ -83,28 +101,34 @@ def return_cached():
 def cache_response(response):
     if g.get("ignoreMiddleware"):
         return response
-    response.headers["Cache-Control"] = "public, max-age=600"
-    response.headers["Pragma"] = "cache"
-    if "update" not in request.path:
+    if request.method == "GET":
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["Pragma"] = "cache"
+        prerender = can_prerender() and "/api/" not in request.base_url
         url_hash = hashlib.sha1(request.url).hexdigest()
+        cache_key = CACHE_KEY % (int(prerender), url_hash)
         try:
             logging.debug("Saving item on memcached..")
-            memcache.set(CACHE_KEY % url_hash, response, CACHE_TIMEOUT)
+            memcache.set(cache_key, response, CACHE_TIMEOUT)
         except:
             pass
         try:
-            filename = get_filename("cache/%s.json" % url_hash)
+            filename = get_filename(cache_key)
             gcs_file = gcs.open(filename, 'w', content_type="application/json")
             gcs_file.write(pickle.dumps(response))
             logging.debug("Saving item on GCS..")
             gcs_file.close()
         except:
             pass
+    else:
+        response.headers["Cache-Control"] = "private"
+        response.headers["Pragma"] = "no-cache"
+
     return response
 
 
 @app.route("/api/")
-def index():
+def api_index():
     return "", 404
 
 
@@ -154,12 +178,55 @@ def get_teams():
     result = list(api.get_teams(dict(request.args)))
     return serialize(result)
 
-
 @app.route("/api/teams/<idValue>/")
 def get_team(idValue):
     result = api.get_team(idValue)
     return serialize(result)
 
+@app.route("/api/short/", methods=["POST"])
+def short():
+    args = request.form
+    statusSessionKeys = [
+        "semester",
+        "campus",
+        "discipline",
+        "selectedDisciplines",
+        "disabledTeams",
+        "selectedCombination"
+    ]
+    num = 0
+    for key in statusSessionKeys:
+        if args.has_key(key):
+            num += 1
+    if num >= 2:
+        host = app_identity.get_default_version_hostname()
+        if "127.0.0.1" in host:
+            return "{}", 406, {"Content-Type": "application/json"}
+        content = {
+            "longUrl": "http://%s/?%s"%(host, urllib.urlencode(args))
+        }
+        content = json.dumps(content)
+        googl_api_key = "{{googl_api_key}}"
+        if "googl_api_key" not in googl_api_key:
+            googl_api_key = "?key=%s" % googl_api_key
+        else:
+            googl_api_key = ""
+        req = urllib2.Request(
+            "https://www.googleapis.com/urlshortener/v1/url%s"%googl_api_key,
+            content,
+            {
+                "Content-Type": "application/json"
+            }
+        )
+        handler = urllib2.urlopen(req)
+        content = handler.read()
+        content = json.loads(content)
+        short_url = content["id"]
+        return serialize({
+            "shortUrl": short_url
+        })
+    else:
+        return "{}", 406, {"Content-Type": "application/json"}
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
@@ -171,6 +238,30 @@ def update():
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
+
+@app.route("/")
+@app.route("/sobre/")
+def index():
+    prerender = can_prerender()
+    if prerender:
+        if IN_DEV:
+            prerender_url = "http://127.0.0.1:3000/%s" % request.url
+            prerender_headers = {}
+        else:
+            prerender_url = "http://service.prerender.io/%s" % request.url
+            prerender_headers= {"X-Prerender-Token": "{{prerender_token}}"}
+        handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,
+                        deadline=60, follow_redirects=False)
+        content = handler.content
+    else:
+        if IN_DEV:
+            prerender_filename = "frontend/views/index.html"
+        else:
+            prerender_filename = "frontend/views/index-optimize.html"
+        arq = open(prerender_filename)
+        content = arq.read()
+        arq.close()
+    return content, 200, {"Content-Type": "text/html; charset=UTF-8"}
 
 
 app.debug = IN_DEV

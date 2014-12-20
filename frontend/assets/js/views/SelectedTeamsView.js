@@ -114,7 +114,7 @@ define("views/SelectedTeamsView", [
 			this.group();
 			BaseView.prototype.render.apply(this, []);
 			Chaplin.CollectionView.prototype.render.apply(this, []);
-		},
+		}
 	});
 	_.extend(SelectedTeamsView.prototype,
 		_.omit(

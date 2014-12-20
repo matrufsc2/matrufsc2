@@ -1,4 +1,4 @@
-define("models/Campus", ["underscore", "models/CachedModel","collections/Disciplines"], function(_, CachedModel, Disciplines) {
+define("models/Campus", ["underscore", "models/CachedModel"], function(_, CachedModel) {
 	"use strict";
 	return CachedModel.extend({
 		"urlRoot": "/api/campi",

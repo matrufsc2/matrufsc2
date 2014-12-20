@@ -1,6 +1,7 @@
 define("models/Schedule", ["models/CachedModel", "moment"], function(CachedModel, moment) {
 	"use strict";
 	var hours =  ["07:30","08:20","09:10","10:10","11:00","13:30","14:20","15:10","16:20","17:10","18:30","19:20","20:20","21:10"];
+	var daysOfWeek = [null, 0, 1, 2, 3, 4, 5, 6];
 	return CachedModel.extend({
 		"defaults": {
 			"id": -1,
@@ -65,7 +66,7 @@ define("models/Schedule", ["models/CachedModel", "moment"], function(CachedModel
 		},
 		"getStart": function(){
 			var start = moment();
-			start.day(this.get("dayOfWeek"));
+			start.day(daysOfWeek[this.get("dayOfWeek")]);
 			start.hour(this.get("hourStart"));
 			start.minute(this.get("minuteStart"));
 			return start;
@@ -82,7 +83,7 @@ define("models/Schedule", ["models/CachedModel", "moment"], function(CachedModel
 			var hour = parseInt(hourParts[0]);
 			var minute = parseInt(hourParts[1]);
 			var end = moment();
-			end.day(this.get("dayOfWeek"));
+			end.day(daysOfWeek[this.get("dayOfWeek")]);
 			end.hour(hour);
 			end.minute(minute);
 			return end;

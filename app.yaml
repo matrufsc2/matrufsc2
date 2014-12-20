@@ -39,7 +39,7 @@ handlers:
   static_dir: frontend/public/font
   http_headers:
     #Cache-Control: private
-    Cache-Control: public, max-age=3600
+    Cache-Control: public, max-age=86400
     Pragma: cache
 
 - url: /api/.*
@@ -49,9 +49,9 @@ handlers:
   script: matrufsc2.app
   login: admin
 
-- url: /.*
-  static_files: frontend/views/index-optimize.html
-  upload: frontend/views/index-optimize.html
-  http_headers:
-    Cache-Control: public, max-age=3600
-    Pragma: cache
+- url: /
+  script: matrufsc2.app
+
+
+- url: /sobre/?
+  script: matrufsc2.app

@@ -3,9 +3,16 @@
 	border-top: 1px dotted #ccc;
 	padding-top: 5px;
 }
-#disciplines-resume table, #calendar table{
+.home-page table {
 	width: 100%;
 }
+
+@media only screen and (min-width: 40.063em)  and (max-width: 90em) {
+	.home-page table *{
+		padding: 0;
+	}
+
+} /* min-width 641px, medium screens */
 #teams-table-container {
 	padding-left: 0;
 }
