@@ -65,7 +65,6 @@ def can_prerender():
         prerender = True
     if prerender_re.search(user_agent):
         prerender = False
-    print prerender
     return prerender
 
 @app.before_request
@@ -104,7 +103,7 @@ def cache_response(response):
     if request.method == "GET":
         response.headers["Cache-Control"] = "public, max-age=3600"
         response.headers["Pragma"] = "cache"
-        prerender = can_prerender()
+        prerender = can_prerender() and "/api/" not in request.base_url
         url_hash = hashlib.sha1(request.url).hexdigest()
         cache_key = CACHE_KEY % (int(prerender), url_hash)
         try:
