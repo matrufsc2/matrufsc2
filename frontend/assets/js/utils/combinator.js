@@ -1,7 +1,6 @@
-define("utils/combinator", ["underscore"], function(_){
+define("utils/combinator", [], function(){
     "use strict";
     return function getCombinations(arr, n){
-        arr = _.clone(arr);
         var i,j,k,elem,l = arr.length,childperm,ret=[];
         if(n === 1){
             for(i=0; i < arr.length; i++){

@@ -1,6 +1,7 @@
 define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView, templates){
 	"use strict";
 	var hours = ["07:30","08:20","09:10","10:10","11:00","13:30","14:20","15:10","16:20","17:10","18:30","19:20","20:20","21:10"];
+	var daysOfWeek = [null, 1, 2, 3, 4, 5, 6, null];
 	return BaseView.extend({
 		"template": templates.calendar,
 		"tagName": "table",
@@ -14,8 +15,9 @@ define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView,
 					old = old.concat(discipline.team.schedules.map(function(schedule){
 						return {
 							"title": discipline.get("code"),
+							"name": discipline.get("name"),
 							"color": discipline.get("_color"),
-							"column": schedule.getStart().day(),
+							"column": daysOfWeek[schedule.getStart().day()],
 							"enabled": true,
 							"rowStart": schedule.getStartRow(),
 							"rowEnd": schedule.getEndRow()
@@ -27,7 +29,8 @@ define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView,
 						return {
 							"title": discipline.get("code"),
 							"color": discipline.get("_color"),
-							"column": schedule.getStart().day(),
+							"name": discipline.get("name"),
+							"column": daysOfWeek[schedule.getStart().day()],
 							"enabled": false,
 							"rowStart": schedule.getStartRow(),
 							"rowEnd": schedule.getEndRow()
@@ -45,6 +48,7 @@ define("views/CalendarView", ["views/BaseView", "templates"], function(BaseView,
 					}
 					matrixEvents[row][event.column] = {
 						"title": event.title,
+						"name": event.name,
 						"color": event.color,
 						"enabled": event.enabled
 					};

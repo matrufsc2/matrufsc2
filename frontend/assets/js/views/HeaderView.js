@@ -39,7 +39,20 @@ define("views/HeaderView", [
 			if (this.isHome() === false) {
 				return this.$("#go-to-home").foundation("reveal", "open");
 			} else {
-				this.$(".share-url").val(window.location.href);
+				this.$(".share-url").val("Carregando....");
+				var querystring = window.location.href.split("?", 2)[1];
+				$.ajax({
+					"url": "/api/short/",
+					"type": "POST",
+					"data": querystring,
+					"dataType": "json",
+					"success": function(data) {
+						$(".share-url").val(data.shortUrl);
+					},
+					"error": function() {
+						$(".share-url").val(window.location.href);
+					}
+				});
 				this.$("#share").foundation("reveal", "open");
 				$(".share-url").off("click.select").on("click.select", _.bind(this.selectURL, this));
 			}

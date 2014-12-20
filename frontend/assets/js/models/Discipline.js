@@ -32,6 +32,11 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			this.hoveredTeam = null;
 			CachedModel.prototype.initialize.apply(this, _.toArray(arguments));
 		},
+		"isDisciplineEnabled": function(){
+			return this.teams.reduce(function(old, team) {
+				return old || team.get("_selected");
+			}, false);
+		},
 		"select": function(){
 			if (this.id === -1) {
 				throw "Discipline ID not defined!";

@@ -40,7 +40,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				while(!color) {
 					color = Please.make_color({
 						"saturation": 0.5,
-						"value": 0.8
+						"value": (Math.floor(Math.random()*25)+75)/100
 					});
 					if(collection.findWhere({"_color": color}) !== undefined) {
 						color = null;
@@ -62,31 +62,41 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 			.then(this.selectCombination);
 		},
 		"detectCombinations": function(){
+			var onGetSchedule = function(schedule) {
+				return schedule.get("hourStart")+":"+schedule.get("minuteStart")+":"+schedule.get("dayOfWeek")+":"+schedule.get("classRepeat");
+			};
+			var onGetTeam = function(team) {
+				return _.map(team.schedules.sortBy(onGetSchedule), onGetSchedule).join("|");
+			};
 			var teams = this.reduce(function(old, discipline){
 				discipline.team = null;
 				var modelTeams = discipline.teams.clone();
-				return old.concat(modelTeams.map(function(team){
-					team.discipline = discipline;
-					return team;
-				}));
-			}, []);
-			teams = _.filter(teams, function(team){
-				return team.get("_selected");
-			});
-			var combinations = combinator(_.map(teams, function(team){
-				return [team];
-			}), _.reduce(teams, function(old, team) {
-				if(old.indexOf(team.discipline.get("code")) === -1){
-					old.push(team.discipline.get("code"));
+				var uniqueSchedules = [];
+				modelTeams = modelTeams.filter(function(team) {
+					if (!team.get("_selected")) {
+						return false;
+					}
+					var schedule = onGetTeam(team);
+					var result = uniqueSchedules.indexOf(schedule) === -1;
+					if (result) {
+						uniqueSchedules.push(schedule);
+					}
+					return result;
+				});
+				if (modelTeams.length > 0) {
+					old.push(_.map(modelTeams, function(team) {
+						team.discipline = discipline;
+						return team;
+					}));
 				}
 				return old;
-			}, []).length);
+			}, []);
+			var combinations = combinator(_.clone(teams), teams.length);
 			this.map(function(discipline) {
-				discipline.set("_blink", false);
 				discipline.unset("_title");
 			});
 			var disciplinesConflicted = {};
-			this.combinationsAvailable = _.filter(combinations, function(combination){
+			var combinationsAvailable = _.filter(combinations, function(combination){
 				var disciplines = [];
 				for(var c=combination.length; c--;) {
 					if(disciplines.indexOf(combination[c].discipline.id) !== -1) {
@@ -116,22 +126,33 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				}
 				return true;
 			});
-			if (this.combinationsAvailable.length === 0 && teams.length > 0) {
-				_.each(disciplinesConflicted, function(teamsDiscipline, discipline_id) {
-					var teamsSelected = _.filter(teams, function(team){
-						return team.discipline.id === discipline_id;
-					});
+			var conflictDetected = false;
+			if (combinationsAvailable.length === 0 && teams.length > 0) {
+				conflictDetected =_.reduce(disciplinesConflicted, function(old, teamsDiscipline, discipline_id) {
+					var teamsSelected = _.reduce(teams, function(old, disciplineTeams){
+						if(old.length > 0) {
+							return old;
+						}
+						if(_.every(disciplineTeams, function(team) {
+							return team.discipline.id === discipline_id;
+						})) {
+							return disciplineTeams;
+						}
+						return old;
+					}, []);
 					var disciplineConflict = _.every(teamsSelected, function(team) {
 						return teamsDiscipline.indexOf(team.id) > -1;
 					});
 					if (disciplineConflict) {
 						var discipline = this.get(discipline_id);
-						discipline.set("_blink", true);
 						discipline.set("_title", "Esta disciplina esta impedindo a geracao de uma combinacao valida");
 					}
-				}, this);
+					return disciplineConflict || old;
+				}, conflictDetected, this);
 			}
-
+			if (!conflictDetected) {
+				this.combinationsAvailable = combinationsAvailable;
+			}
 		},
 		"combinationCount": function(){
 			return this.combinationsAvailable.length;

@@ -57,23 +57,41 @@ define("controllers/HomeController", [
 				"selectedCombination"
 			];
 			var statusSession = _.pick(request.query, statusSessionKeys) || {};
+			function purify(id, type) {
+				return (id || "").replace("matrufsc2-"+type+"-", "");
+			}
+			function unpurify(id, type) {
+				return "matrufsc2-"+type+"-"+purify(id, type);
+			}
 			var updateURL = _.bind(function() {
 				if (this.disposed || !this.status || !this.selectedDisciplines) {
 					return;
 				}
 				var urlQuery = {};
-				urlQuery.semester = this.status.get("semester");
-				urlQuery.campus = this.status.get("campus");
-				urlQuery.discipline = this.status.get("discipline");
+				urlQuery.semester = purify(this.status.get("semester"), "semester");
+				urlQuery.campus = purify(this.status.get("campus"), "campus");
+				var title = "";
+				if (this.status.get("semester")) {
+					var semester = this.semesters.get(this.status.get("semester"));
+					title += "Semestre " + semester.get("name");
+					if (this.status.get("campus")) {
+						var campus = this.campi.get(this.status.get("campus"));
+						title += " - Campus "+campus.get("name");
+					}
+				}
+				this.adjustTitle(title);
+				if(this.status.get("discipline")) {
+					urlQuery.discipline = purify(this.status.get("discipline"), "discipline");
+				}
 				var selectedDisciplines = [];
 				var disabledTeams = [];
 				this.selectedDisciplines.each(function (discipline) {
-					selectedDisciplines.push(discipline.id);
+					selectedDisciplines.push(purify(discipline.id, "discipline"));
 					discipline.teams.each(function (team) {
 						if (team.get("_selected")) {
 							return;
 						}
-						disabledTeams.push(team.id);
+						disabledTeams.push(purify(team.id, "team"));
 					});
 				});
 				urlQuery.selectedDisciplines = selectedDisciplines;
@@ -90,24 +108,19 @@ define("controllers/HomeController", [
 				if (statusSession.disabledTeams && !_.isArray(statusSession.disabledTeams)) {
 					statusSession.disabledTeams = [statusSession.disabledTeams];
 				}
-				this.semesters.once("sync", function(){
-					this.status.once("change:campus", function() {
-						this.disciplines.on("sync", function disciplinesLoaded(){
-							if (!_.has(statusSession, "selectedDisciplines")) {
-								this.status.on("change", updateURL);
-								this.selectedDisciplines.on("change change:combination", updateURL);
-								return;
-							}
-							_.each(statusSession.selectedDisciplines || [], function(selectedDiscipline){
-								var discipline = this.disciplines.get(selectedDiscipline);
+				this.semesters.once("sync", function () {
+					this.status.once("change:campus", function () {
+						this.disciplines.on("sync", function disciplinesLoaded() {
+							_.each(statusSession.selectedDisciplines || [], function (selectedDiscipline) {
+								var discipline = this.disciplines.get(unpurify(selectedDiscipline, "discipline"));
 								if (!discipline) {
 									return;
 								}
 								this.disciplines.off("sync", disciplinesLoaded, this);
-								discipline.select().bind(this).then(function(){
+								discipline.select().bind(this).then(function () {
 									Promise.all(
-										_.map(statusSession.disabledTeams || [], function(disabledTeam) {
-											var team = discipline.teams.get(disabledTeam);
+										_.map(statusSession.disabledTeams || [], function (disabledTeam) {
+											var team = discipline.teams.get(unpurify(disabledTeam, "team"));
 											if (team) {
 												team.set({"_selected": false});
 												return this.selectedDisciplines.updateCombinations();
@@ -115,17 +128,17 @@ define("controllers/HomeController", [
 												return Promise.resolve();
 											}
 										}, this)
-										)
+									)
 										.then(
-											this.selectedDisciplines.updateCombinations(
-												parseInt(statusSession.selectedCombination) || 0
-											)
+										this.selectedDisciplines.updateCombinations(
+											parseInt(statusSession.selectedCombination) || 0
 										)
-										.bind(this).then(function(){
+									)
+										.bind(this).then(function () {
 											this.selectedDisciplines.trigger("change:combination");
 											if (_.has(statusSession, "discipline")) {
 												this.status.set({
-													"discipline": statusSession.discipline
+													"discipline": unpurify(statusSession.discipline, "discipline")
 												});
 											}
 										});
@@ -133,17 +146,16 @@ define("controllers/HomeController", [
 							}, this);
 						}, this);
 						this.status.set({
-							"campus": statusSession.campus
+							"campus": unpurify(statusSession.campus, "campus")
 						});
 					}, this);
 					this.status.set({
-						"semester": statusSession.semester
+						"semester": unpurify(statusSession.semester, "semester")
 					});
 				}, this);
-			} else {
-				this.status.on("change", updateURL);
-				this.selectedDisciplines.on("change change:combination", updateURL);
 			}
+			this.status.on("change", updateURL);
+			this.selectedDisciplines.on("change change:combination", updateURL);
 			this.status.listenEvents();
 		}
 	});

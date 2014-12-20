@@ -101,6 +101,11 @@ define("models/Team", ["underscore", "models/CachedModel", "collections/Teachers
 				this.schedules.set(schedules, {"reset": true});
 			}, this);
 			CachedModel.prototype.initialize.apply(this, _.toArray(arguments));
+		},
+		"getNumberOfLessons": function(){
+			return this.schedules.reduce(function(total, schedule) {
+				return total + schedule.get("numberOfLessons");
+			}, 0);
 		}
 	});
 });

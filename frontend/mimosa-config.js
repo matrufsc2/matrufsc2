@@ -1,3 +1,5 @@
+var cssurl = require("cssurl");
+var translator = new cssurl.URLTranslator();
 exports.config = {
   "modules": [
     "copy",
@@ -68,8 +70,15 @@ exports.config = {
     "folders": [{
       "folder"  : "css/",
       "output"  : "css/main.css",
-      "exclude" : ["vendor/mocha/mocha.css"],
-      "order"   : null
+      "exclude" : ["vendor/mocha/mocha.css", "vendor/foundation/foundation.css.map"],
+      "order"   : null,
+      "transforms": [function(inputText,inputName,outputName) {
+        "use strict";
+        var rewriter = new cssurl.URLRewriter(function(url) {
+          return translator.translate(url, inputName, outputName);
+        });
+        return rewriter.rewrite(inputText);
+      }]
     }],
     "removeCombined": {
       "enabled" : true,
