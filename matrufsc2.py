@@ -5,6 +5,7 @@ import os
 import re
 import urllib2
 from google.appengine.api import memcache
+from google.appengine.api.urlfetch import fetch
 from app import api
 from app.json_serializer import JSONEncoder
 from app.robot.robot import Robot
@@ -245,11 +246,12 @@ def index():
     if prerender:
         if IN_DEV:
             prerender_url = "http://127.0.0.1:3000/%s" % request.url
-            handler_request = urllib2.Request(prerender_url)
+            prerender_headers = {}
         else:
             prerender_url = "http://service.prerender.io/%s" % request.url
-            handler_request = urllib2.Request(prerender_url, headers={"X-Prerender-Token": "{{prerender_token}}"})
-        handler = urllib2.urlopen(handler_request)
+            prerender_headers= {"X-Prerender-Token": "{{prerender_token}}"}
+        handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,
+                        deadline=60, follow_redirects=False)
         content = handler.read()
         handler.close()
     else:
