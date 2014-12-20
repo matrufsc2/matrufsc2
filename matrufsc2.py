@@ -1,4 +1,5 @@
 import json
+import urllib
 from flask import Flask, request, g, got_request_exception
 import os
 import re
@@ -173,12 +174,55 @@ def get_teams():
     result = list(api.get_teams(dict(request.args)))
     return serialize(result)
 
-
 @app.route("/api/teams/<idValue>/")
 def get_team(idValue):
     result = api.get_team(idValue)
     return serialize(result)
 
+@app.route("/api/short/", methods=["POST"])
+def short():
+    args = request.form
+    statusSessionKeys = [
+        "semester",
+        "campus",
+        "discipline",
+        "selectedDisciplines",
+        "disabledTeams",
+        "selectedCombination"
+    ]
+    num = 0
+    for key in statusSessionKeys:
+        if args.has_key(key):
+            num += 1
+    if num >= 2:
+        host = app_identity.get_default_version_hostname()
+        if "127.0.0.1" in host:
+            return "{}", 406, {"Content-Type": "application/json"}
+        content = {
+            "longUrl": "http://%s/?%s"%(host, urllib.urlencode(args))
+        }
+        content = json.dumps(content)
+        googl_api_key = "{{googl_api_key}}"
+        if "googl_api_key" not in googl_api_key:
+            googl_api_key = "?key=%s" % googl_api_key
+        else:
+            googl_api_key = ""
+        req = urllib2.Request(
+            "https://www.googleapis.com/urlshortener/v1/url%s"%googl_api_key,
+            content,
+            {
+                "Content-Type": "application/json"
+            }
+        )
+        handler = urllib2.urlopen(req)
+        content = handler.read()
+        content = json.loads(content)
+        short_url = content["id"]
+        return serialize({
+            "shortUrl": short_url
+        })
+    else:
+        return "", 406, {"Content-Type": "application/json"}
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
