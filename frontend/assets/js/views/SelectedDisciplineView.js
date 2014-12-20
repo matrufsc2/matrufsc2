@@ -1,8 +1,9 @@
 define("views/SelectedDisciplineView", [
 		"templates",
 		"jquery",
+		"underscore",
 		"views/BaseView"
-		], function(templates, $, BaseView){
+		], function(templates, $, _, BaseView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.selectedDiscipline,
@@ -16,6 +17,7 @@ define("views/SelectedDisciplineView", [
 		},
 		"initialize": function(options) {
 			this.status = options.status;
+			this.blinkId = null;
 			this.listenTo(this.model.teams, "syncStateChange", this.render);
 		},
 		"getTemplateData": function(){
@@ -60,6 +62,21 @@ define("views/SelectedDisciplineView", [
 		},
 		"render": function(){
 			BaseView.prototype.render.apply(this, []);
+			if (this.model.has("_title") && this.blinkId === null) {
+				this.blinkId = _.delay(function blink(view, status){
+					if (!view.model.has("_title")) {
+						view.$(".title").css("opacity", 1);
+						view.blinkId = null;
+						return;
+					}
+					var opacity = view.$(".title").css("opacity");
+					view.$(".title").animate({
+						"opacity": status ? 1 : 0.5
+					}, 400, 'swing', function(){
+						view.blinkId = _.delay(blink, 500, view, !status);
+					});
+				}, 500, this, false);
+			}
 			this.$el.css("background-color", this.model.get("_color"));
 		}
 	});

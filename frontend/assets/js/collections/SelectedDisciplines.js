@@ -72,7 +72,7 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				discipline.team = null;
 				var modelTeams = discipline.teams.clone();
 				var uniqueSchedules = [];
-				return old.concat(_.map(modelTeams.filter(function(team) {
+				modelTeams = modelTeams.filter(function(team) {
 					if (!team.get("_selected")) {
 						return false;
 					}
@@ -82,24 +82,21 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 						uniqueSchedules.push(schedule);
 					}
 					return result;
-				}), function(team) {
-					team.discipline = discipline;
-					return team;
-				}));
-			}, []);
-			var combinations = combinator(_.map(teams, function(team){
-				return [team];
-			}), _.reduce(teams, function(old, team) {
-				if(old.indexOf(team.discipline.get("code")) === -1){
-					old.push(team.discipline.get("code"));
+				});
+				if (modelTeams.length > 0) {
+					old.push(_.map(modelTeams, function(team) {
+						team.discipline = discipline;
+						return team;
+					}));
 				}
 				return old;
-			}, []).length);
+			}, []);
+			var combinations = combinator(_.clone(teams), teams.length);
 			this.map(function(discipline) {
 				discipline.unset("_title");
 			});
 			var disciplinesConflicted = {};
-			this.combinationsAvailable = _.filter(combinations, function(combination){
+			var combinationsAvailable = _.filter(combinations, function(combination){
 				var disciplines = [];
 				for(var c=combination.length; c--;) {
 					if(disciplines.indexOf(combination[c].discipline.id) !== -1) {
@@ -129,11 +126,20 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				}
 				return true;
 			});
-			if (this.combinationsAvailable.length === 0 && teams.length > 0) {
-				_.each(disciplinesConflicted, function(teamsDiscipline, discipline_id) {
-					var teamsSelected = _.filter(teams, function(team){
-						return team.discipline.id === discipline_id;
-					});
+			var conflictDetected = false;
+			if (combinationsAvailable.length === 0 && teams.length > 0) {
+				conflictDetected =_.reduce(disciplinesConflicted, function(old, teamsDiscipline, discipline_id) {
+					var teamsSelected = _.reduce(teams, function(old, disciplineTeams){
+						if(old.length > 0) {
+							return old;
+						}
+						if(_.every(disciplineTeams, function(team) {
+							return team.discipline.id === discipline_id;
+						})) {
+							return disciplineTeams;
+						}
+						return old;
+					}, []);
 					var disciplineConflict = _.every(teamsSelected, function(team) {
 						return teamsDiscipline.indexOf(team.id) > -1;
 					});
@@ -141,9 +147,12 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 						var discipline = this.get(discipline_id);
 						discipline.set("_title", "Esta disciplina esta impedindo a geracao de uma combinacao valida");
 					}
-				}, this);
+					return disciplineConflict || old;
+				}, conflictDetected, this);
 			}
-
+			if (!conflictDetected) {
+				this.combinationsAvailable = combinationsAvailable;
+			}
 		},
 		"combinationCount": function(){
 			return this.combinationsAvailable.length;
