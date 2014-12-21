@@ -60,18 +60,21 @@ gcs.set_default_retry_params(retry)
 def can_prerender():
     prerender = False
     if request.args.has_key("_escaped_fragment_"):
+        logging.debug("Pre-rendering because of _escaped_fragment_ parameter")
         prerender = True
     user_agent = request.user_agent.string
     if bots_re.search(user_agent):
+        logging.debug("Pre-rendering because of user-agent")
         prerender = True
     if prerender_re.search(user_agent):
+        logging.debug("Disabling Pre-rendering because of user-agent")
         prerender = False
     return prerender
 
 @app.before_request
 def return_cached():
     if request.method == "GET":
-        prerender = can_prerender()
+        prerender = can_prerender() and "/api/" not in request.base_url
         url_hash = hashlib.sha1(request.url).hexdigest()
         cache_key = CACHE_KEY % (int(prerender), url_hash)
         response = memcache.get(cache_key)
@@ -250,17 +253,24 @@ def index():
         else:
             prerender_url = "http://service.prerender.io/%s" % request.url
             prerender_headers= {"X-Prerender-Token": "{{prerender_token}}"}
-        handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,
-                        deadline=60, follow_redirects=False)
-        content = handler.content
-    else:
+        try:
+            logging.debug("Fetching prerender...")
+            handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,
+                            deadline=60, follow_redirects=False)
+            content = handler.content
+            logging.debug("Prerender returned %d bytes...", len(content))
+        except:
+            prerender = False
+    if not prerender:
         if IN_DEV:
-            prerender_filename = "frontend/views/index.html"
+            filename = "frontend/views/index.html"
         else:
-            prerender_filename = "frontend/views/index-optimize.html"
-        arq = open(prerender_filename)
+            filename = "frontend/views/index-optimize.html"
+        arq = open(filename)
         content = arq.read()
         arq.close()
+        logging.debug("Reading %d bytes from HTML file", len(content))
+    logging.debug("Sending %d bytes", len(content))
     return content, 200, {"Content-Type": "text/html; charset=UTF-8"}
 
 
