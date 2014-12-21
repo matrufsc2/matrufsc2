@@ -1,5 +1,6 @@
 import json
 import urllib
+import urlparse
 from flask import Flask, request, g, got_request_exception
 import os
 import re
@@ -199,7 +200,7 @@ def get_team(idValue):
 
 @app.route("/api/short/", methods=["POST"])
 def short():
-    args = request.form
+    args = urlparse.parse_qs(request.get_data(as_text=True))
     statusSessionKeys = [
         "semester",
         "campus",
@@ -208,17 +209,18 @@ def short():
         "disabledTeams",
         "selectedCombination"
     ]
-    num = 0
+    filtered_args = {}
     for key in statusSessionKeys:
         if args.has_key(key):
-            num += 1
-    if num >= 2:
+            filtered_args[key] = args[key]
+    if len(filtered_args) >= 2:
         host = app_identity.get_default_version_hostname()
         if "127.0.0.1" in host:
             return "{}", 406, {"Content-Type": "application/json"}
         content = {
-            "longUrl": "http://%s/?%s"%(host, urllib.urlencode(args))
+            "longUrl": "http://%s/?%s"%(host, urllib.urlencode(filtered_args, True))
         }
+        logging.debug("Shortening '%s'", content["longUrl"])
         content = json.dumps(content)
         googl_api_key = "{{googl_api_key}}"
         if "googl_api_key" not in googl_api_key:
