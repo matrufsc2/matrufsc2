@@ -1,0 +1,1 @@
+<a href="<%- model.get('url') %>" title="<%- model.getFormattedDate() %>"><%- model.getFormattedRelativeDate() %></a>

@@ -1,7 +1,7 @@
  <div class="top-bar" data-topbar role="navigation">
     <ul class="title-area">
         <li class="name">
-            <h1><a href="/">MatrUFSC2</a></h1>
+            <h1><a href="/"><img src="/img/logo.png" border="0" alt="MatrUFSC2" /></a></h1>
         </li>
     </ul>
 
@@ -14,6 +14,10 @@
             <li><a href="javascript:void(0);" class="share">Compartilhar</a></li>
             <li class="divider"></li>
             <li><a href="javascript:void(0);" class="alert button expand start-tour">Como usar</a></li>
+            <li class="divider"></li>
+            <li class="has-dropdown history">
+                <a href="#">Historico</a>
+            </li>
         </ul>
     </section>
 </div>
