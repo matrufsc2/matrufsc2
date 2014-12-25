@@ -8,6 +8,7 @@ require.config({
 		"tv4"          : "vendor/tv4/tv4",
 		"es5-shim"     : "vendor/es5-shim/es5-shim",
 		"moment"       : "vendor/moment/moment",
+		"moment-pt-br" : "vendor/moment/pt-br",
 		"foundation"   : "vendor/foundation/foundation",
 		"modernizr"    : "vendor/modernizr/modernizr",
 		"mocha"        : "vendor/mocha/mocha",
@@ -18,6 +19,7 @@ require.config({
 		"select2"	   : "vendor/select2/select2",
 		"please"       : "vendor/pleasejs/Please",
 		"diacritic"    : "vendor/diacritic/diacritics",
+		"backbone.localStorage" : "vendor/backbone.localStorage/backbone.localStorage",
 		"testem"       : "../testem"
 	},
 	"shim" : {

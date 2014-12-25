@@ -7,6 +7,7 @@ import re
 import urllib2
 from google.appengine.api import memcache
 from google.appengine.api.urlfetch import fetch
+import zlib
 from app import api
 from app.json_serializer import JSONEncoder
 from app.robot.robot import Robot
@@ -81,17 +82,26 @@ def return_cached():
         response = memcache.get(cache_key)
         if response:
             logging.debug("Found item on memcached..Returning")
+            try:
+                response = pickle.loads(zlib.decompress(response))
+            except:
+                pass
             g.ignoreMiddleware = True
             return response
         filename = get_filename(cache_key)
         try:
             gcs_file = gcs.open(filename, 'r')
-            response = pickle.loads(gcs_file.read())
+            content = gcs_file.read()
+            try:
+                response = pickle.loads(zlib.decompress(content))
+            except:
+                response = pickle.loads(content)
             gcs_file.close()
             logging.debug("Found item on GCS..Returning")
+            compressed_response = zlib.compress(pickle.dumps(response))
             try:
                 logging.debug("Saving item on memcached..")
-                memcache.set(cache_key, response, CACHE_TIMEOUT)
+                memcache.set(cache_key, compressed_response, CACHE_TIMEOUT)
             except:
                 pass
             g.ignoreMiddleware = True
@@ -111,15 +121,16 @@ def cache_response(response):
         prerender = can_prerender() and "/api/" not in request.base_url
         url_hash = hashlib.sha1(request.url).hexdigest()
         cache_key = CACHE_KEY % (int(prerender), url_hash)
+        compressed_response = zlib.compress(pickle.dumps(response))
         try:
             logging.debug("Saving item on memcached..")
-            memcache.set(cache_key, response, CACHE_TIMEOUT)
+            memcache.set(cache_key, compressed_response, CACHE_TIMEOUT)
         except:
             pass
         try:
             filename = get_filename(cache_key)
             gcs_file = gcs.open(filename, 'w', content_type="application/json")
-            gcs_file.write(pickle.dumps(response))
+            gcs_file.write(compressed_response)
             logging.debug("Saving item on GCS..")
             gcs_file.close()
         except:

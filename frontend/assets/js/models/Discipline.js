@@ -63,7 +63,7 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 				"_selected": false
 			});
 			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
-				this.teams.map(function(model){
+				this.teams.each(function(model){
 					model.set({
 						"_selected": false
 					});

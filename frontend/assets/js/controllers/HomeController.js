@@ -93,32 +93,69 @@ define("controllers/HomeController", [
 						disabledTeams.push(purify(team.id, "team"));
 					});
 				});
-				urlQuery.selectedDisciplines = selectedDisciplines;
-				urlQuery.disabledTeams = disabledTeams;
+				urlQuery.selectedDisciplines = selectedDisciplines.join(",");
+				urlQuery.disabledTeams = disabledTeams.join(",");
 				urlQuery.selectedCombination = this.selectedDisciplines.getSelectedCombination();
+				if(!urlQuery.semester || !urlQuery.campus) {
+					return;
+				}
 				var url = Chaplin.utils.reverse("Home#index", urlQuery);
 				Backbone.history.navigate(url, {"trigger": false, "replace": false});
+				var urlClean = Chaplin.utils.reverse(
+					"Home#index",
+					_.omit(
+						urlQuery,
+						"discipline",
+						"selectedCombination"
+					)
+				);
+				var history = this.getHistory();
+				var model = history.findWhere({
+					"url": urlClean
+				});
+				if (!model) {
+					model = history.create({
+						"url": urlClean
+					});
+				}
+				model.save();
+				history.sort();
+				while (history.length > 10) {
+					model = history.pop();
+					model.collection = history;
+					model.destroy();
+				}
+				this.getHeader().render();
+			}, this);
+			var listen = _.bind(function(){
+				this.status.off("change", updateURL);
+				this.selectedDisciplines.off("change change:combination", updateURL);
+				this.status.on("change", updateURL);
+				this.selectedDisciplines.on("change change:combination", updateURL);
 			}, this);
 			if (_.size(statusSession) >= 2) {
 				// Well, Here we can load based on data in the querystring :D
 				if (statusSession.selectedDisciplines && !_.isArray(statusSession.selectedDisciplines)) {
-					statusSession.selectedDisciplines = [statusSession.selectedDisciplines];
+					statusSession.selectedDisciplines = statusSession.selectedDisciplines.split(",");
 				}
 				if (statusSession.disabledTeams && !_.isArray(statusSession.disabledTeams)) {
-					statusSession.disabledTeams = [statusSession.disabledTeams];
+					statusSession.disabledTeams = statusSession.disabledTeams.split(",");
 				}
+				statusSession.selectedCombination = parseInt(statusSession.selectedCombination) || 0;
+				statusSession.disabledTeams = statusSession.disabledTeams || [];
+				statusSession.selectedDisciplines = statusSession.selectedDisciplines || [];
 				this.semesters.once("sync", function () {
 					this.status.once("change:campus", function () {
 						this.disciplines.on("sync", function disciplinesLoaded() {
-							_.each(statusSession.selectedDisciplines || [], function (selectedDiscipline) {
+							Promise.all(_.map(statusSession.selectedDisciplines, function (selectedDiscipline) {
 								var discipline = this.disciplines.get(unpurify(selectedDiscipline, "discipline"));
 								if (!discipline) {
-									return;
+									return Promise.reject();
 								}
 								this.disciplines.off("sync", disciplinesLoaded, this);
-								discipline.select().bind(this).then(function () {
-									Promise.all(
-										_.map(statusSession.disabledTeams || [], function (disabledTeam) {
+								return discipline.select().bind(this).then(function () {
+									return Promise.all(
+										_.map(statusSession.disabledTeams, function (disabledTeam) {
 											var team = discipline.teams.get(unpurify(disabledTeam, "team"));
 											if (team) {
 												team.set({"_selected": false});
@@ -128,21 +165,21 @@ define("controllers/HomeController", [
 											}
 										}, this)
 									)
-										.then(
+									.then(
 										this.selectedDisciplines.updateCombinations(
-											parseInt(statusSession.selectedCombination) || 0
+											statusSession.selectedCombination
 										)
 									)
-										.bind(this).then(function () {
-											this.selectedDisciplines.trigger("change:combination");
-											if (_.has(statusSession, "discipline")) {
-												this.status.set({
-													"discipline": unpurify(statusSession.discipline, "discipline")
-												});
-											}
-										});
+									.bind(this).then(function () {
+										this.selectedDisciplines.trigger("change:combination");
+										if (_.has(statusSession, "discipline")) {
+											this.status.set({
+												"discipline": unpurify(statusSession.discipline, "discipline")
+											});
+										}
+									});
 								});
-							}, this);
+							}, this)).then(listen, function(){});
 						}, this);
 						this.status.set({
 							"campus": unpurify(statusSession.campus, "campus")
@@ -152,9 +189,9 @@ define("controllers/HomeController", [
 						"semester": unpurify(statusSession.semester, "semester")
 					});
 				}, this);
+			} else {
+				listen();
 			}
-			this.status.on("change", updateURL);
-			this.selectedDisciplines.on("change change:combination", updateURL);
 			this.status.listenEvents();
 		}
 	});
