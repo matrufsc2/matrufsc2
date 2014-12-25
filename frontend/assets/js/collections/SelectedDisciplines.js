@@ -30,6 +30,11 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 				this.query();
 				this.updateCombinations();
 			}
+			this.listenTo(options.status, "change:campus", function(){
+				this.each(function(discipline) {
+					discipline.unselect();
+				});
+			});
 		},
 		"updateCombinations": function(defaultCombination){
 			var collection = this;

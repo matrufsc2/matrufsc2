@@ -60,6 +60,7 @@ exports.config = {
       "mainOverrides": {
         "mocha"     : ["mocha.js", "mocha.css"],
         "modernizr" : ["modernizr.js"],
+        "moment"    : ["moment.js", "lang/pt-br.js"],
         "expect"    : ["index.js"],
         "pleasejs"  : ["dist/Please.js"],
         "diacritic": ["diacritics.js"]

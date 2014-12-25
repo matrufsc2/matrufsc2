@@ -2,8 +2,9 @@ define("views/HeaderView", [
 	"templates",
 	"views/BaseView",
 	"jquery",
-	"underscore"
-], function(templates, BaseView, $, _){
+	"underscore",
+	"views/HistoricListView",
+], function(templates, BaseView, $, _, HistoricListView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.header,
@@ -16,8 +17,10 @@ define("views/HeaderView", [
 			"click .start-tour": "startTour",
 			"click .share": "share"
 		},
-		"initialize": function(route) {
-			this.activateMenuItem(route);
+		"initialize": function(options) {
+			BaseView.prototype.initialize.call(this, options);
+			this.historyCollectionGetter = options.historyCollectionGetter;
+			this.activateMenuItem(options.route);
 		},
 		"startTour": function(e){
 			e.preventDefault();
@@ -72,6 +75,13 @@ define("views/HeaderView", [
 			this.applyFoundation();
 			this.$("li.active").removeClass("active");
 			this.$("a[href='/"+this.route.path+"']").parents("li").addClass("active");
+			var history = this.$(".history");
+			this.subview("history", new HistoricListView({
+				"collection": this.historyCollectionGetter(),
+				"container": history,
+				"url": "/"+this.route.path+"?"+this.route.query
+			}));
+			history.removeClass("active");
 		}
 	});
 });
