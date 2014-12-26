@@ -1,7 +1,7 @@
 import logging
 
 from app.repositories import CampusRepository, DisciplinesRepository, TeamsRepository, SemesterRepository
-from app.decorators import cacheable, pageable, searchable
+from app.decorators import cacheable, searchable
 
 
 __author__ = 'fernando'
@@ -32,7 +32,6 @@ def get_campus(id_value):
     repository = CampusRepository()
     return repository.find_by_id(id_value).get_result()
 
-@pageable
 @searchable
 @cacheable(consider_only=['campus'])
 def get_disciplines(filters):
