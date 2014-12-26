@@ -1,4 +1,4 @@
-define("models/Discipline", ["underscore", "models/CachedModel","collections/Teams"], function(_, CachedModel, Teams) {
+	define("models/Discipline", ["underscore", "models/CachedModel","collections/Teams"], function(_, CachedModel, Teams) {
 	"use strict";
 	return CachedModel.extend({
 		"defaults": {
@@ -7,6 +7,7 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			"name": "Sem nome",
 			"_selected": false
 		},
+		"urlRoot": "/api/disciplines/",
 		"validator": {
 			"type"     : "object",
 			"required" : ["id", "code", "name"],
@@ -42,9 +43,6 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 				throw "Discipline ID not defined!";
 			}
 			this.teams.url = "/api/teams/?discipline="+this.id;
-			this.set({
-				"_selected": true
-			});
 			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
 				this.teams.map(function(model){
 					model.set({
@@ -58,10 +56,8 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			if (this.id === -1) {
 				throw "Discipline ID not defined!";
 			}
+			this.destroy();
 			this.teams.url = "/api/teams/?discipline="+this.id;
-			this.set({
-				"_selected": false
-			});
 			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
 				this.teams.each(function(model){
 					model.set({
@@ -72,30 +68,18 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			return this.teamsRequest;
 		},
 		"moveUp": function (){
-			if(!this.collection) {
-				throw "Cannot move up without a collection defined";
-			}
 			this.collection.moveUp(this);
 		},
 		"moveDown": function (){
-			if(!this.collection) {
-				throw "Cannot move down without a collection defined";
-			}
 			this.collection.moveDown(this);
 		},
 		"position": function(){
-			if(!this.collection) {
-				throw "Cannot get a position in the collection without a collection defined";
-			}
 			return this.collection.indexOf(this);
 		},
 		"isFirst": function(){
 			return this.position() === 0;
 		},
 		"isLast": function(){
-			if(!this.collection) {
-				throw "Cannot get a position in the collection without a collection defined";
-			}
 			return this.position() === this.collection.length - 1;
 		},
 		"dispose": function(){

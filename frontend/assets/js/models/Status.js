@@ -8,10 +8,8 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 		},
 		"initialize": function(attributes, options) {
 			CachedModel.prototype.initialize.call(this, attributes, options);
-			this.disciplines = options.disciplines;
 			this.campi = options.campi;
 			this.semesters = options.semesters;
-			this.disciplinesRequest = null;
 			this.campiRequest = null;
 			this.semestersRequest = null;
 		},
@@ -54,20 +52,6 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 					"campus": this.campi.at(0).id
 				});
 			});
-			this.on("change:campus", function fetchDisciplines(){
-				if(this.disciplines.isSyncing()) {
-					return this.disciplines.once("syncStateChange", fetchDisciplines, this);
-				}
-				var url = "/api/disciplines/?campus="+this.get("campus");
-				if (!this.get("campus") || this.disciplines.url === url || this.disciplines.disposed || this.disposed) {
-					return;
-				}
-				this.disciplines.reset();
-				this.disciplines.url = url;
-				this.disciplinesRequest = this.disciplines.fetch({
-					"context": this
-				});
-			}, this);
 			this.semestersRequest = this.semesters.fetch();
 		},
 		"dispose": function(){
@@ -76,9 +60,6 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 			}
 			if(this.campiRequest !== null) {
 				this.campiRequest.cancel();
-			}
-			if(this.disciplinesRequest !== null) {
-				this.disciplinesRequest.cancel();
 			}
 			CachedModel.prototype.dispose.call(this);
 		}
