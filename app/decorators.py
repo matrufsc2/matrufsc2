@@ -5,27 +5,8 @@ import logging
 __author__ = 'fernando'
 
 logging = logging.getLogger("matrufsc2_decorators")
-CACHE_SEARCHABLE_KEY = "cache/search/%s/%s"
+CACHE_SEARCHABLE_KEY = "cache/search/%s/%s/%d/%d"
 CACHE_CACHEABLE_KEY = "cache/functions/%s/%s"
-CACHE_PAGEABLE_KEY = "cache/page/%s/%s/%d/%d"
-
-
-def pageable(fn):
-    def dec(filters):
-        page = int(filters.pop("page", ["1"])[0])
-        limit = int(filters.pop("limit", [5])[0])
-        result = fn(filters)
-        page_start = (page-1)*limit
-        page_end = page*limit
-        has_more = len(result[page_end:]) > 0
-        result = {
-            "results": result[page_start:page_end],
-            "more": has_more
-        }
-        return result
-    dec.__name__ = fn.__name__
-    dec.__doc__ = fn.__doc__
-    return dec
 
 
 def cacheable(consider_only=None):
@@ -56,16 +37,37 @@ def searchable(fn):
         query = filters.pop("q", None)
         if query:
             query = str(query[0]).lower()
+            page = int(filters.pop("page", [1])[0])
+            limit = int(filters.pop("limit", [5])[0])
             cache_key = CACHE_SEARCHABLE_KEY % (
                 hashlib.sha1(str(filters)).hexdigest(),
-                hashlib.sha1(query).hexdigest()
+                hashlib.sha1(query).hexdigest(),
+                page,
+                limit
             )
             result = get_from_cache(cache_key, False)
             if result is None:
                 logging.debug("No result found. Getting lists of disciplines that match the filters without the queries")
                 result = fn(filters)
                 logging.debug("Searching for results that match '%s'", query)
-                result = filter(lambda item: query in item.get_formatted_string().lower(), result)
+                page_start = (page-1)*limit
+                has_more = False
+                result_list = []
+                count = 0
+                found = 0
+                for item in result:
+                    if query in item.get_formatted_string().lower():
+                        if found == limit:
+                            has_more = True
+                            break
+                        if count >= page_start:
+                            result_list.append(item)
+                            found += 1
+                        count += 1
+                result = {
+                    "more": has_more,
+                    "results": result_list
+                }
                 logging.debug("Saving cache search for '%s'", query)
                 set_into_cache(cache_key, result, False)
         else:
