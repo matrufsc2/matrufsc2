@@ -33,7 +33,6 @@
     "modernizr": "~2.8.1",
     "select2": "~3.5.0",
     "moment": "~2.7.0",
-    "query-engine": "http://bevry.github.io/query-engine/lib/query-engine.js",
     "bluebird": "~2.1.3",
     "pleasejs": "~0.4.2",
     "diacritic": "~0.0.2",

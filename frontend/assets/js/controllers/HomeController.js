@@ -4,11 +4,11 @@ define("controllers/HomeController", [
 	"chaplin",
 	"bluebird",
 	"collections/Campi",
-	"collections/Disciplines",
 	"collections/Semesters",
 	"collections/SelectedDisciplines",
 	"controllers/BaseController",
 	"models/Status",
+	"models/Discipline",
 	"views/HomeView"
 	], function(
 		_,
@@ -16,34 +16,30 @@ define("controllers/HomeController", [
 		Chaplin,
 		Promise,
 		Campi,
-		Disciplines,
 		Semesters,
 		SelectedDisciplines,
 		BaseController,
 		Status,
+		Discipline,
 		HomeView
 	){
 	"use strict";
 	return BaseController.extend({
 		"index": function(params, metadata, request){
 			this.adjustTitle("");
-			this.disciplines = new Disciplines();
 			this.campi = new Campi();
 			this.semesters = new Semesters();
 			this.status = new Status(null, {
-				"disciplines": this.disciplines,
 				"campi": this.campi,
 				"semesters": this.semesters
 			});
 			this.selectedDisciplines = new SelectedDisciplines([],{
-				"parentCollection": this.disciplines,
 				"status": this.status,
 				"semesters": this.semesters,
 				"campi": this.campi
 			});
 			this.view = new HomeView({
 				"campi": this.campi,
-				"disciplines": this.disciplines,
 				"selectedDisciplines": this.selectedDisciplines,
 				"semesters": this.semesters,
 				"status" : this.status
@@ -146,41 +142,39 @@ define("controllers/HomeController", [
 				statusSession.selectedDisciplines = statusSession.selectedDisciplines || [];
 				this.semesters.once("sync", function () {
 					this.status.once("change:campus", function () {
-						this.disciplines.on("sync", function disciplinesLoaded() {
-							Promise.all(_.map(statusSession.selectedDisciplines, function (selectedDiscipline) {
-								var discipline = this.disciplines.get(unpurify(selectedDiscipline, "discipline"));
-								if (!discipline) {
-									return Promise.reject();
-								}
-								this.disciplines.off("sync", disciplinesLoaded, this);
-								return discipline.select().bind(this).then(function () {
-									return Promise.all(
-										_.map(statusSession.disabledTeams, function (disabledTeam) {
-											var team = discipline.teams.get(unpurify(disabledTeam, "team"));
-											if (team) {
-												team.set({"_selected": false});
-												return this.selectedDisciplines.updateCombinations();
-											} else {
-												return Promise.resolve();
-											}
-										}, this)
-									)
-									.then(
-										this.selectedDisciplines.updateCombinations(
-											statusSession.selectedCombination
-										)
-									)
-									.bind(this).then(function () {
-										this.selectedDisciplines.trigger("change:combination");
-										if (_.has(statusSession, "discipline")) {
-											this.status.set({
-												"discipline": unpurify(statusSession.discipline, "discipline")
-											});
+						Promise.all(_.map(statusSession.selectedDisciplines, function (selectedDiscipline) {
+							var discipline = new Discipline({
+								"id": unpurify(selectedDiscipline, "discipline")
+							});
+							discipline.url = discipline.urlRoot+discipline.id+"/";
+							return Promise.all([discipline.fetch(), discipline.select()]).bind(this).then(function () {
+								this.selectedDisciplines.add(discipline);
+								return Promise.all(
+									_.map(statusSession.disabledTeams, function (disabledTeam) {
+										var team = discipline.teams.get(unpurify(disabledTeam, "team"));
+										if (team) {
+											team.set({"_selected": false});
+											return this.selectedDisciplines.updateCombinations();
+										} else {
+											return Promise.resolve();
 										}
-									});
+									}, this)
+								)
+								.then(
+									this.selectedDisciplines.updateCombinations(
+										statusSession.selectedCombination
+									)
+								)
+								.bind(this).then(function () {
+									this.selectedDisciplines.trigger("change:combination");
+									if (_.has(statusSession, "discipline")) {
+										this.status.set({
+											"discipline": unpurify(statusSession.discipline, "discipline")
+										});
+									}
 								});
-							}, this)).then(listen, function(){});
-						}, this);
+							});
+						}, this)).then(listen, function(){});
 						this.status.set({
 							"campus": unpurify(statusSession.campus, "campus")
 						});

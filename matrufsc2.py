@@ -5,6 +5,7 @@ from flask import Flask, request, g, got_request_exception
 import os
 import re
 import urllib2
+from app.cache import get_from_cache, set_into_cache
 from google.appengine.api import memcache
 from google.appengine.api.urlfetch import fetch
 import zlib
@@ -29,6 +30,8 @@ prerender_re = re.compile("Prerender", re.IGNORECASE)
 
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower()
 
+CACHE_RESPONSE_KEY = "cache/response/%d/%s"
+
 if not IN_DEV:
     rollbar.init(
         'ba9bf3c858294e0882d57a243084e20d',
@@ -40,24 +43,6 @@ if not IN_DEV:
     got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
 
 logging = logging.getLogger("matrufsc2")
-
-CACHE_TIMEOUT = 600
-CACHE_KEY = "view/%d/%s"
-
-
-def get_filename(filename):
-    bucket_name = app_identity.get_default_gcs_bucket_name()
-    bucket = "/" + bucket_name
-    return "/".join([bucket, filename])
-
-
-retry = gcs.RetryParams(initial_delay=0.2,
-                        max_delay=2.0,
-                        backoff_factor=2,
-                        max_retry_period=15,
-                        urlfetch_timeout=60)
-
-gcs.set_default_retry_params(retry)
 
 def can_prerender():
     prerender = False
@@ -75,70 +60,37 @@ def can_prerender():
 
 @app.before_request
 def return_cached():
-    if request.method == "GET":
-        prerender = can_prerender() and "/api/" not in request.base_url
-        url_hash = hashlib.sha1(request.url).hexdigest()
-        cache_key = CACHE_KEY % (int(prerender), url_hash)
-        response = memcache.get(cache_key)
+    if request.method == "GET" and not request.path.startswith("/api/"):
+        prerender = can_prerender()
+        url_hash = hashlib.sha1(request.base_url).hexdigest()
+        cache_key = CACHE_RESPONSE_KEY % (int(prerender), url_hash)
+        logging.debug("Trying to get response from cache..")
+        response = get_from_cache(cache_key)
         if response:
-            logging.debug("Found item on memcached..Returning")
-            try:
-                response = pickle.loads(zlib.decompress(response))
-            except:
-                pass
-            g.ignoreMiddleware = True
+            logging.debug("Response found on cache :D")
+            g.ignorePostMiddleware = True
             return response
-        filename = get_filename(cache_key)
-        try:
-            gcs_file = gcs.open(filename, 'r')
-            content = gcs_file.read()
-            try:
-                response = pickle.loads(zlib.decompress(content))
-            except:
-                response = pickle.loads(content)
-            gcs_file.close()
-            logging.debug("Found item on GCS..Returning")
-            compressed_response = zlib.compress(pickle.dumps(response))
-            try:
-                logging.debug("Saving item on memcached..")
-                memcache.set(cache_key, compressed_response, CACHE_TIMEOUT)
-            except:
-                pass
-            g.ignoreMiddleware = True
-            return response
-        except:
-            pass
-        g.ignoreMiddleware = False
+        else:
+            logging.debug("Response not found on cache :(")
+            g.ignorePostMiddleware = False
 
 
 @app.after_request
 def cache_response(response):
-    if g.get("ignoreMiddleware"):
+    if getattr(g, "ignorePostMiddleware", None):
         return response
     if request.method == "GET":
         response.headers["Cache-Control"] = "public, max-age=3600"
         response.headers["Pragma"] = "cache"
-        prerender = can_prerender() and "/api/" not in request.base_url
-        url_hash = hashlib.sha1(request.url).hexdigest()
-        cache_key = CACHE_KEY % (int(prerender), url_hash)
-        compressed_response = zlib.compress(pickle.dumps(response))
-        try:
-            logging.debug("Saving item on memcached..")
-            memcache.set(cache_key, compressed_response, CACHE_TIMEOUT)
-        except:
-            pass
-        try:
-            filename = get_filename(cache_key)
-            gcs_file = gcs.open(filename, 'w', content_type="application/json")
-            gcs_file.write(compressed_response)
-            logging.debug("Saving item on GCS..")
-            gcs_file.close()
-        except:
-            pass
+        if not request.path.startswith("/api/"):
+            prerender = can_prerender()
+            url_hash = hashlib.sha1(request.base_url).hexdigest()
+            cache_key = CACHE_RESPONSE_KEY % (int(prerender), url_hash)
+            logging.debug("Saving Response into cache :D")
+            set_into_cache(cache_key, response)
     else:
         response.headers["Cache-Control"] = "private"
         response.headers["Pragma"] = "no-cache"
-
     return response
 
 
@@ -147,14 +99,14 @@ def api_index():
     return "", 404
 
 
-def serialize(result):
+def serialize(result, status=200):
     if not result and not isinstance(result, list):
         return "", 404, {"Content-Type": "application/json"}
-    return json.dumps(result, cls=JSONEncoder), 200, {"Content-Type": "application/json"}
+    return json.dumps(result, cls=JSONEncoder), status, {"Content-Type": "application/json"}
 
 @app.route("/api/semesters/")
 def get_semesters():
-    result = list(api.get_semesters(dict(request.args)))
+    result = api.get_semesters(dict(request.args))
     return serialize(result)
 
 
@@ -166,7 +118,7 @@ def get_semester(idValue):
 
 @app.route("/api/campi/")
 def get_campi():
-    result = list(api.get_campi(dict(request.args)))
+    result = api.get_campi(dict(request.args))
     return serialize(result)
 
 
@@ -178,19 +130,21 @@ def get_campus(idValue):
 
 @app.route("/api/disciplines/")
 def get_disciplines():
-    result = list(api.get_disciplines(dict(request.args)))
+    g.noCache = True
+    result = api.get_disciplines(dict(request.args))
     return serialize(result)
 
 
 @app.route("/api/disciplines/<idValue>/")
 def get_discipline(idValue):
+    g.ignorePostMiddleware = True
     result = api.get_discipline(idValue)
     return serialize(result)
 
 
 @app.route("/api/teams/")
 def get_teams():
-    result = list(api.get_teams(dict(request.args)))
+    result = api.get_teams(dict(request.args))
     return serialize(result)
 
 @app.route("/api/teams/<idValue>/")
@@ -242,7 +196,7 @@ def short():
             "shortUrl": short_url
         })
     else:
-        return "{}", 406, {"Content-Type": "application/json"}
+        return serialize({}, 406)
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
@@ -265,7 +219,7 @@ def index():
             prerender_headers = {}
         else:
             prerender_url = "http://service.prerender.io/%s" % request.url
-            prerender_headers= {"X-Prerender-Token": "{{prerender_token}}"}
+            prerender_headers = {"X-Prerender-Token": "{{prerender_token}}"}
         try:
             logging.debug("Fetching prerender...")
             handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,

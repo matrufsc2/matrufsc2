@@ -22,6 +22,6 @@
             Total:
         </td>
         <td id="totalHours" class="text-center"></td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
     </tr>
 </tfoot>

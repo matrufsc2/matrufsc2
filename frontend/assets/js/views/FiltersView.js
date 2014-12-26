@@ -2,9 +2,10 @@ define("views/FiltersView", [
 	"underscore",
 	"templates",
 	"views/BaseView",
+	"models/Discipline",
 	"diacritic",
 	"select2"
-], function(_, templates, BaseView, diacritic){
+], function(_, templates, BaseView, Discipline, diacritic){
 	"use strict";
 	var filterCollectionByQuery = function(collection, query, onGet) {
 		var count = 0;
@@ -50,7 +51,7 @@ define("views/FiltersView", [
 			"addedToDOM": "applyFoundation"
 		},
 		"initialize": function(options){
-			_.extend(this, _.pick(options, ["disciplines", "semesters", "campi", "status"]));
+			_.extend(this, _.pick(options, ["selectedDisciplines", "semesters", "campi", "status"]));
 		},
 		"applySelect2": function(){
 			this.applyFoundation();
@@ -131,31 +132,54 @@ define("views/FiltersView", [
 			};
 			this.$("#discipline").select2({
 				"width": "100%",
-				"formatNoMatches": "Nenhum resultado encontrado",
-				"formatSearching": "Carregando...",
-				"query": function(query) {
-					var located = false;
-					function doQuery() {
-						if (located) {
-							return;
-						}
-						located = true;
-						query.callback(filterCollectionByQuery(view.disciplines.toJSON(), query, onGetDiscipline));
-					}
-					view.disciplines.once("synced", doQuery);
-					if(view.disciplines.isSynced()) {
-						doQuery();
-					}
+				"formatNoMatches": "Nenhum resultado encontrado :(",
+				"formatSearching": "Carregando, aguarde...",
+				"formatLoadMore": "Carregando mais resultados..",
+				"loadMorePadding": 20,
+				"nextSearchTerm": function(selectedObject, currentSearchTerm) {
+					return currentSearchTerm;
 				},
-				"initSelection": getInitSelectionForSelect2(view.disciplines, onGetDiscipline)
+				"ajax":  {
+					url: Discipline.prototype.urlRoot,
+					dataType: 'json',
+					quietMillis: 100,
+					cache: true,
+					data: function (term, page) {
+						return {
+							"q": diacritic.clean(term),
+							"page": page,
+							"campus": view.status.get("campus")
+						};
+					},
+					results: function (data) {
+						var results = {
+							"more": data.more,
+							"results": []
+						};
+						var r = data.results;
+						for (var i = 0, l = r.length; i < l; i++) {
+							if (view.selectedDisciplines.get(r[i].id)) {
+								continue;
+							}
+							results.results.push({
+								"id": r[i].id,
+								"text": onGetDiscipline(r[i]),
+								"original": r[i]
+							});
+						}
+						return results;
+					}
+				}
 			}).on("select2-selecting", function(e){
 				e.preventDefault();
 				view.$("#discipline").select2("close");
-				var discipline = view.disciplines.get(e.val);
+				var discipline = e.choice;
 				if(!discipline) {
 					alert("Disciplina nao encontrada!");
 					return;
 				}
+				discipline = new Discipline(discipline.original);
+				view.selectedDisciplines.add(discipline);
 				discipline.select();
 			});
 		}
