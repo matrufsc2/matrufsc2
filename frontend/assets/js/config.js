@@ -13,7 +13,6 @@ require.config({
 		"modernizr"    : "vendor/modernizr/modernizr",
 		"mocha"        : "vendor/mocha/mocha",
 		"expect"       : "vendor/expect/index",
-		"query-engine" : "vendor/query-engine/index",
 		"sinon"        : "vendor/sinon/index",
 		"bluebird"     : "vendor/bluebird/bluebird",
 		"select2"	   : "vendor/select2/select2",
@@ -23,10 +22,6 @@ require.config({
 		"testem"       : "../testem"
 	},
 	"shim" : {
-		"query-engine": {
-			"deps"    : ["backbone"],
-			"exports" : "QueryEngine"
-		},
 		"backbone": {
 			"deps"    : ["underscore", "jquery"],
 			"exports" : "Backbone"

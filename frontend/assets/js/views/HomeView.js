@@ -17,7 +17,6 @@ define("views/HomeView", [
 		"initialize": function(options) {
 			_.extend(this, _.pick(options, [
 				"campi",
-				"disciplines",
 				"selectedDisciplines",
 				"semesters",
 				"status"
@@ -25,10 +24,10 @@ define("views/HomeView", [
 		},
 		"addSubViews": function(){
 			this.subview("filters", new FiltersView({
-				"disciplines": this.disciplines,
 				"semesters": this.semesters,
 				"campi": this.campi,
 				"status": this.status,
+				"selectedDisciplines": this.selectedDisciplines,
 				"container": this.$("#filters")
 			}));
 			this.subview("selectedDisciplines", new SelectedDisciplinesView({

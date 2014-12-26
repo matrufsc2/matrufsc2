@@ -1,35 +1,20 @@
-define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment", "please", "utils/combinator", "models/Discipline", "bluebird"], function(QueryEngine, _, moment, Please, combinator, Discipline, Promise){
+define("collections/SelectedDisciplines", [
+	"collections/CachedCollection",
+	"underscore",
+	"moment",
+	"please",
+	"utils/combinator",
+	"models/Discipline",
+	"bluebird"
+], function(CachedCollection, _, moment, Please, combinator, Discipline, Promise){
 	"use strict";
-	return QueryEngine.QueryCollection.extend({
+	return CachedCollection.extend({
 		"model": Discipline,
 		"combinationSelected": 0,
 		"combinationsAvailable": [],
 		"initialize" : function(models, options){
-			options = _.defaults(options || {}, {
-				"live": true,
-				"updateAtInitialization": true
-			});
-			if(!!options.parentCollection){
-				// QueryEngine for some reason needs a "hasModel" method to work
-				// Here, i will overwrite this method on a parent collection, if one exists
-				// In the future I will fix this bug on QueryEngine with a fork. 
-				options.parentCollection.hasModel = _.bind(QueryEngine.QueryCollection.prototype.hasModel, options.parentCollection);
-			}
-			QueryEngine.QueryCollection.prototype.initialize.call(this, models, options);
-			if(options.parentCollection && options.parentCollection.model !== this.model) {
-				throw "Invalid parent collection";
-			}
 			_.extend(this, _.pick(options, ["status", "campi", "semesters"]));
-			this.setQuery("onlySelected", {
-				"_selected": true
-			});
-			if(options.live) {
-				this.on("add remove", this.updateCombinations, this);
-			} 
-			if(options.updateAtInitialization) {
-				this.query();
-				this.updateCombinations();
-			}
+			this.on("add remove", this.updateCombinations, this);
 			this.listenTo(options.status, "change:campus", function(){
 				this.each(function(discipline) {
 					discipline.unselect();
@@ -40,7 +25,6 @@ define("collections/SelectedDisciplines", ["query-engine", "underscore", "moment
 			var collection = this;
 			collection.teamsRequests = [];
 			return Promise.all(this.map(function(discipline) {
-				discipline.collection = collection;
 				var color = discipline.get("_color");
 				while(!color) {
 					color = Please.make_color({

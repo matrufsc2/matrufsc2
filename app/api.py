@@ -1,46 +1,52 @@
-from app.repositories import CampusRepository, DisciplinesRepository, TeamsRepository, TeachersRepository, \
-    SchedulesRepository, SemesterRepository
-from google.appengine.ext import ndb
+import logging
+
+from app.repositories import CampusRepository, DisciplinesRepository, TeamsRepository, SemesterRepository
+from app.decorators import cacheable, pageable, searchable
+
 
 __author__ = 'fernando'
 
+logging = logging.getLogger("matrufsc2_api")
 
-def get_campi(filters):
-    repository = CampusRepository()
-    if filters:
-        return repository.find_by(filters).get_result()
-    return repository.find_all().get_result()
-
-
-def get_campus(idValue):
-    repository = CampusRepository()
-    return repository.find_by_id(idValue)
-
-
+@cacheable(consider_only=[])
 def get_semesters(filters):
     repository = SemesterRepository()
     if filters:
         return repository.find_by(filters).get_result()
     return repository.find_all().get_result()
 
-
-def get_semester(idValue):
+@cacheable()
+def get_semester(id_value):
     repository = SemesterRepository()
-    return repository.find_by_id(idValue)
+    return repository.find_by_id(id_value).get_result()
 
+@cacheable(consider_only=["semester"])
+def get_campi(filters):
+    repository = CampusRepository()
+    if filters:
+        return repository.find_by(filters).get_result()
+    return repository.find_all().get_result()
 
+@cacheable()
+def get_campus(id_value):
+    repository = CampusRepository()
+    return repository.find_by_id(id_value).get_result()
+
+@pageable
+@searchable
+@cacheable(consider_only=['campus'])
 def get_disciplines(filters):
     repository = DisciplinesRepository()
     if filters:
         return repository.find_by(filters).get_result()
     return repository.find_all().get_result()
 
-
-def get_discipline(idValue):
+@cacheable()
+def get_discipline(id_value):
     repository = DisciplinesRepository()
-    return repository.find_by_id(idValue)
+    return repository.find_by_id(id_value).get_result()
 
-
+@cacheable(consider_only=["discipline"])
 def get_teams(filters):
     repository = TeamsRepository()
     if filters:
@@ -48,30 +54,7 @@ def get_teams(filters):
     return repository.find_all().get_result()
 
 
-def get_team(idValue):
+@cacheable()
+def get_team(id_value):
     repository = TeamsRepository()
-    return repository.find_by_id(idValue)
-
-
-def get_teachers(filters):
-    repository = TeachersRepository()
-    if filters:
-        return repository.find_by(filters).get_result()
-    return repository.find_all().get_result()
-
-
-def get_teacher(idValue):
-    repository = TeachersRepository()
-    return repository.find_by_id(idValue)
-
-
-def get_schedules(filters):
-    repository = SchedulesRepository()
-    if filters:
-        return repository.find_by(filters).get_result()
-    return repository.find_all().get_result()
-
-
-def get_schedule(idValue):
-    repository = SchedulesRepository()
-    return repository.find_by_id(idValue)
+    return repository.find_by_id(id_value).get_result()
