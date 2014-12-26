@@ -47,6 +47,9 @@ class Discipline(ndb.Model, JSONSerializable):
             "name": self.name
         }
 
+    def get_formatted_string(self):
+        return " - ".join([self.code, self.name])
+
 class Team(ndb.Model, JSONSerializable):
     code = ndb.StringProperty(indexed=False)
     vacancies_offered = ndb.IntegerProperty(indexed=False)
