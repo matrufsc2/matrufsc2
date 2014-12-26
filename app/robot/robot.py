@@ -356,7 +356,7 @@ class Robot(NDBRemoteFetcher, object):
         timeout = time.time() + timeout
         return timeout
 
-    def clear_gcs(self):
+    def clear_gcs_cache(self):
         logging.info("Clearing GCS cache..")
         retry = gcs.RetryParams(
             initial_delay=0.2,
@@ -367,11 +367,12 @@ class Robot(NDBRemoteFetcher, object):
         )
         bucket_name = app_identity.get_default_gcs_bucket_name()
         bucket = "/" + bucket_name
-        folder = "/".join([bucket, "view"])
+        folder = "/".join([bucket, "cache"])
         file_instances = gcs.listbucket(folder, retry_params=retry)
         for file_instance in file_instances:
             logging.debug("Deleting file %s", file_instance.filename)
             gcs.delete(file_instance.filename, retry_params=retry)
+        logging.debug("GCS cache cleaned")
 
     @ndb.tasklet
     def run_worker(self, params):
@@ -498,7 +499,7 @@ class Robot(NDBRemoteFetcher, object):
                     "last_login": last_login
                 }), method="POST")
             else:
-                self.clear_gcs()
+                self.clear_gcs_cache()
 
     @ndb.tasklet
     def run(self, params):
