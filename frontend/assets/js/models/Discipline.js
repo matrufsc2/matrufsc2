@@ -1,4 +1,4 @@
-	define("models/Discipline", ["underscore", "models/CachedModel","collections/Teams"], function(_, CachedModel, Teams) {
+define("models/Discipline", ["underscore", "models/CachedModel","collections/Teams"], function(_, CachedModel, Teams) {
 	"use strict";
 	return CachedModel.extend({
 		"defaults": {
@@ -56,7 +56,7 @@
 			if (this.id === -1) {
 				throw "Discipline ID not defined!";
 			}
-			this.destroy();
+			this.collection.remove(this);
 			this.teams.url = "/api/teams/?discipline="+this.id;
 			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
 				this.teams.each(function(model){
@@ -64,6 +64,8 @@
 						"_selected": false
 					});
 				});
+				this.teams.dispose();
+				this.dispose();
 			});
 			return this.teamsRequest;
 		},
