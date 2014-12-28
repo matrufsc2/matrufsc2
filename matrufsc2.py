@@ -245,7 +245,7 @@ app.debug = IN_DEV
 
 if __name__ == "__main__":
     app.run()
-else:
+elif IN_DEV:
     from google.appengine.ext.appstats import recording
 
     app = recording.appstats_wsgi_middleware(app)
