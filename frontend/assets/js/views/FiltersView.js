@@ -142,7 +142,7 @@ define("views/FiltersView", [
 				"ajax":  {
 					url: Discipline.prototype.urlRoot,
 					dataType: 'json',
-					quietMillis: 100,
+					quietMillis: 250,
 					cache: true,
 					data: function (term, page) {
 						return {
@@ -151,7 +151,7 @@ define("views/FiltersView", [
 							"campus": view.status.get("campus")
 						};
 					},
-					results: function (data) {
+					results: function (data, page, query) {
 						var results = {
 							"more": data.more,
 							"results": []
@@ -161,11 +161,15 @@ define("views/FiltersView", [
 							if (view.selectedDisciplines.get(r[i].id)) {
 								continue;
 							}
-							results.results.push({
-								"id": r[i].id,
-								"text": onGetDiscipline(r[i]),
-								"original": r[i]
-							});
+							var text = onGetDiscipline(r[i]);
+							var result = text.toLowerCase().indexOf(diacritic.clean(query.term).toLowerCase()) != -1;
+							if (result) {
+								results.results.push({
+									"id": r[i].id,
+									"text": text,
+									"original": r[i]
+								});
+							}
 						}
 						return results;
 					}
