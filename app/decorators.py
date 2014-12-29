@@ -1,5 +1,5 @@
 import time
-from app.cache import get_from_cache, set_into_cache
+from app.cache import get_from_cache, set_into_cache, pickle
 import hashlib
 import logging
 from collections import OrderedDict
@@ -7,7 +7,7 @@ __author__ = 'fernando'
 
 logging = logging.getLogger("matrufsc2_decorators")
 CACHE_SEARCHABLE_KEY = "cache/search/%s/%s/%d/%d"
-CACHE_INDEX_KEY = "cache/searchIndex/%s/%d/%s"
+CACHE_INDEX_KEY = "cache/searchIndex/%s/%s"
 CACHE_CACHEABLE_KEY = "cache/functions/%s/%s"
 
 
@@ -44,22 +44,20 @@ def searchable(fn):
 
         logging.debug("Doing search based on query '%s'..", query)
         query_words = filter(lambda word: word.strip(), query.split())
+        max_word = None
         if query_words:
             max_word = max(query_words, key=lambda word: len(word))
             max_word = "".join(filter(str.isalnum, max_word))
-            max_word_size = len(max_word)
-            first_letters = max_word[:3]
-
-            if max_word_size > 30:
-                max_word_size = max_word[:30]
-                max_word_size = 30
-
+            if len(max_word) < 2:
+                # If the length of the longest word is less than 2 characters, ignore it :v
+                max_word = None
+        if max_word:
+            first_letters = max_word[:2]
 
             logging.debug("Loading index..")
             start = time.time()
             storage_key = CACHE_INDEX_KEY % (
                 hashlib.sha1(str(filters)).hexdigest(),
-                max_word_size,
                 first_letters
             )
             index = get_from_cache(storage_key, persistent=True)
@@ -78,9 +76,9 @@ def searchable(fn):
                 for item in fn(filters):
                     index_words.extend(
                         map(
-                            lambda word: [word[:max_word_size], item],
+                            lambda word: [word, len(word), item],
                             filter(
-                                lambda word: first_letters == word[:3] and len(word) >= max_word_size,
+                                lambda word: word and first_letters == word[:2],
                                 map(
                                     lambda word: "".join(filter(unicode.isalnum, word)),
                                     item.get_formatted_string().lower().split()
@@ -90,33 +88,29 @@ def searchable(fn):
                     )
                 logging.debug("List of words created in %f seconds", time.time()-start)
                 index_words.sort(key=lambda item: item[0])
-                # max_letter = max(index_words, key=lambda item: item[1])
-                # logging.debug("Larger word found has %d letters: %s", max_letter[1], max_letter[0])
+                if index_words:
+                    max_letter = max(index_words, key=lambda item: item[1])
+                    logging.debug("Larger word found has %d letters: %s", max_letter[1], max_letter[0])
+                else:
+                    max_letter = [None, 0, None]
                 word = None
                 word_items = []
-                # for crop_at in xrange(0, max_letter[1]+1):
-                start_letter = time.time()
-                for index_word in index_words:
-                    if word is None:
-                        word = index_word[0]
-                    if word != index_word[0]:
+                for crop_at in xrange(1, max_letter[1]+1):
+                    start_letter = time.time()
+                    for index_word in (index_word for index_word in index_words if index_word[1] >= crop_at):
+                        if word is None:
+                            word = index_word[0][:crop_at]
+                        if word != index_word[0][:crop_at]:
+                            keys_to_items = OrderedDict(zip([item.key.id() for item in word_items], word_items))
+                            index["keys"].update(keys_to_items)
+                            index["words"][word] = keys_to_items.keys()
+                            word = index_word[0][:crop_at]
+                            word_items = []
+                        word_items.append(index_word[2])
+                    if word is not None:
                         keys_to_items = OrderedDict(zip([item.key.id() for item in word_items], word_items))
                         index["keys"].update(keys_to_items)
                         index["words"][word] = keys_to_items.keys()
-                        word = index_word[0]
-                        word_items = []
-                    word_items.append(index_word[1])
-                if word is not None:
-                    keys_to_items = OrderedDict(zip([item.key.id() for item in word_items], word_items))
-                    index["keys"].update(keys_to_items)
-                    index["words"][word] = keys_to_items.keys()
-                logging.debug(
-                    "%f seconds to process %d words with %d letters (and %d itens)",
-                    time.time()-start_letter,
-                    len(index["words"]),
-                    max_word_size,
-                    len(index["keys"])
-                )
                 start = time.time()
                 logging.debug("Saving index..")
                 set_into_cache(storage_key, index, persistent=True)
@@ -135,6 +129,7 @@ def searchable(fn):
             "more": has_more,
             "results": documents
         }
+        logging.debug("Search done in %f seconds", time.time()-start_processing)
         return result
     dec.__name__ = fn.__name__
     dec.__doc__ = fn.__doc__
