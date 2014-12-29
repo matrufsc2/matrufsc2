@@ -37,13 +37,20 @@ def get_campus(id_value):
 def get_disciplines(filters):
     repository = DisciplinesRepository()
     if filters:
-        return repository.find_by(filters).get_result()
-    return repository.find_all().get_result()
+        disciplines = repository.find_by(filters).get_result()
+    else:
+        disciplines = repository.find_all().get_result()
+    for discipline in disciplines:
+        discipline.teams = []
+    return disciplines
+
 
 @cacheable()
 def get_discipline(id_value):
     repository = DisciplinesRepository()
-    return repository.find_by_id(id_value).get_result()
+    discipline = repository.find_by_id(id_value).get_result()
+    discipline.teams = []
+    return discipline
 
 @cacheable(consider_only=["discipline"])
 def get_teams(filters):
