@@ -400,9 +400,9 @@ class Robot(NDBRemoteFetcher, object):
             for discipline in disciplines:
                 first_words.extend(
                     map(
-                        lambda word: word[:2],
+                        lambda word: word[:1],
                         filter(
-                            lambda word: len(word) >= 2,
+                            lambda word: word,
                             map(
                                 lambda word: "".join(filter(unicode.isalnum, word)),
                                 discipline.get_formatted_string().lower().split()
