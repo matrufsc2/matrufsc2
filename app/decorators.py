@@ -55,11 +55,8 @@ def searchable(fn):
         if query_words:
             max_word = max(query_words, key=lambda word: len(word))
             max_word = "".join(filter(str.isalnum, max_word))
-            if len(max_word) < 2:
-                # If the length of the longest word is less than 2 characters, ignore it :v
-                max_word = None
         if max_word:
-            first_letters = max_word[:2]
+            first_letters = max_word[:1]
 
             logging.debug("Loading index..")
             start = time.time()
@@ -76,13 +73,9 @@ def searchable(fn):
                 logging.debug("Index loaded in %f seconds", time.time()-start)
             elif kwargs.get("index"):
                 logging.debug("Index not found, creating index..(as authorized)")
-                index = {
-                    "keys": {},
-                    "words": {}
-                }
+                index = {}
                 start = time.time()
                 index_words = []
-
 
                 logging.debug("Creating list of words..")
                 items = kwargs.get("items")
@@ -93,7 +86,7 @@ def searchable(fn):
                         map(
                             lambda word: [word, len(word), item],
                             filter(
-                                lambda word: word and first_letters == word[:2],
+                                lambda word: len(word) >= 1 and word[:1] == first_letters,
                                 map(
                                     lambda word: "".join(filter(unicode.isalnum, word)),
                                     item.get_formatted_string().lower().split()
@@ -115,27 +108,21 @@ def searchable(fn):
                             word = index_word[0][:crop_at]
                         if word != index_word[0][:crop_at]:
                             keys_to_items = OrderedDict(zip([item.key.id() for item in word_items], word_items))
-                            index["keys"].update(keys_to_items)
-                            index["words"][word] = keys_to_items.keys()
+                            index[word] = keys_to_items.values()
                             word = index_word[0][:crop_at]
                             word_items = []
                         word_items.append(index_word[2])
                     if word is not None:
                         keys_to_items = OrderedDict(zip([item.key.id() for item in word_items], word_items))
-                        index["keys"].update(keys_to_items)
-                        index["words"][word] = keys_to_items.keys()
+                        index[word] = keys_to_items.values()
                 start = time.time()
                 logging.debug("Saving index..")
                 set_into_cache(storage_key, index, persistent=True)
                 logging.debug("Saving made in %f seconds", time.time()-start)
             else:
                 logging.debug("Index not found and not authorized :v")
-                index = {
-                    "words": {},
-                    "keys": {}
-                }
-            results = index["words"].get(max_word, [])
-            results = map(lambda key: index["keys"][key], results)
+                index = {}
+            results = index.get(max_word, [])
             results = filter(lambda item: query in item.get_formatted_string().lower(), results)
         else:
             results = fn(filters, **kwargs)
