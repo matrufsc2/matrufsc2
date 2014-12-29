@@ -1,8 +1,10 @@
 import collections
+import time
 import hashlib
 import logging as _logging
 import time
 import math
+from app.api import get_disciplines, get_semesters, get_campi
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
 from app.robot.fetcher.NDBRemoteFetcher import NDBRemoteFetcher
 from google.appengine.api.runtime.runtime import is_shutting_down
@@ -374,6 +376,53 @@ class Robot(NDBRemoteFetcher, object):
             gcs.delete(file_instance.filename, retry_params=retry)
         logging.debug("GCS cache cleaned")
 
+    def update_cache(self):
+        start = time.time()
+        logging.debug("Loading semesters..")
+        semesters = get_semesters({}, overwrite=True)
+        logging.debug("Semesters loaded in %f seconds", time.time()-start)
+        start = time.time()
+        logging.debug("Loading campi..")
+        campi = get_campi({
+            "semester": [semesters[0].key.id()]
+        }, overwrite=True)
+        logging.debug("Campi loaded in %f seconds", time.time()-start)
+        for campus in campi:
+            start = time.time()
+            logging.debug("Loading disciplines of the campus %s..", campus.name)
+            disciplines = get_disciplines({
+                "campus": [campus.key.id()]
+            }, overwrite=True)
+            logging.debug("%d Disciplines loaded in %f seconds", len(disciplines), time.time()-start)
+            start = time.time()
+            logging.debug("Identifying first letter of the disciplines")
+            first_words = []
+            for discipline in disciplines:
+                first_words.extend(
+                    map(
+                        lambda word: word[:2],
+                        filter(
+                            lambda word: len(word) >= 2,
+                            map(
+                                lambda word: "".join(filter(unicode.isalnum, word)),
+                                discipline.get_formatted_string().lower().split()
+                            )
+                        )
+                    )
+                )
+            first_words = list(set(first_words))
+            first_words.sort()
+            logging.debug("%d Letters identified in %f seconds", len(first_words), time.time()-start)
+            for first_word in first_words:
+                start = time.time()
+                logging.debug("Loading search for '%s' and campus %s", first_word, campus.name)
+                get_disciplines({
+                    "campus": [campus.key.id()],
+                    "q": [first_word]
+                }, overwrite=True, index=True, items=disciplines)
+                logging.debug("Search (and update) made in %f seconds", time.time()-start)
+
+
     @ndb.tasklet
     def run_worker(self, params):
         timeout = self.calculate_timeout()
@@ -499,7 +548,7 @@ class Robot(NDBRemoteFetcher, object):
                     "last_login": last_login
                 }), method="POST")
             else:
-                self.clear_gcs_cache()
+                taskqueue.add(url="/secret/clear_cache/", method="GET")
 
     @ndb.tasklet
     def run(self, params):
