@@ -52,7 +52,7 @@ handlers:
 - url: /api/.*
   script: matrufsc2.app
 
-- url: /secret/update/
+- url: /secret/.*
   script: matrufsc2.app
   login: admin
 
