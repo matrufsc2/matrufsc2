@@ -2,6 +2,7 @@ import time
 from app.cache import get_from_cache, set_into_cache, pickle
 import hashlib
 import logging
+import json
 from collections import OrderedDict
 __author__ = 'fernando'
 
@@ -13,7 +14,7 @@ CACHE_CACHEABLE_KEY = "cache/functions/%s/%s"
 
 def cacheable(consider_only=None):
     def decorator(fn):
-        def dec(filters):
+        def dec(filters, **kwargs):
             if consider_only is not None:
                 new_filters = {}
                 for f in consider_only:
@@ -23,8 +24,14 @@ def cacheable(consider_only=None):
                               "we have a size of %d keys (old %d keys)" % (len(new_filters), len(filters)))
                 logging.debug("These keys are: %s", ", ".join(new_filters))
                 filters = new_filters
-            cache_key = CACHE_CACHEABLE_KEY % (fn.__name__, hashlib.sha1(str(filters)).hexdigest())
-            result = get_from_cache(cache_key, persistent=True)
+            cache_key = CACHE_CACHEABLE_KEY % (
+                fn.__name__,
+                hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest()
+            )
+            if kwargs.get("overwrite"):
+                result = None
+            else:
+                result = get_from_cache(cache_key, persistent=True)
             if not result:
                 result = fn(filters)
                 set_into_cache(cache_key, result, persistent=True)
@@ -35,7 +42,7 @@ def cacheable(consider_only=None):
     return decorator
 
 def searchable(fn):
-    def dec(filters):
+    def dec(filters, **kwargs):
         query = filters.pop("q", [""])
         page = int(filters.pop("page", [1])[0])
         limit = int(filters.pop("limit", [5])[0])
@@ -57,13 +64,18 @@ def searchable(fn):
             logging.debug("Loading index..")
             start = time.time()
             storage_key = CACHE_INDEX_KEY % (
-                hashlib.sha1(str(filters)).hexdigest(),
+                hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest(),
                 first_letters
             )
-            index = get_from_cache(storage_key, persistent=True)
-            logging.debug("Index loaded in %f seconds", time.time()-start)
-            if not index:
-                logging.debug("Index not found, creating index..")
+            if kwargs.get("overwrite"):
+                index = None
+            else:
+                index = get_from_cache(storage_key, persistent=True)
+
+            if index:
+                logging.debug("Index loaded in %f seconds", time.time()-start)
+            elif kwargs.get("index"):
+                logging.debug("Index not found, creating index..(as authorized)")
                 index = {
                     "keys": {},
                     "words": {}
@@ -73,7 +85,10 @@ def searchable(fn):
 
 
                 logging.debug("Creating list of words..")
-                for item in fn(filters):
+                items = kwargs.get("items")
+                if not items:
+                    items = fn(filters)
+                for item in items:
                     index_words.extend(
                         map(
                             lambda word: [word, len(word), item],
@@ -90,13 +105,11 @@ def searchable(fn):
                 index_words.sort(key=lambda item: item[0])
                 if index_words:
                     max_letter = max(index_words, key=lambda item: item[1])
-                    logging.debug("Larger word found has %d letters: %s", max_letter[1], max_letter[0])
                 else:
                     max_letter = [None, 0, None]
                 word = None
                 word_items = []
                 for crop_at in xrange(1, max_letter[1]+1):
-                    start_letter = time.time()
                     for index_word in (index_word for index_word in index_words if index_word[1] >= crop_at):
                         if word is None:
                             word = index_word[0][:crop_at]
@@ -115,22 +128,28 @@ def searchable(fn):
                 logging.debug("Saving index..")
                 set_into_cache(storage_key, index, persistent=True)
                 logging.debug("Saving made in %f seconds", time.time()-start)
+            else:
+                logging.debug("Index not found and not authorized :v")
+                index = {
+                    "words": {},
+                    "keys": {}
+                }
             results = index["words"].get(max_word, [])
             results = map(lambda key: index["keys"][key], results)
             results = filter(lambda item: query in item.get_formatted_string().lower(), results)
         else:
-            results = fn(filters)
-
-        page_start = (page-1) * limit
-        page_end = page * limit
-        has_more = len(results[page_end:]) > 0
-        documents = results[page_start:page_end]
-        result = {
-            "more": has_more,
-            "results": documents
-        }
-        logging.debug("Search done in %f seconds", time.time()-start_processing)
-        return result
+            results = fn(filters, **kwargs)
+        if not kwargs.get("overwrite"):
+            page_start = (page-1) * limit
+            page_end = page * limit
+            has_more = len(results[page_end:]) > 0
+            documents = results[page_start:page_end]
+            results = {
+                "more": has_more,
+                "results": documents
+            }
+            logging.debug("Search done in %f seconds", time.time()-start_processing)
+        return results
     dec.__name__ = fn.__name__
     dec.__doc__ = fn.__doc__
     return dec
