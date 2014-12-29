@@ -1,6 +1,7 @@
 import json
 import urllib
 import urlparse
+import time
 from flask import Flask, request, g, got_request_exception
 import os
 import re
@@ -60,7 +61,7 @@ def can_prerender():
 
 @app.before_request
 def return_cached():
-    if request.method == "GET" and not request.path.startswith("/api/"):
+    if request.method == "GET" and not request.path.startswith("/api/") and not request.path.startswith("/secret/"):
         prerender = can_prerender()
         url_hash = hashlib.sha1(request.base_url).hexdigest()
         cache_key = CACHE_RESPONSE_KEY % (int(prerender), url_hash)
@@ -82,7 +83,7 @@ def cache_response(response):
     if request.method == "GET":
         response.headers["Cache-Control"] = "public, max-age=3600"
         response.headers["Pragma"] = "cache"
-        if not request.path.startswith("/api/"):
+        if not request.path.startswith("/api/") and not request.path.startswith("/secret/"):
             prerender = can_prerender()
             url_hash = hashlib.sha1(request.base_url).hexdigest()
             cache_key = CACHE_RESPONSE_KEY % (int(prerender), url_hash)
@@ -208,6 +209,19 @@ def update():
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
+
+@app.route("/secret/clear_cache/", methods=["GET"])
+def clear_cache():
+    if IN_DEV:
+        robot_url = "http://127.0.0.1:5000/%s/"
+    else:
+        robot_url = "http://matrufsc2.fjorgemota.com/%s/"
+    start = time.time()
+    robot = Robot(robot_url)
+    robot.clear_gcs_cache()
+    robot.update_cache()
+    logging.debug("Cleared and updated cache in %f seconds", time.time()-start)
+    return "OK", 200, {}
 
 @app.route("/")
 @app.route("/sobre/")
