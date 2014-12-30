@@ -32,8 +32,12 @@ def get_campus(id_value):
     repository = CampusRepository()
     return repository.find_by_id(id_value).get_result()
 
-@searchable
-@cacheable(consider_only=['campus'])
+@searchable(
+    lambda item: " - ".join([item['code'], item['name']]),
+    prefix="matrufsc2-discipline-",
+    consider_only=['campus']
+)
+@cacheable()
 def get_disciplines(filters):
     repository = DisciplinesRepository()
     if filters:
