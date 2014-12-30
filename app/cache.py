@@ -12,6 +12,8 @@ __author__ = 'fernando'
 
 CACHE_TIMEOUT = 3600
 
+TEXTCHARS = ''.join(map(chr, [7,8,9,10,12,13,27] + range(0x20, 0x100)))
+
 gcs.set_default_retry_params(
     gcs.RetryParams(
         initial_delay=0.2,
@@ -38,12 +40,12 @@ def get_from_cache(key, persistent=True):
     result = memcache.get(key)
     if result is not None:
         size = "small"
-        if isinstance(result, basestring):
+        if isinstance(result, basestring) and result.translate(None, TEXTCHARS):
             # If result is a string it MAYBE pickled :v
             try:
                 # Try small item first to be more fast :D
-                size = "large"
                 result = pickle.loads(zlib.decompress(result, 15, 2097152))
+                size = "large"
             except:
                 pass
         logging.debug("Found (%s) item on memcache in %f seconds..Returning", size, time.time()-start)
