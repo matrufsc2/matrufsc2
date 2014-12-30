@@ -10,7 +10,7 @@ from google.appengine.api import memcache, app_identity
 
 __author__ = 'fernando'
 
-CACHE_TIMEOUT = 600
+CACHE_TIMEOUT = 3600
 
 gcs.set_default_retry_params(
     gcs.RetryParams(
