@@ -178,10 +178,11 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     results = json.loads(get_from_cache(items_key, persistent=True))
                 if results is None:
                     results = fn(filters)
+                    results = json.loads(json.dumps(results, cls=JSONEncoder))
                     if prefix:
                         for result in results:
                             result["id"] = result["id"].replace(prefix, "")
-                    set_into_cache(items_key, json.dumps(results, cls=JSONEncoder), persistent=True)
+                    set_into_cache(items_key, json.dumps(results), persistent=True)
                 has_more = len(results[page_end:]) > 0
                 results = results[page_start:page_end]
                 if prefix:
