@@ -97,13 +97,13 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
 
                     logging.debug("Creating list of words..")
                     items = fn(filters)
-                    items = json.loads(json.dumps(items, cls=JSONEncoder))
+                    items = json.loads(json.dumps(items, cls=JSONEncoder, separators=(',', ':')))
                     for item_id, item in enumerate(items):
                         if prefix:
                             item["id"] = item["id"].replace(prefix, "")
                         index_words.extend(
                             map(
-                                lambda word: [word, item],
+                                lambda word: [word, len(word), item],
                                 filter(
                                     lambda word: len(word) >= 1,
                                     map(
@@ -122,7 +122,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                         max_letter = [None, 0, None]
                     word = None
                     word_items = []
-                    for crop_at in xrange(2, len(max_letter[0])+1):
+                    for crop_at in xrange(1, len(max_letter[0])+1):
                         for index_word in (index_word for index_word in index_words if index_word[1] >= crop_at):
                             if word is None:
                                 word = str(index_word[0][:crop_at])
@@ -131,14 +131,14 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                                 index[word] = keys_to_items.keys()
                                 word = str(index_word[0][:crop_at])
                                 word_items = []
-                            word_items.append(index_word[1])
+                            word_items.append(index_word[2])
                         if word is not None:
                             keys_to_items = OrderedDict(zip([items_ids[item['id']] for item in word_items], word_items))
                             index[word] = keys_to_items.keys()
                     start = time.time()
                     logging.debug("Saving index..")
-                    set_into_cache(storage_key, json.dumps(index), persistent=True)
-                    set_into_cache(items_key, json.dumps(items), persistent=True)
+                    set_into_cache(storage_key, json.dumps(index, separators=(',', ':')), persistent=True)
+                    set_into_cache(items_key, json.dumps(items, separators=(',', ':')), persistent=True)
                     logging.debug("Saving made in %f seconds", time.time()-start)
                 else:
                     logging.debug("Index not found and not authorized :v")
@@ -148,10 +148,10 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     found = index.get(query_word, [])
                     if results is None:
                         results = found
-                    elif len(results) > len(found):
-                        results = filter(lambda result: result in found, results)
-                    else:
-                        results = filter(lambda result: result in results, found)
+                        continue
+                    if not results:
+                        break
+                    results = filter(lambda result: result in found, results)
                 if results is None:
                     results = []
                 results = list(set(results))
@@ -162,10 +162,10 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     logging.debug("Found %d results. Loading items...", len(results))
                     items = json.loads(get_from_cache(items_key, persistent=True))
                     results = [items[result] for result in results]
+                    results = filter(lambda item: query in get_formatted_string(item).lower(), results)
                     if prefix:
                         for result in results:
                             result["id"] = "".join([prefix,result["id"]])
-                    results = filter(lambda item: query in get_formatted_string(item).lower(), results)
                 logging.debug(
                     "Found %d itens that matches the search in %f seconds",
                     len(results),
@@ -178,11 +178,11 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     results = json.loads(get_from_cache(items_key, persistent=True))
                 if results is None:
                     results = fn(filters)
-                    results = json.loads(json.dumps(results, cls=JSONEncoder))
+                    results = json.loads(json.dumps(results, cls=JSONEncoder, separators=(',', ':')))
                     if prefix:
                         for result in results:
                             result["id"] = result["id"].replace(prefix, "")
-                    set_into_cache(items_key, json.dumps(results), persistent=True)
+                    set_into_cache(items_key, json.dumps(results, separators=(',', ':')), persistent=True)
                 has_more = len(results[page_end:]) > 0
                 results = results[page_start:page_end]
                 if prefix:

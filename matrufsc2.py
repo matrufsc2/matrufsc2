@@ -103,7 +103,7 @@ def api_index():
 def serialize(result, status=200):
     if not result and not isinstance(result, list):
         return "", 404, {"Content-Type": "application/json"}
-    return json.dumps(result, cls=JSONEncoder), status, {"Content-Type": "application/json"}
+    return json.dumps(result, cls=JSONEncoder, separators=(',', ':')), status, {"Content-Type": "application/json"}
 
 @app.route("/api/semesters/")
 def get_semesters():
