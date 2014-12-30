@@ -390,37 +390,17 @@ class Robot(NDBRemoteFetcher, object):
         for campus in campi:
             start = time.time()
             logging.debug("Loading disciplines of the campus %s..", campus.name)
-            disciplines = get_disciplines({
+            get_disciplines({
                 "campus": [campus.key.id()]
             }, overwrite=True)
-            logging.debug("%d Disciplines loaded in %f seconds", len(disciplines), time.time()-start)
+            logging.debug("Disciplines loaded in %f seconds", time.time()-start)
             start = time.time()
-            logging.debug("Identifying first letter of the disciplines")
-            first_words = []
-            for discipline in disciplines:
-                first_words.extend(
-                    map(
-                        lambda word: word[:1],
-                        filter(
-                            lambda word: word,
-                            map(
-                                lambda word: "".join(filter(unicode.isalnum, word)),
-                                discipline.get_formatted_string().lower().split()
-                            )
-                        )
-                    )
-                )
-            first_words = list(set(first_words))
-            first_words.sort()
-            logging.debug("%d Letters identified in %f seconds", len(first_words), time.time()-start)
-            for first_word in first_words:
-                start = time.time()
-                logging.debug("Loading search for '%s' and campus %s", first_word, campus.name)
-                get_disciplines({
-                    "campus": [campus.key.id()],
-                    "q": [first_word]
-                }, overwrite=True, index=True, items=disciplines)
-                logging.debug("Search (and update) made in %f seconds", time.time()-start)
+            logging.debug("Indexing all the things \o/")
+            get_disciplines({
+                "campus": [campus.key.id()],
+                "q": ["anything"]
+            }, overwrite=True, index=True)
+            logging.debug("Search (and update) made in %f seconds", time.time()-start)
 
 
     @ndb.tasklet
