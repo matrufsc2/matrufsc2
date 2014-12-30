@@ -144,17 +144,24 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     logging.debug("Index not found and not authorized :v")
                     index = {}
                 results = None
+                start = time.time()
                 for query_word in query_words:
                     found = index.get(query_word, [])
-                    if results is None:
+                    logging.debug("Found %d matches for word '%s'. Breaking..", len(found), query_word)
+                    if not found:
+                        break
+                    elif results is None:
                         results = found
-                        continue
+                    elif len(results) > len(found):
+                        results = filter(found.__contains__, results)
+                    else:
+                        results = filter(results.__contains__, found)
                     if not results:
                         break
-                    results = filter(lambda result: result in found, results)
                 if results is None:
                     results = []
-                results = list(set(results))
+                results = list(results)
+                logging.debug("%f seconds to find %d matches in the index", time.time()-start, len(results))
                 has_more = len(results[page_end:]) > 0
                 results = results[page_start:page_end]
 
