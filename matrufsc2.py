@@ -131,14 +131,12 @@ def get_campus(idValue):
 
 @app.route("/api/disciplines/")
 def get_disciplines():
-    g.noCache = True
     result = api.get_disciplines(dict(request.args))
     return serialize(result)
 
 
 @app.route("/api/disciplines/<idValue>/")
 def get_discipline(idValue):
-    g.ignorePostMiddleware = True
     result = api.get_discipline(idValue)
     return serialize(result)
 
@@ -201,23 +199,15 @@ def short():
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
-    if IN_DEV:
-        robot_url = "http://127.0.0.1:5000/%s/"
-    else:
-        robot_url = "http://matrufsc2.fjorgemota.com/%s/"
-    robot = Robot(robot_url)
+    robot = Robot()
     fut = robot.run(request.get_data())
     """ :type: google.appengine.ext.ndb.Future """
     return fut.get_result()
 
 @app.route("/secret/clear_cache/", methods=["GET"])
 def clear_cache():
-    if IN_DEV:
-        robot_url = "http://127.0.0.1:5000/%s/"
-    else:
-        robot_url = "http://matrufsc2.fjorgemota.com/%s/"
     start = time.time()
-    robot = Robot(robot_url)
+    robot = Robot()
     robot.clear_gcs_cache()
     robot.update_cache()
     logging.debug("Cleared and updated cache in %f seconds", time.time()-start)
