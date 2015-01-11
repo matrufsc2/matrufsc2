@@ -84,7 +84,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                 if kwargs.get("overwrite"):
                     index = None
                 else:
-                    index = json.loads(get_from_cache(storage_key, persistent=True))
+                    index = get_from_cache(storage_key, persistent=True)
 
                 if index:
                     logging.debug("Index loaded in %f seconds", time.time()-start)
@@ -137,8 +137,8 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                             index[word] = keys_to_items.keys()
                     start = time.time()
                     logging.debug("Saving index..")
-                    set_into_cache(storage_key, json.dumps(index, separators=(',', ':')), persistent=True)
-                    set_into_cache(items_key, json.dumps(items, separators=(',', ':')), persistent=True)
+                    set_into_cache(storage_key, index, persistent=True)
+                    set_into_cache(items_key, items, persistent=True)
                     logging.debug("Saving made in %f seconds", time.time()-start)
                 else:
                     logging.debug("Index not found and not authorized :v")
@@ -167,7 +167,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
 
                 if results:
                     logging.debug("Found %d results. Loading items...", len(results))
-                    items = json.loads(get_from_cache(items_key, persistent=True))
+                    items = get_from_cache(items_key, persistent=True)
                     results = [items[result] for result in results]
                     results = filter(lambda item: query in get_formatted_string(item).lower(), results)
                     if prefix:
@@ -182,14 +182,14 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                 if kwargs.get("overwrite"):
                     results = None
                 else:
-                    results = json.loads(get_from_cache(items_key, persistent=True))
+                    results = get_from_cache(items_key, persistent=True)
                 if results is None:
                     results = fn(filters)
                     results = json.loads(json.dumps(results, cls=JSONEncoder, separators=(',', ':')))
                     if prefix:
                         for result in results:
                             result["id"] = result["id"].replace(prefix, "")
-                    set_into_cache(items_key, json.dumps(results, separators=(',', ':')), persistent=True)
+                    set_into_cache(items_key, results, persistent=True)
                 has_more = len(results[page_end:]) > 0
                 results = results[page_start:page_end]
                 if prefix:
