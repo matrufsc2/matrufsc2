@@ -15,7 +15,7 @@ define("views/SelectedTeamsView", [
         "useCssAnimation": true,
         "animationStartClass": "animation-fade-in",
         "animationEndClass": "animation-fade-in-end",
-        "animationDuration": 1000,
+        "animationDuration": 1500,
 		"listen": {
 			"addedToDOM": "applyFoundation"
 		},
@@ -102,7 +102,6 @@ define("views/SelectedTeamsView", [
 				return new this.itemView({
 					autoRender: false,
 					model: model,
-					discipline: this.selectedDisciplines.get(this.status.get("discipline")) || null,
 					selectedDisciplines: this.selectedDisciplines
 				});
 			} else {
