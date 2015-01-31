@@ -39,9 +39,6 @@ define("collections/SelectedDisciplines", [
 						"_color": color
 					});
 				}
-				var teamRequest = discipline.teams.fetch();
-				collection.teamsRequests.push(teamRequest);
-				return teamRequest;
 			}))
 			.bind(this)
 			.then(function(){
@@ -216,11 +213,6 @@ define("collections/SelectedDisciplines", [
 		},
 		"moveDown": function(model) {
 			this.move(model, 1);
-		},
-		"dispose": function(){
-			_.each(this.teamsRequests, function(teamRequest){
-				teamRequest.cancel();
-			});
 		}
 	});
 });
