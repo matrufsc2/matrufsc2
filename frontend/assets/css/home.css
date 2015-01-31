@@ -1,3 +1,30 @@
 .home-page {
 	margin-top: 30px;
 }
+
+.home-page table {
+	width: 100%;
+}
+
+@media only screen and (min-width: 40.063em)  and (max-width: 90em) {
+	.home-page table *{
+		padding: 0;
+	}
+
+} /* min-width 641px, medium screens */
+#teams-table-container {
+	padding-left: 0;
+}
+#disciplines-resume a{
+	color: #000;
+}
+#disciplines-resume tbody tr {
+    cursor: pointer;
+}
+#filters .filter-input {
+	margin-top: 5px;
+	text-align: left;
+}
+#plans-container .button {
+    border-right: 1px solid #FFFFFF;
+}

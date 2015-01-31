@@ -402,8 +402,8 @@ class Robot(CommunityFetcher, object):
             start = time.time()
             logging.debug("Indexing all the things \o/")
             get_disciplines({
-                "campus": [campus.key.id()],
-                "q": ["anything"]
+                "campus": campus.key.id(),
+                "q": "anything"
             }, overwrite=True, index=True)
             logging.debug("Search (and update) made in %f seconds", time.time()-start)
 
