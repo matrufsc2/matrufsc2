@@ -44,6 +44,9 @@ define("models/Plan", [
                     alert("Versao '"+version+"' nao encontrada");
                 }
             }
+            status.set({
+                "discipline": null
+            });
             status.once("change:campus", function () {
                 Promise.all(_.map(statusSession.selectedDisciplines, function (selectedDiscipline) {
                     var discipline = new Discipline({
@@ -71,7 +74,6 @@ define("models/Plan", [
                         statusSession.selectedCombination
                     );
                 }).then(function() {
-
                     if (_.has(statusSession, "discipline")) {
                         status.set({
                             "discipline": unpurify(statusSession.discipline, "discipline")

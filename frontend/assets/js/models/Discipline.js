@@ -43,8 +43,10 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 				throw "Discipline ID not defined!";
 			}
 			this.teams.url = "/api/teams/?discipline="+this.id;
-			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
-				this.teams.map(function(model){
+            var discipline = this;
+			this.teamsRequest = this.teams.fetch().then(function(){
+				discipline.teams.map(function(model){
+                    model.discipline = discipline;
 					model.set({
 						"_selected": true
 					});
