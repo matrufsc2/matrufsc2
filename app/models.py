@@ -1,3 +1,5 @@
+import hashlib
+from google.appengine.api import users
 from app.json_serializer import JSONSerializable
 from google.appengine.ext import ndb
 
@@ -103,3 +105,28 @@ class Schedule(ndb.Model, JSONSerializable):
             "room": self.room
         }
 
+
+class Plan(ndb.Model, JSONSerializable):
+    code = ndb.StringProperty(indexed=False)
+    history = ndb.JsonProperty(indexed=False, compressed=True)
+
+    @property
+    def id(self):
+        return self.key.id()
+
+    def to_json(self):
+        history = self.history
+        return {
+            "id": self.id,
+            "code": self.code,
+            "history": history,
+            "data": history[-1]["data"]
+        }
+
+    @staticmethod
+    def generate_id_string(code):
+        user = users.get_current_user()
+        if user:
+            user = user.user_id()
+        hash_code = "matrufsc2-plan-%s"%hashlib.sha1("-".join([code, str(user)])).hexdigest()
+        return hash_code

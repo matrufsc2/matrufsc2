@@ -1,7 +1,7 @@
  <div class="top-bar" data-topbar role="navigation">
     <ul class="title-area">
         <li class="name">
-            <h1><a href="/"><img src="/img/logo.png" border="0" alt="MatrUFSC2" /></a></h1>
+            <a href="/"><img src="/img/logo.png" border="0" alt="MatrUFSC2" /></a>
         </li>
     </ul>
 
@@ -11,12 +11,16 @@
             <li class="divider"></li>
             <li><a href="/sobre">Sobre</a></li>
             <li class="divider"></li>
-            <li><a href="javascript:void(0);" class="share">Compartilhar</a></li>
+            <li><a href="javascript:void(0);" class="share" id="share-button">Compartilhar</a></li>
             <li class="divider"></li>
-            <li><a href="javascript:void(0);" class="alert button expand start-tour">Como usar</a></li>
+            <li><a href="javascript:void(0);" class="start-tour">Como usar</a></li>
             <li class="divider"></li>
             <li class="has-dropdown history">
                 <a href="#">Historico</a>
+            </li>
+            <li class="divider"></li>
+            <li>
+                <a href="#" class="auth">Login</a>
             </li>
         </ul>
     </section>
@@ -26,8 +30,6 @@
   <h2>Compartilhe!</h2>
   <p>Compartilhe a URL abaixo para compartilhar este quadro de horários com os seus amigos:</p>
   <input type="text" id="share-url" name="share-url" class="share-url" readonly="readonly" />
-  <p>Ou, se quiser, você também pode <b>salvar esse quadro de horários</b> adicionando esta URL nos favoritos do seu
-  navegador. Tudo muito simples, rápido e fácil de usar. =)</p>
 
   <a class="close-reveal-modal">&#215;</a>
 </div>

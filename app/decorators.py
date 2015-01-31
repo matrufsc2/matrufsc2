@@ -59,12 +59,12 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                 if new_filters:
                     logging.debug("These keys are: %s", ", ".join(new_filters))
                 filters = new_filters
-            query = filters.pop("q", [""])
-            page = int(filters.pop("page", [1])[0])
-            limit = int(filters.pop("limit", [5])[0])
+            query = filters.pop("q", "")
+            page = int(filters.pop("page", 1))
+            limit = int(filters.pop("limit", 5))
             page_start = (page-1) * limit
             page_end = page * limit
-            query = str(query[0]).lower()
+            query = str(query).lower()
             start_processing = time.time()
             filters_hash = hashlib.sha1(fn.__name__+json.dumps(filters, sort_keys=True)).hexdigest()
             items_key = CACHE_INDEX_KEY % (
@@ -84,7 +84,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                 if kwargs.get("overwrite"):
                     index = None
                 else:
-                    index = json.loads(get_from_cache(storage_key, persistent=True))
+                    index = get_from_cache(storage_key, persistent=True)
 
                 if index:
                     logging.debug("Index loaded in %f seconds", time.time()-start)
@@ -136,9 +136,10 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                             keys_to_items = OrderedDict(zip([items_ids[item['id']] for item in word_items], word_items))
                             index[word] = keys_to_items.keys()
                     start = time.time()
-                    logging.debug("Saving index..")
-                    set_into_cache(storage_key, json.dumps(index, separators=(',', ':')), persistent=True)
-                    set_into_cache(items_key, json.dumps(items, separators=(',', ':')), persistent=True)
+                    logging.debug("Saving mapping from word to itens..")
+                    set_into_cache(storage_key, index, persistent=True)
+                    logging.debug("Saving items of the index..")
+                    set_into_cache(items_key, items, persistent=True)
                     logging.debug("Saving made in %f seconds", time.time()-start)
                 else:
                     logging.debug("Index not found and not authorized :v")
@@ -167,7 +168,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
 
                 if results:
                     logging.debug("Found %d results. Loading items...", len(results))
-                    items = json.loads(get_from_cache(items_key, persistent=True))
+                    items = get_from_cache(items_key, persistent=True)
                     results = [items[result] for result in results]
                     results = filter(lambda item: query in get_formatted_string(item).lower(), results)
                     if prefix:
@@ -182,14 +183,14 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                 if kwargs.get("overwrite"):
                     results = None
                 else:
-                    results = json.loads(get_from_cache(items_key, persistent=True))
+                    results = get_from_cache(items_key, persistent=True)
                 if results is None:
                     results = fn(filters)
                     results = json.loads(json.dumps(results, cls=JSONEncoder, separators=(',', ':')))
                     if prefix:
                         for result in results:
                             result["id"] = result["id"].replace(prefix, "")
-                    set_into_cache(items_key, json.dumps(results, separators=(',', ':')), persistent=True)
+                    set_into_cache(items_key, results, persistent=True)
                 has_more = len(results[page_end:]) > 0
                 results = results[page_start:page_end]
                 if prefix:

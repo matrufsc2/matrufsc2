@@ -1,5 +1,5 @@
 from app.exceptions import FieldNotFound
-from app.models import Semester, Campus, Discipline, Team, Teacher, Schedule
+from app.models import Semester, Campus, Discipline, Team, Teacher, Schedule, Plan
 from google.appengine.ext import ndb
 from google.appengine.ext.ndb.model import Key
 
@@ -117,8 +117,8 @@ class NDBRepository(Repository):
         :return: The results of the query to NDB in App Engine
         :rtype: ndb.Future
         """
-        entity = yield self.__get_model__().get_by_id_async(id_value)
-        raise ndb.Return(entity)
+        result = yield self.__get_model__().get_by_id_async(id_value)
+        raise ndb.Return(result)
 
     @ndb.tasklet
     def find_all(self):
@@ -171,3 +171,7 @@ class TeachersRepository(NDBRepository):
 
 class SchedulesRepository(NDBRepository):
     __model__ = Schedule
+
+
+class PlansRepository(NDBRepository):
+    __model__ = Plan

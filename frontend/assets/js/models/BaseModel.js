@@ -17,7 +17,6 @@ define("models/BaseModel", ["underscore", "chaplin", "tv4", "bluebird"], functio
 			}
 		},
 		"fetch": function(options, callback){
-			// Do the request using OboeJS, which allow progressive loading of the model.
 			options = _.defaults(options || {}, {
 				"cached": true,
 				"url": _.result(this, "url"),

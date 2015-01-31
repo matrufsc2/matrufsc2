@@ -3,19 +3,19 @@ define("models/HistoryItem", ["moment", "models/BaseModel"], function(moment, Ba
     return BaseModel.extend({
         "defaults": function() {
             return {
-                "id": moment.utc().unix(),
-                "url": window.location.href
+                "id": 0,
+                "data": {}
             };
         },
 		"validator": {
 			"type"      : "object",
-			"required"  : ["id", "url"],
+			"required"  : ["id", "data"],
 			"properties": {
 				"id": {
 					"type": "integer"
 				},
-				"url": {
-					"type"      : "string"
+				"data": {
+					"type": "object"
 				}
 			}
 		},

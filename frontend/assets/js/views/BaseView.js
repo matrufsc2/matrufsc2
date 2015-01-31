@@ -1,6 +1,6 @@
 define("views/BaseView", ["underscore", "chaplin", "foundation"], function(_, Chaplin) {
   "use strict";
-  var BaseView = Chaplin.View.extend({
+  return Chaplin.View.extend({
     "autoRender": true,
     "listen": {
       "addedToDOM": "applyFoundation"
@@ -15,7 +15,7 @@ define("views/BaseView", ["underscore", "chaplin", "foundation"], function(_, Ch
       return template;
     },
     "render": function(){
-      Chaplin.View.prototype.render.apply(this, []);
+      Chaplin.View.prototype.render.call(this);
       this.attach();
       this.trigger("render");
     },
@@ -23,5 +23,4 @@ define("views/BaseView", ["underscore", "chaplin", "foundation"], function(_, Ch
       this.$el.foundation();
     }
   });
-  return BaseView;
 });

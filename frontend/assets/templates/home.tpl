@@ -5,7 +5,14 @@
 	</div> 
 	<div id="calendar-container" class="row">
 		<div class="small-12 medium-7 columns" id="calendar"></div>
-		<div class="small-12 medium-5 columns" id="teams-table-container"></div>
+		<div class="small-12 medium-5 columns" id="detail">
+            <div class="row">
+                <div class="small-12 columns" id="plans-container"></div>
+            </div>
+			<div class="row">
+				<div class="small-12 columns" id="teams-table-container"></div>
+			</div>
+		</div>
 	</div>
 </div>
 <ol class="joyride-list" data-joyride>
@@ -76,9 +83,28 @@
 		por padrão, todas as turmas são ativadas por padrão. E como tal, basta desativar as turmas que você <b>não</b> tem interesse em pegar</p>
 	</li>
     <li data-text="Próximo" data-prev-text="Anterior" data-options="tip_location: top">
-		<h4>Salvando/compartilhando o quadro de horários</h4>
-		<p>Para você salvar o quadro de horários, <b>basta, após terminar de montá-lo, salvar sua URL em algum lugar.</b>.
-        Caso você queira uma URL menor para salvar ou queira compartilhar seu quadro de horarios no Facebook, basta clicar no botão "Compartilhar" e salvar (e compartilhar) a URL curta mostrada.</p>
+		<h4>Salvando o quadro de horários</h4>
+		<p>Para salvar o quadro de horários, há 2 passos básicos. Clique em 'Próximo' para conhecê-los.</p>
+	</li>
+    <li data-text="Próximo" data-prev-text="Anterior" data-id="plan-code">
+		<h4>Salvando o quadro de horários - Passo 1</h4>
+		<p>Informe o código no qual você deseja salvar seu plano.</p>
+	</li>
+    <li data-text="Próximo" data-prev-text="Anterior" data-id="save-button">
+		<h4>Salvando o quadro de horários - Passo 2</h4>
+		<p>Clique nesse botão e pronto! Seu plano estará salvo em nosso servidor de forma segura. =)</p>
+	</li>
+    <li data-text="Próximo" data-prev-text="Anterior" data-id="open-button">
+		<h4>Abrindo o plano salvo</h4>
+		<p>Para abrir o plano salvo em nosso servidor, basta fazer o login com a mesma conta no qual você salvou o
+        quadro de horários, informar o mesmo código usado para salvá-lo e clicar nesse botão. Simples, rápido e fácil.</p>
+	</li>
+    <li data-text="Próximo" data-prev-text="Anterior" data-id="share-button">
+		<h4>Compartilhando o plano salvo</h4>
+		<p>Com o plano já salvo no servidor e devidamente aberto em seu navegador, basta clicar nesse botão para receber uma URL que permitirá
+            que você compartilhe o plano salvo com os seus amigos.</p>
+		<p>Vale lembrar que nem eles nem ninguém <b>terá permissão para sobrescrever o plano salvo por você</b>. Portanto, caso você deseje ver um plano que ele salvou,
+        basta pedir para ele a URL de compartilhamento do plano que ele salvou em nosso servidor. =)</p>
 	</li>
 	<li data-button="Terminar" data-options="prev_button: false">
 		<h4>Fim</h4>
@@ -87,3 +113,8 @@
 		<p><em>Equipe MatrUFSC2</em></p>
 	</li>
 </ol>
+ <div id="error-discipline" class="reveal-modal" data-reveal>
+  <h2>Erro!</h2>
+  <p></p>
+  <a class="close-reveal-modal">&#215;</a>
+</div>

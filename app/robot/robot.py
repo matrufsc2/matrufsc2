@@ -6,12 +6,14 @@ import time
 import math
 from app.api import get_disciplines, get_semesters, get_campi
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
+from app.robot.fetcher.CommunityFetcher import CommunityFetcher
 from app.robot.fetcher.NDBRemoteFetcher import NDBRemoteFetcher
 from google.appengine.api.runtime.runtime import is_shutting_down
 from google.appengine.ext import ndb
 from google.appengine.api import taskqueue, modules
 import cloudstorage as gcs
 from google.appengine.api import app_identity
+import urllib2, cookielib
 
 try:
     import cPickle as pickle
@@ -26,15 +28,18 @@ context = ndb.get_context()
 context_options = ndb.ContextOptions(use_cache=False)
 
 
-class Robot(NDBRemoteFetcher, object):
-    def __init__(self, base_url):
+class Robot(CommunityFetcher, object):
+    __slots__ = ["cookies"]
+
+    def __init__(self):
         """
         Initializes the robot
-
-        :param base_url: The base url to use in the requests to fetcher
-        :type base_url: selenium.webdriver.remote.webdriver.WebDriver
         """
-        super(Robot, self).__init__(base_url)
+        self.cookies = cookielib.CookieJar()
+        super(Robot, self).__init__(create_opener=lambda: urllib2.build_opener(
+            urllib2.HTTPCookieProcessor(self.cookies),
+            urllib2.HTTPSHandler(debuglevel=0)
+        ))
 
     def generate_semester_key(self, semester):
         """
@@ -80,7 +85,7 @@ class Robot(NDBRemoteFetcher, object):
         """
         logging.info("Saving/updating semester %s", semester.name)
         db_key = self.generate_semester_key(semester)
-        campus_keys = sorted(campus_keys)
+        campus_keys = list(sorted(campus_keys))
         logging.debug("Getting (or even inserting) semester from the database")
         semester_model = yield Semester.get_or_insert_async(
             db_key,
@@ -89,7 +94,7 @@ class Robot(NDBRemoteFetcher, object):
             context_options=context_options
         )
         """ :type: app.models.Semester """
-        if sorted(semester_model.campi) != campus_keys:
+        if list(sorted(semester_model.campi)) != campus_keys:
             logging.debug("Detected changed list of campus..saving it to the database..")
             semester_model.campi = campus_keys
             yield semester_model.put_async(options=context_options)
@@ -397,8 +402,8 @@ class Robot(NDBRemoteFetcher, object):
             start = time.time()
             logging.debug("Indexing all the things \o/")
             get_disciplines({
-                "campus": [campus.key.id()],
-                "q": ["anything"]
+                "campus": campus.key.id(),
+                "q": "anything"
             }, overwrite=True, index=True)
             logging.debug("Search (and update) made in %f seconds", time.time()-start)
 
@@ -407,6 +412,9 @@ class Robot(NDBRemoteFetcher, object):
     def run_worker(self, params):
         timeout = self.calculate_timeout()
         params = pickle.loads(params)
+        for cookie in params["cookies"]:
+            self.cookies.set_cookie(cookie)
+        self.view_state = params["view_state"]
         page_number = int(params["page_number"])
         semester = params["semester"]
         """ :type: app.robot.value_objects.Semester """
@@ -487,8 +495,10 @@ class Robot(NDBRemoteFetcher, object):
                     "skip": skip,
                     "discipline": discipline,
                     "disciplines": disciplines,
-                    "last_login": last_login + 60
-                }), method="POST")
+                    "last_login": last_login + 60,
+                    "view_state": self.view_state,
+                    "cookies": list(self.cookies)
+                }, pickle.HIGHEST_PROTOCOL), method="POST")
                 raise ndb.Return("PAUSED")
             if time.time() >= timeout:
                 raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
@@ -506,8 +516,10 @@ class Robot(NDBRemoteFetcher, object):
                 "discipline_entity": discipline_entity,
                 "teams": teams,
                 "disciplines": disciplines,
-                "last_login": last_login + 60
-            }), method="POST")
+                "last_login": last_login + 60,
+                "view_state": self.view_state,
+                "cookies": list(self.cookies)
+            }, pickle.HIGHEST_PROTOCOL), method="POST")
         else:
             if teams:
                 logging.debug("Saving discipline..")
@@ -525,8 +537,10 @@ class Robot(NDBRemoteFetcher, object):
                     "page_number": 1,
                     "semester": semester,
                     "campi": campi,
-                    "last_login": last_login
-                }), method="POST")
+                    "last_login": last_login,
+                    "view_state": self.view_state,
+                    "cookies": list(self.cookies)
+                }, pickle.HIGHEST_PROTOCOL), method="POST")
             else:
                 taskqueue.add(url="/secret/clear_cache/", method="GET")
 
@@ -557,8 +571,10 @@ class Robot(NDBRemoteFetcher, object):
                     "page_number": 1,
                     "semester": semester,
                     "campi": collections.deque(campi_data),
-                    "last_login": last_login
-                }), method="POST")
+                    "last_login": last_login,
+                    "view_state": self.view_state,
+                    "cookies": list(self.cookies)
+                }, pickle.HIGHEST_PROTOCOL), method="POST")
                 count_semesters += 1
                 yield self.update_semester(semester, (ndb.Key(Campus, self.generate_campus_key(campus, semester))
                                                       for campus in campi_data))
