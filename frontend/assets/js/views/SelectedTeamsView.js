@@ -12,6 +12,10 @@ define("views/SelectedTeamsView", [
 		"itemView": selectedTeamView,
 		"listSelector": "tbody",
 		"tagName": "table",
+        "useCssAnimation": true,
+        "animationStartClass": "animation-fade-in",
+        "animationEndClass": "animation-fade-in-end",
+        "animationDuration": 1000,
 		"listen": {
 			"addedToDOM": "applyFoundation"
 		},
