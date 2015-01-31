@@ -18,7 +18,7 @@
 </div>
 <div id="plan-not-found" class="reveal-modal" data-reveal>
   <h2>Erro!</h2>
-  <p>Nenhum plano foi encontrado para o código informado! Se você está tentando ver o plano de um amigo, peça para ele
+  <p>Nenhum plano foi encontrado para o identificador informado! Se você está tentando ver o plano de um amigo, peça para ele
   a URL de compartilhamento do código. =)</p>
   <a class="close-reveal-modal">&#215;</a>
 </div>

@@ -94,16 +94,6 @@ define('views/PlansView', [
                 });
             }
         },
-        'openPlanByCode': function(code) {
-            var collection = new Plans();
-            collection.url = '/api/plans/?code='+code;
-            return collection.fetch().bind(this).then(function(){
-                this.plan.set(collection.models[0].toJSON(), {'silent': true});
-                this.plan.unset('_version', {'silent': true});
-                this.plan.loadPlan(this.status, this.selectedDisciplines, this.history);
-                return collection;
-            });
-        },
         'openPlan': function(e){
             var code = this.getCode();
             if (!code) {
@@ -123,12 +113,17 @@ define('views/PlansView', [
             if (e) {
                 e.preventDefault();
             }
-            this.openPlanByCode(code).then(function(collection) {
-                button.removeClass('disabled').html('Abrir');
+            var collection = new Plans();
+            collection.url = '/api/plans/?code='+code;
+            return collection.fetch().bind(this).then(function(){
                 if (!collection.length) {
                     this.$('#plan-not-found').foundation('reveal', 'open');
                     return;
                 }
+                this.plan.set(collection.models[0].toJSON(), {'silent': true});
+                this.plan.unset('_version', {'silent': true});
+                this.plan.loadPlan(this.status, this.selectedDisciplines, this.history);
+                button.removeClass('disabled').html('Abrir');
             });
         },
         'checkPreviousData': function(){
