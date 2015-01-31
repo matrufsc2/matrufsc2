@@ -136,8 +136,9 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                             keys_to_items = OrderedDict(zip([items_ids[item['id']] for item in word_items], word_items))
                             index[word] = keys_to_items.keys()
                     start = time.time()
-                    logging.debug("Saving index..")
+                    logging.debug("Saving mapping from word to itens..")
                     set_into_cache(storage_key, index, persistent=True)
+                    logging.debug("Saving items of the index..")
                     set_into_cache(items_key, items, persistent=True)
                     logging.debug("Saving made in %f seconds", time.time()-start)
                 else:

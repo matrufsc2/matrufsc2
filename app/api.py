@@ -41,7 +41,6 @@ def get_campus(id_value):
     prefix="matrufsc2-discipline-",
     consider_only=['campus']
 )
-@cacheable()
 def get_disciplines(filters):
     repository = DisciplinesRepository()
     if filters:

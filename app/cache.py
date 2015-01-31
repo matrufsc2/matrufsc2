@@ -60,11 +60,12 @@ def get_from_cache(key, persistent=True):
             gcs_file.close()
             logging.debug("Found item on GCS in %f seconds..Returning", time.time()-start)
             try:
-                if len(value) >= 1e6:
-                    logging.debug("Saving (large) item on memcached..")
+                size = len(value)
+                if size >= 1e6:
+                    logging.debug("Saving (large) item on memcached (it has %d bytes)..", size)
                     memcache.set(key, zlib.compress(value), CACHE_TIMEOUT)
                 else:
-                    logging.debug("Saving (small) item on memcached..")
+                    logging.debug("Saving (small) item on memcached (it has %d bytes)..", size)
                     memcache.set(key, result, CACHE_TIMEOUT)
             except:
                 pass
@@ -77,11 +78,12 @@ def get_from_cache(key, persistent=True):
 def set_into_cache(key, value, persistent=True):
     pickled_value = pickle.dumps(value, pickle.HIGHEST_PROTOCOL)
     try:
-        if len(pickled_value) >= 1e6:
-            logging.debug("Saving (large) item on memcached..")
+        size = len(pickled_value)
+        if size >= 1e6:
+            logging.debug("Saving (large) item on memcached (it has %d bytes)..", size)
             memcache.set(key, zlib.compress(pickled_value, 1), CACHE_TIMEOUT)
         else:
-            logging.debug("Saving (small) item on memcached..")
+            logging.debug("Saving (small) item on memcached (it has %d bytes)..", size)
             memcache.set(key, value, CACHE_TIMEOUT)
     except:
         pass
