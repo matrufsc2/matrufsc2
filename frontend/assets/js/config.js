@@ -18,7 +18,6 @@ require.config({
 		"select2"	   : "vendor/select2/select2",
 		"please"       : "vendor/pleasejs/Please",
 		"diacritic"    : "vendor/diacritic/diacritics",
-		"backbone.localStorage" : "vendor/backbone.localStorage/backbone.localStorage",
 		"testem"       : "../testem"
 	},
 	"shim" : {

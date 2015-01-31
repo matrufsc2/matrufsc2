@@ -11,6 +11,10 @@ define("views/SelectedDisciplinesView", [
 		"itemView": selectedDisciplineView,
 		"listSelector": "tbody",
 		"tagName": "table",
+        "useCssAnimation": true,
+        "animationStartClass": "animation-fade-in",
+        "animationEndClass": "animation-fade-in-end",
+        "animationDuration": 1000, // Await 500ms more than the animation before adding the class
 		"listen": {
       		"addedToDOM": "applyFoundation",
       		"change:combination collection": "updateViews",

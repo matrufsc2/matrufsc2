@@ -84,7 +84,10 @@ define("views/FiltersView", [
 					"semester": e.val
 				});
 			});
-			view.listenTo(view.status, "change:semester", function(){
+			view.listenTo(view.status, "change:semester", function updateSemestersFilter(){
+                if (!view.semesters.length) {
+                    return setTimeout(updateSemestersFilter, 100);
+                }
 				if(view.status.get("semester") === view.$("#semester").select2("val")){
 					return;
 				}
@@ -119,7 +122,10 @@ define("views/FiltersView", [
 					"campus": e.val
 				});
 			});
-			view.listenTo(view.status, "change:campus", function(){
+			view.listenTo(view.status, "change:campus", function updateCampusFilter(){
+                if (!view.campi.length) {
+                    return setTimeout(updateCampusFilter, 100);
+                }
 				if(view.status.get("campus") === view.$("#campus").select2("val")){
 					return;
 				}

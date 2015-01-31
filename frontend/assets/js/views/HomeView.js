@@ -5,8 +5,9 @@ define("views/HomeView", [
 	"views/FiltersView",
 	"views/SelectedDisciplinesView",
 	"views/CalendarView",
+    "views/PlansView",
 	"views/SelectedTeamsView"
-], function(templates, _, BaseView, FiltersView, SelectedDisciplinesView, CalendarView, SelectedTeamsView){
+], function(templates, _, BaseView, FiltersView, SelectedDisciplinesView, CalendarView, PlansView, SelectedTeamsView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.home,
@@ -19,7 +20,10 @@ define("views/HomeView", [
 				"campi",
 				"selectedDisciplines",
 				"semesters",
-				"status"
+				"status",
+                "history",
+                "plan",
+                "user"
 			]));
 		},
 		"addSubViews": function(){
@@ -38,6 +42,14 @@ define("views/HomeView", [
 			this.subview("calendar", new CalendarView({
 				"collection": this.selectedDisciplines,
 				"container": this.$("#calendar")
+			}));
+            this.subview("plans", new PlansView({
+				"container": this.$("#plans-container"),
+                "history": this.history,
+				"status": this.status,
+                "plan": this.plan,
+                "user": this.user,
+				"selectedDisciplines": this.selectedDisciplines
 			}));
 			this.subview("selectedTeams", new SelectedTeamsView({
 				"status": this.status,

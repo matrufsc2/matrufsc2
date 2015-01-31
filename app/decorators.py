@@ -59,12 +59,12 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                 if new_filters:
                     logging.debug("These keys are: %s", ", ".join(new_filters))
                 filters = new_filters
-            query = filters.pop("q", [""])
-            page = int(filters.pop("page", [1])[0])
-            limit = int(filters.pop("limit", [5])[0])
+            query = filters.pop("q", "")
+            page = int(filters.pop("page", 1))
+            limit = int(filters.pop("limit", 5))
             page_start = (page-1) * limit
             page_end = page * limit
-            query = str(query[0]).lower()
+            query = str(query).lower()
             start_processing = time.time()
             filters_hash = hashlib.sha1(fn.__name__+json.dumps(filters, sort_keys=True)).hexdigest()
             items_key = CACHE_INDEX_KEY % (

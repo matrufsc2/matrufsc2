@@ -3,7 +3,7 @@ define("views/HeaderView", [
 	"views/BaseView",
 	"jquery",
 	"underscore",
-	"views/HistoricListView",
+	"views/HistoricListView"
 ], function(templates, BaseView, $, _, HistoricListView){
 	"use strict";
 	return BaseView.extend({
@@ -18,10 +18,13 @@ define("views/HeaderView", [
 			"click .share": "share"
 		},
 		"initialize": function(options) {
-			BaseView.prototype.initialize.call(this, options);
-			this.historyCollectionGetter = options.historyCollectionGetter;
-			this.activateMenuItem(options.route);
-		},
+            BaseView.prototype.initialize.call(this, options);
+            this.historyCollectionGetter = options.historyCollectionGetter;
+            this.plan = options.plan;
+            this.user = options.user;
+            this.listenTo(this.user, "change", this.updateAuthInfo);
+            this.activateMenuItem(options.route);
+        },
 		"startTour": function(e){
 			e.preventDefault();
 			if (this.isHome() === false) {
@@ -70,18 +73,40 @@ define("views/HeaderView", [
 			this.route = route;
 			this.render();
 		},
+        "updateAuthInfo": function(){
+            var auth = this.$(".auth");
+            if (this.user.get("is_authenticated")) {
+                auth.attr("href", this.user.get("logout_url")).html("Sair");
+            } else {
+                auth.attr("href", this.user.get("login_url")).html("Entrar");
+            }
+        },
+        "updateHistory": function(){
+            var history = this.$(".history");
+            history.off("click");
+            if (this.historyCollectionGetter) {
+                this.subview("history", new HistoricListView({
+                    "collection": this.historyCollectionGetter(),
+                    "plan": this.plan,
+                    "container": history
+                }));
+                history.removeClass("active");
+            } else {
+                history.on("click", _.bind(function(){
+                    this.$("#go-to-home").foundation("reveal", "open");
+                }, this));
+            }
+        },
+        "updateActiveItem": function(){
+            this.$("li.active").removeClass("active");
+			this.$("a[href='/"+this.route.path+"']").parents("li").addClass("active");
+        },
 		"render": function(){
 			BaseView.prototype.render.call(this);
 			this.applyFoundation();
-			this.$("li.active").removeClass("active");
-			this.$("a[href='/"+this.route.path+"']").parents("li").addClass("active");
-			var history = this.$(".history");
-			this.subview("history", new HistoricListView({
-				"collection": this.historyCollectionGetter(),
-				"container": history,
-				"url": "/"+this.route.path+"?"+this.route.query
-			}));
-			history.removeClass("active");
+			this.updateActiveItem();
+            this.updateHistory();
+            this.updateAuthInfo();
 		}
 	});
 });
