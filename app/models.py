@@ -120,7 +120,7 @@ class Plan(ndb.Model, JSONSerializable):
             "id": self.id,
             "code": self.code,
             "history": history,
-            "data": history[-1]["data"]
+            "data": history[0]["data"]
         }
 
     @staticmethod
