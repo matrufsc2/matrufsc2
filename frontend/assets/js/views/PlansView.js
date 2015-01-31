@@ -120,8 +120,8 @@ define('views/PlansView', [
                     this.$('#plan-not-found').foundation('reveal', 'open');
                     return;
                 }
-                this.plan.set(collection.models[0].toJSON(), {'silent': true});
-                this.plan.unset('_version', {'silent': true});
+                this.plan.set(collection.models[0].toJSON());
+                this.plan.unset('_version');
                 this.plan.loadPlan(this.status, this.selectedDisciplines, this.history);
                 button.removeClass('disabled').html('Abrir');
             });
