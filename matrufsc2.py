@@ -4,6 +4,7 @@ import urlparse
 import time
 from flask import Flask, request, g, got_request_exception
 import os
+import sys
 import re
 import urllib2
 from flask.helpers import make_response
@@ -33,6 +34,15 @@ prerender_re = re.compile("Prerender", re.IGNORECASE)
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower()
 
 CACHE_RESPONSE_KEY = "cache/response/%d/%s"
+
+# mapping with LAT/LONG for some of the cities
+CAMPI_LAT_LON = {
+    "CBS": [-27.282778, -50.583889],
+    "ARA": [-28.935, -49.485833],
+    "BLN": [-26.908889, -49.072222],
+    "FLO": [-27.596944, -48.548889],
+    "JOI": [-26.303889, -48.845833]
+}
 
 if not IN_DEV:
     rollbar.init(
@@ -135,10 +145,22 @@ def get_semester(id_value):
     result = api.get_semester(id_value)
     return serialize(result)
 
+def get_campi_key(campus):
+    lat_long = request.headers.get("X_APPENGINE_CITYLATLONG")
+    if campus.name in CAMPI_LAT_LON:
+        lat, lon = map(float, lat_long.split(","))
+        # Calculate distance based on lat/long information
+        return api.distance_on_unit_sphere(lat, lon, *CAMPI_LAT_LON[campus.name])
+    else:
+        return sys.maxint
 
 @app.route("/api/campi/")
 def get_campi():
     result = api.get_campi(request.args.copy())
+    if "X_APPENGINE_CITYLATLONG" in request.headers:
+        # Sort the result if possible
+        result = map(lambda item: item[1], sorted(zip(map(get_campi_key, result), result), key=lambda item: item[0]))
+
     return serialize(result)
 
 
