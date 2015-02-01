@@ -15,6 +15,13 @@
 #teams-table-container {
 	padding-left: 0;
 }
+#teams-table-container table {
+    border-collapse: collapse;
+}
+#teams-table-container td {
+    border-left: 1px #ffffff solid;
+    border-right: 1px #ffffff solid;
+}
 #disciplines-resume a{
 	color: #000;
 }

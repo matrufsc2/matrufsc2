@@ -189,8 +189,11 @@ define("views/FiltersView", [
 					return;
 				}
 				discipline = new Discipline(discipline.original);
-				view.selectedDisciplines.add(discipline);
-				discipline.select();
+                view.selectedDisciplines.add(discipline);
+                discipline.select().then(function(){
+                    view.selectedDisciplines.updateCombinations();
+                    view.selectedDisciplines.trigger("change:combination");
+                });
 			});
 		}
 	});

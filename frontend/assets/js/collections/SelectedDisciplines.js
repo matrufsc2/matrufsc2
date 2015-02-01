@@ -70,10 +70,7 @@ define("collections/SelectedDisciplines", [
 					return result;
 				});
 				if (modelTeams.length > 0) {
-					old.push(_.map(modelTeams, function(team) {
-						team.discipline = discipline;
-						return team;
-					}));
+					old.push(modelTeams);
 				}
 				return old;
 			}, []);
