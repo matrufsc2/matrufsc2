@@ -33,7 +33,7 @@ define("views/SelectedTeamView", [
             if (!this.model || this.model.disposed) {
                 return;
             }
-            this.discipline.hoveredTeam = null;
+            this.model.discipline.hoveredTeam = null;
             this.selectedDisciplines.trigger("change:combination");
         },
         "updateSelectedTeam": function (e) {
@@ -58,14 +58,11 @@ define("views/SelectedTeamView", [
                 return;
             }
             var el = this.$("td");
-            if (this.model.startGrouping) {
-                el.css("border-top", "4px #000000 solid");
-            } else {
-                el.css("border-top", "");
-            }
             el.css({
                 "background-color": this.model.discipline.get("_color"),
-                "opacity": this.model.get("_selected") ? 1 : 0.5
+                "opacity": this.model.get("_selected") ? 1 : 0.5,
+                "border-top": this.model.startGrouping ? "2px #000000 solid" : "",
+                "border-bottom": this.model.endGrouping ? "2px #000000 solid" : ""
             });
         },
         "dispose": function () {
