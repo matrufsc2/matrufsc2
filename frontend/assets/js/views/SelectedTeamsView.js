@@ -25,6 +25,8 @@ define("views/SelectedTeamsView", [
 		"initialize": function(options){
 			this.collection = null;
 			_.extend(this, _.pick(options, ["selectedDisciplines", "status"]));
+			this.collection = new Teams();
+            this.disciplineCollection = null;
 			this.updateCollection();
 			BaseView.prototype.initialize.apply(this, []);
 			Chaplin.CollectionView.prototype.initialize.apply(this, []);
@@ -42,42 +44,39 @@ define("views/SelectedTeamsView", [
 			}, this);
 		},
 		"group": function(){
-			if(!this.groupEnabled || !this.collection) {
-				if(this.collection) {
-					this.collection.comparator = null;
-					this.collection.each(function(team) {
-						team.startGrouping = false;
-					});
-				}
+            if (!this.disciplineCollection) {
+                return;
+            }
+            if(!this.groupEnabled) {
+                this.disciplineCollection.each(function(team){
+                    team.startGrouping = false;
+                    team.endGrouping = false;
+                    this.collection.add(team);
+                }, this);
 				return;
 			}
 			var onGetSchedule = function(schedule) {
 				return schedule.get("hourStart")+""+schedule.get("minuteStart")+":"+schedule.get("dayOfWeek")+":"+schedule.get("classRepeat");
 			};
 			var onGetTeam = function(team) {
-				var schedules = _.map(team.schedules.sortBy(onGetSchedule), onGetSchedule).join("|");
-				return schedules;
+				return _.map(team.schedules.sortBy(onGetSchedule), onGetSchedule).join("|");
 			};
-			this.collection.comparator = onGetTeam;
-			this.collection.sort({
-				"silent": true
-			});
-			var oldTeam = null;
-			this.collection.map(function(team){
-				if(oldTeam === null) {
-					oldTeam = team;
-					oldTeam.startGrouping = false;
-					return;
-				}
-				if(onGetTeam(team) === onGetTeam(oldTeam)) {
-					team.startGrouping = false;
-					oldTeam = team;
-				} else {
-					team.startGrouping = true;
-					oldTeam = team;
-				}
-				return team;
-			});
+            var teams_schedules = {};
+			this.disciplineCollection.each(function(team) {
+                var key = onGetTeam(team);
+                if (!teams_schedules[key]) {
+                    teams_schedules[key] = [];
+                }
+                teams_schedules[key].push(team);
+            });
+            _.each(teams_schedules, function(teams) {
+                var teamsLastIndex = teams.length - 1;
+                _.each(teams, function(team, index){
+                    team.startGrouping = index === 0;
+                    team.endGrouping = index === teamsLastIndex;
+                    this.collection.add(team);
+                }, this);
+            }, this);
 		},
 		"updateCollection": function(){
 			if(!!this.collection) {
@@ -85,12 +84,11 @@ define("views/SelectedTeamsView", [
 			}
 			var selectedDiscipline = this.status.get("discipline");
 			var discipline = this.selectedDisciplines.get(selectedDiscipline);
+            this.collection.reset();
 			if(!selectedDiscipline || !discipline) {
-				this.collection = new Teams();
 				return;
 			}
-			this.collection = discipline.teams;
-			this.addCollectionListeners();
+			this.disciplineCollection = discipline.teams;
 			this.groupTeams();
 		},
 		"selectDiscipline": function(){
