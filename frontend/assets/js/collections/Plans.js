@@ -3,4 +3,4 @@ define("collections/Plans", ["collections/BaseCollection", "models/Plan"], funct
     return BaseCollection.extend({
         "model": Plan
     });
-})
+});

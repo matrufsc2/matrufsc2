@@ -22,7 +22,7 @@
     border-left: 1px #ffffff solid;
     border-right: 1px #ffffff solid;
 }
-#disciplines-resume a{
+#disciplines-resume a, #teams-table-container a{
 	color: #000;
 }
 #disciplines-resume tbody tr {

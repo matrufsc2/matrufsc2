@@ -1,11 +1,17 @@
-define("models/Discipline", ["underscore", "models/CachedModel","collections/Teams"], function(_, CachedModel, Teams) {
+define("models/Discipline", [
+    "underscore",
+    "bluebird",
+    "models/CachedModel",
+    "collections/Teams"
+], function(_, Promise, CachedModel, Teams) {
 	"use strict";
 	return CachedModel.extend({
 		"defaults": {
 			"id": -1,
 			"code": "AAA0000",
 			"name": "Sem nome",
-			"_selected": false
+			"_selected": false,
+            "_custom": false
 		},
 		"urlRoot": "/api/disciplines/",
 		"validator": {
@@ -42,6 +48,14 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 			if (this.id === -1) {
 				throw "Discipline ID not defined!";
 			}
+            if (this.get("_custom")) {
+                this.teams.each(function(model){
+					model.set({
+						"_selected": true
+					});
+				});
+                return Promise.resolve();
+            }
 			this.teams.url = "/api/teams/?discipline="+this.id;
             var discipline = this;
 			this.teamsRequest = this.teams.fetch().then(function(){
@@ -59,6 +73,14 @@ define("models/Discipline", ["underscore", "models/CachedModel","collections/Tea
 				throw "Discipline ID not defined!";
 			}
 			this.collection.remove(this);
+            if (this.get("_custom")) {
+                this.teams.each(function(model){
+					model.set({
+						"_selected": false
+					});
+				});
+                return Promise.resolve();
+            }
 			this.teams.url = "/api/teams/?discipline="+this.id;
 			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
 				this.teams.each(function(model){
