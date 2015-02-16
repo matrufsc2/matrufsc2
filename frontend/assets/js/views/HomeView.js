@@ -41,6 +41,7 @@ define("views/HomeView", [
 			}));
 			this.subview("calendar", new CalendarView({
 				"collection": this.selectedDisciplines,
+                "status": this.status,
 				"container": this.$("#calendar")
 			}));
             this.subview("plans", new PlansView({

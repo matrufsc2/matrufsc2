@@ -2,8 +2,9 @@ define("views/SelectedDisciplineView", [
 		"templates",
 		"jquery",
 		"underscore",
+        "diacritic",
 		"views/BaseView"
-		], function(templates, $, _, BaseView){
+		], function(templates, $, _, diacritic, BaseView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.selectedDiscipline,
@@ -13,6 +14,9 @@ define("views/SelectedDisciplineView", [
 			"click .selectedDiscipline": "updateTeams",
 			"click .icon-up": "moveUp",
 			"click .icon-down": "moveDown",
+			"click .icon-edit": "edit",
+			"click .icon-ok": "save",
+            "click .discipline-name": "editName",
 			"click td:lt(4)": "select"
 		},
 		"initialize": function(options) {
@@ -20,11 +24,78 @@ define("views/SelectedDisciplineView", [
 			this.blinking = false;
 			this.listenTo(this.model.teams, "syncStateChange", this.render);
 		},
+        "editName": function(e){
+            e.preventDefault();
+            var valid = false;
+            var name;
+            while (valid === false) {
+                name = prompt("Informe o nome que você deseja dar a essa disciplina:");
+                if(name) {
+                    name = diacritic.clean(name);
+                    valid = name.length > 0 && name.length < 30;
+                    if (!valid) {
+                        alert("Informe um codigo valido! (entre 1 e 29 caracteres)");
+                    }
+                } else {
+                    return;
+                }
+            }
+            this.model.set({
+                "id": name.toUpperCase().substr(0, 7),
+                "code": name.toUpperCase().substr(0, 7),
+                "name": name
+            });
+            this.status.set({
+                "discipline": name.toUpperCase()
+            });
+            this.render();
+        },
+        "canEdit": function() {
+            return this.model.get("_custom") === true;
+        },
+        "isEditing": function(){
+            return this.canEdit() && this.model.id === this.status.get("discipline") &&
+                this.status.get("editing") === true;
+        },
 		"getTemplateData": function(){
 			return {
-				"discipline": this.model
+				"discipline": this.model,
+                "can_edit": this.canEdit(),
+                "is_editing": this.isEditing()
 			};
 		},
+        "edit": function(e){
+            if (!this.canEdit()) {
+                e.preventDefault();
+                return alert("Nao e possivel editar esta disciplina pois ela nao é personalizada!");
+            }
+            this.select(e);
+            this.model.teams.each(function(team) {
+                // Descompact the schedules for each team to allow easy editing
+                team.schedules.descompact();
+            });
+            this.status.set({
+                "editing": true
+            });
+            this.render();
+            e.preventDefault();
+        },
+        "save": function(e){
+            if (!this.isEditing()) {
+                e.preventDefault();
+                return alert("Nao e possivel editar esta disciplina pois ela nao está sendo edidtada! (e isso parece um bug)");
+            }
+            this.status.set({
+                "editing": false
+            });
+            this.model.teams.each(function(team) {
+                // Compact the schedules for each team to avoid inneficient space
+                team.schedules.compact();
+            });
+            this.model.collection.updateCombinations();
+			this.model.collection.trigger("change:combination");
+            this.render();
+        },
 		"select": function(e){
 			this.status.set({
 				"discipline": this.model.id
@@ -61,7 +132,7 @@ define("views/SelectedDisciplineView", [
 			e.preventDefault();
 		},
 		"render": function(){
-			BaseView.prototype.render.apply(this, []);
+			BaseView.prototype.render.call(this);
 			if (this.model.has("_title") && this.blinking === false) {
 				this.blinking = true;
 				_.delay(function blink(view, status){
@@ -73,10 +144,9 @@ define("views/SelectedDisciplineView", [
 						view.blinking = false;
 						return;
 					}
-					var opacity = view.$(".title").css("opacity");
 					view.$(".title").animate({
 						"opacity": status ? 1 : 0.5
-					}, 400, 'swing', function(){
+					}, 400, "swing", function(){
 						_.delay(blink, 500, view, !status);
 					});
 				}, 500, this, false);

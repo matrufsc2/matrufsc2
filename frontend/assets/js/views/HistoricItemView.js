@@ -24,4 +24,4 @@ define("views/HistoricItemView", [
 			};
 		}
     });
-})
+});

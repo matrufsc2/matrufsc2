@@ -66,7 +66,7 @@
 		<h4>Lista de disciplinas selecionadas - Conflitos</h4>
 		<p>Às vezes, pode acontecer de <b>haver disciplinas selecionadas, mas não existir combinações possíveis</b>. Isso normalmente
 		acontece pois duas ou mais turmas conflitam <b>completamente</b> entre si. Quando isso acontece, o nome da disciplina na lista
-        de disciplinas selecionadas começa a piscar, e o quadro de horarios <b>nao e alterado</b>.</p>
+        de disciplinas selecionadas começa a piscar, e o quadro de horarios <b>é alterado mostrando um quadro vermelho com o escrito "CONFLITO" no lugar onde está acontecendo os conflitos</b>.</p>
 		<p>Nesse caso, há duas opções: Clicar no icone <i class="icon-delete"></i> e tirar a(s) disciplina(s) da lista de disciplinas
 		selecionadas, ou então fazer experimentos com as outras disciplinas para encontrar uma combinação válida.</p>
 	</li>

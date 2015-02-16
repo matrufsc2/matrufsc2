@@ -1,11 +1,12 @@
 define("models/Plan", [
     "models/BaseModel",
     "models/Discipline",
+    "models/Team",
     "bluebird",
     "underscore",
     "jquery",
     "moment"
-], function(BaseModel, Discipline, Promise, _, $, moment) {
+], function(BaseModel, Discipline, Team, Promise, _, $, moment) {
     "use strict";
     function purify(id, type) {
         return (id || "").replace("matrufsc2-"+type+"-", "");
@@ -49,20 +50,36 @@ define("models/Plan", [
             });
             status.once("change:campus", function () {
                 Promise.all(_.map(statusSession.selectedDisciplines, function (selectedDiscipline) {
-                    var discipline = new Discipline({
-                        "id": unpurify(selectedDiscipline.id, "discipline")
-                    });
-                    return Promise.all([discipline.fetch(), discipline.select()]).bind(this).then(function () {
+                    var discipline;
+                    var promiseList;
+                    if (selectedDiscipline._custom) {
+                        discipline = new Discipline(selectedDiscipline);
+                        promiseList = [discipline.select()];
+                    } else {
+                        discipline = new Discipline({
+                            "id": unpurify(selectedDiscipline.id, "discipline")
+                        });
+                        promiseList = [discipline.fetch(), discipline.select()];
+                    }
+
+                    return Promise.all(promiseList).bind(this).then(function () {
                         return Promise.all(
                             _.map(_.where(statusSession.teams, {
                                     "discipline": selectedDiscipline.id
                                 }), function (teamOriginal) {
-                                var team = discipline.teams.get(unpurify(teamOriginal.id, "team"));
+                                var team;
+                                if (discipline.get("_custom")) {
+                                    team = new Team(teamOriginal);
+                                    team.discipline = discipline;
+                                    discipline.teams.add(team);
+                                } else {
+                                    team = discipline.teams.get(unpurify(teamOriginal.id, "team"));
+                                }
                                 if (team) {
                                     team.set({"_selected": teamOriginal._selected});
                                     return Promise.resolve();
                                 } else {
-                                    return Promise.reject("Foram encontradas turmas que nao existem mais na disciplina "+discipline.get('name'));
+                                    return Promise.reject("Foram encontradas turmas que nao existem mais na disciplina "+discipline.get("name"));
                                 }
                             }, this)
                         ).then(function(){
@@ -121,15 +138,27 @@ define("models/Plan", [
             data.selectedDisciplines = [];
             data.teams = [];
             selectedDisciplines.each(function (discipline) {
-                data.selectedDisciplines.push({
-                    "id": purify(discipline.id, "discipline")
-                });
-                discipline.teams.each(function (team) {
-                    data.teams.push({
-                        "id": purify(team.id, "team"),
-                        "discipline": purify(discipline.id, "discipline"),
-                        "_selected": team.get("_selected")
+                if (discipline.get("_custom")) {
+                    data.selectedDisciplines.push(_.omit(discipline.toJSON(), "_color"));
+                } else {
+                    data.selectedDisciplines.push({
+                        "id": purify(discipline.id, "discipline")
                     });
+                }
+                discipline.teams.each(function (team) {
+                    var teamObj;
+                    if (discipline.get("_custom")) {
+                        teamObj = team.toJSON();
+                        teamObj.schedules = team.schedules.toJSON();
+                        teamObj.discipline = discipline.id;
+                    } else {
+                        teamObj = {
+                            "id": purify(team.id, "team"),
+                            "discipline": purify(discipline.id, "discipline"),
+                            "_selected": team.get("_selected")
+                        };
+                    }
+                    data.teams.push(teamObj);
                 });
             });
             data.selectedCombination = selectedDisciplines.getSelectedCombination();

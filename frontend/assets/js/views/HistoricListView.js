@@ -43,4 +43,4 @@ define("views/HistoricListView", [
 		)
 	);
     return HistoricListView;
-})
+});

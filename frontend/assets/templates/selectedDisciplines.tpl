@@ -5,7 +5,7 @@
 		<th>Turma</th>
 		<th>Horas-Aula</th>
 		<th>Período</th>
-		<th class="text-right">
+		<th class="text-right" colspan="2">
 			<a href="#" id="previousCombination"><i class="icon-left"></i></a>
 		</th>
 		<th id="combinationStatus" class="text-center"></th>
@@ -22,6 +22,6 @@
             Total:
         </td>
         <td id="totalHours" class="text-center"></td>
-        <td colspan="4"></td>
+        <td colspan="5"></td>
     </tr>
 </tfoot>
