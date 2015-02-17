@@ -10,15 +10,20 @@ define("collections/SelectedDisciplines", [
 	"use strict";
 	return CachedCollection.extend({
 		"model": Discipline,
+        "conflicting": false,
 		"combinationSelected": 0,
 		"combinationsAvailable": [],
 		"initialize" : function(models, options){
 			_.extend(this, _.pick(options, ["status", "campi", "semesters"]));
 			this.on("add remove", this.updateCombinations, this);
-			this.listenTo(options.status, "change:campus", function(){
+            this.status = options.status;
+			this.listenTo(this.status, "change:campus", function(){
 				this.each(function(discipline) {
 					discipline.unselect();
 				});
+                this.status.set({
+                    "discipline": null
+                });
 			});
 		},
 		"updateCombinations": function(defaultCombination){
@@ -55,11 +60,18 @@ define("collections/SelectedDisciplines", [
 				return _.map(team.schedules.sortBy(onGetSchedule), onGetSchedule).join("|");
 			};
 			var teams = this.reduce(function(old, discipline){
+                if (this.status.get("editing") === true && this.status.get("discipline") === discipline.id) {
+                    if (discipline.team) {
+                        old.push([discipline.team]);
+                    }
+                    return old;
+                }
 				discipline.team = null;
 				var modelTeams = discipline.teams.clone();
 				var uniqueSchedules = [];
 				modelTeams = modelTeams.filter(function(team) {
-					if (!team.get("_selected")) {
+					if (!team.get("_selected") || (team.discipline.get("_custom") !== true && team.getNumberOfLessons() === 0)) {
+                        // Ignore teams which are not selected or teams that yet does not have lessons
 						return false;
 					}
 					var schedule = onGetTeam(team);
@@ -73,7 +85,7 @@ define("collections/SelectedDisciplines", [
 					old.push(modelTeams);
 				}
 				return old;
-			}, []);
+			}, [], this);
 			var combinations = combinator(_.clone(teams), teams.length);
 			this.map(function(discipline) {
 				discipline.unset("_title");
@@ -88,30 +100,25 @@ define("collections/SelectedDisciplines", [
 					disciplines.push(combination[c].discipline.id);
 				}
 				var schedules = combination.reduce(function(old, team) {
-					return old.concat(team.schedules.clone().map(function(schedule) {
+					return old.concat(team.schedules.map(function(schedule) {
 						schedule.team = team;
 						return schedule;
 					}));
 				}, []);
 				for(var verifySchedule = schedules.length; verifySchedule--;) {
 					var schedule = schedules[verifySchedule];
-					for(var count = schedules.length; count--;) {
-						if(verifySchedule === count) {
-							continue;
-						}
-						if (schedule.conflictsWith(schedules[count])){
-							var disciplineId = schedule.team.discipline.id;
-							disciplinesConflicted[disciplineId] = disciplinesConflicted[disciplineId] || [];
-							disciplinesConflicted[disciplineId].push(schedule.team.id);
-							return false;
-						}
+					if (_.filter(schedules, schedule.conflictsWith, schedule).length > 1) {
+                        var disciplineId = schedule.team.discipline.id;
+                        disciplinesConflicted[disciplineId] = disciplinesConflicted[disciplineId] || [];
+                        disciplinesConflicted[disciplineId].push(schedule.team.id);
+                        return false;
 					}
 				}
 				return true;
 			});
-			var conflictDetected = false;
+			this.conflicting = false;
 			if (combinationsAvailable.length === 0 && teams.length > 0) {
-				conflictDetected =_.reduce(disciplinesConflicted, function(old, teamsDiscipline, discipline_id) {
+				this.conflicting =_.reduce(disciplinesConflicted, function(old, teamsDiscipline, discipline_id) {
 					var teamsSelected = _.reduce(teams, function(old, disciplineTeams){
 						if(old.length > 0) {
 							return old;
@@ -131,11 +138,19 @@ define("collections/SelectedDisciplines", [
 						discipline.set("_title", "Esta disciplina esta impedindo a geracao de uma combinacao valida");
 					}
 					return disciplineConflict || old;
-				}, conflictDetected, this);
+				}, this.conflicting, this);
+                combinationsAvailable = _.filter(combinations, function(combination){
+                    var disciplines = [];
+                    for(var c=combination.length; c--;) {
+                        if(disciplines.indexOf(combination[c].discipline.id) !== -1) {
+                            return false;
+                        }
+                        disciplines.push(combination[c].discipline.id);
+                    }
+                    return true;
+                });
 			}
-			if (!conflictDetected) {
-				this.combinationsAvailable = combinationsAvailable;
-			}
+			this.combinationsAvailable = combinationsAvailable;
 		},
 		"combinationCount": function(){
 			return this.combinationsAvailable.length;
@@ -143,6 +158,9 @@ define("collections/SelectedDisciplines", [
 		"getSelectedCombination": function(){
 			return this.combinationSelected;
 		},
+        "isConflicting": function() {
+            return this.conflicting;
+        },
 		"setSelectedCombination": function(id){
 			var old = this.combinationSelected;
 			this.combinationSelected = id;

@@ -4,7 +4,11 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 		"defaults": {
 			"discipline": null,
 			"campus": null,
-			"semester": null
+			"semester": null,
+            "editing": false,
+            "plan": null,
+            "version": null,
+            "possibility": 1
 		},
 		"initialize": function(attributes, options) {
 			CachedModel.prototype.initialize.call(this, attributes, options);

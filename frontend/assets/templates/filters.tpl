@@ -36,3 +36,4 @@
 		</div>
 	</form>
 </div>
+<div class="small-12 columns" id="discipline-custom-settings"></div>

@@ -22,7 +22,7 @@
     border-left: 1px #ffffff solid;
     border-right: 1px #ffffff solid;
 }
-#disciplines-resume a{
+#disciplines-resume a, #teams-table-container a{
 	color: #000;
 }
 #disciplines-resume tbody tr {
@@ -34,4 +34,7 @@
 }
 #plans-container .button {
     border-right: 1px solid #FFFFFF;
+}
+#calendar tbody .hour-4 td, #calendar tbody .hour-9 td {
+    border-bottom: 2px solid #000;
 }

@@ -3,8 +3,9 @@ define("views/HeaderView", [
 	"views/BaseView",
 	"jquery",
 	"underscore",
-	"views/HistoricListView"
-], function(templates, BaseView, $, _, HistoricListView){
+	"views/HistoricListView",
+    "views/PossibilitiesView"
+], function(templates, BaseView, $, _, HistoricListView, PossibilitiesView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.header,
@@ -19,8 +20,9 @@ define("views/HeaderView", [
 		},
 		"initialize": function(options) {
             BaseView.prototype.initialize.call(this, options);
-            this.historyCollectionGetter = options.historyCollectionGetter;
-            this.plan = options.plan;
+            this.history = options.history;
+            this.possibilities = options.possibilities;
+            this.status = options.status;
             this.user = options.user;
             this.listenTo(this.user, "change", this.updateAuthInfo);
             this.activateMenuItem(options.route);
@@ -84,10 +86,10 @@ define("views/HeaderView", [
         "updateHistory": function(){
             var history = this.$(".history");
             history.off("click");
-            if (this.historyCollectionGetter) {
+            if (this.history) {
                 this.subview("history", new HistoricListView({
-                    "collection": this.historyCollectionGetter(),
-                    "plan": this.plan,
+                    "collection": this.history,
+                    "status": this.status,
                     "container": history
                 }));
                 history.removeClass("active");
@@ -97,15 +99,32 @@ define("views/HeaderView", [
                 }, this));
             }
         },
+        "updatePossibilities": function(){
+            var possibilities = this.$(".possibilities");
+            possibilities.off("click");
+            if (this.history) {
+                this.subview("possibilities", new PossibilitiesView({
+                    "collection": this.possibilities,
+                    "status": this.status,
+                    "container": possibilities
+                }));
+                possibilities.removeClass("active");
+            } else {
+                possibilities.on("click", _.bind(function(){
+                    this.$("#go-to-home").foundation("reveal", "open");
+                }, this));
+            }
+        },
         "updateActiveItem": function(){
             this.$("li.active").removeClass("active");
-			this.$("a[href='/"+this.route.path+"']").parents("li").addClass("active");
+			this.$("a[href='/"+this.route.path+"']").parents("li").not(".has-dropdown").addClass("active");
         },
 		"render": function(){
 			BaseView.prototype.render.call(this);
 			this.applyFoundation();
 			this.updateActiveItem();
             this.updateHistory();
+            this.updatePossibilities();
             this.updateAuthInfo();
 		}
 	});

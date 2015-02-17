@@ -4,9 +4,15 @@ define("views/SelectedTeamsView", [
 		"chaplin",
 		"underscore",
 		"views/SelectedTeamView",
-		"collections/Teams"
-], function(templates, BaseView, Chaplin, _, selectedTeamView, Teams){
+		"collections/Teams",
+        "models/Team"
+], function(templates, BaseView, Chaplin, _, selectedTeamView, Teams, Team){
 	"use strict";
+    function pad(n, width, z) {
+        z = z || "0";
+        n = n + "";
+        return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+    }
 	var SelectedTeamsView = BaseView.extend({
 		"template" : templates.selectedTeams,
 		"itemView": selectedTeamView,
@@ -20,17 +26,20 @@ define("views/SelectedTeamsView", [
 			"addedToDOM": "applyFoundation"
 		},
 		"events": {
-			"click #groupTeams": "groupTeams"
+			"click #groupTeams": "groupTeams",
+            "click #add-team": "addTeam"
 		},
 		"initialize": function(options){
 			this.collection = null;
-			_.extend(this, _.pick(options, ["selectedDisciplines", "status"]));
+			this.selectedDisciplines = options.selectedDisciplines;
+            this.status = options.status;
 			this.collection = new Teams();
-            this.disciplineCollection = null;
+            this.discipline = null;
 			this.updateCollection();
 			BaseView.prototype.initialize.apply(this, []);
 			Chaplin.CollectionView.prototype.initialize.apply(this, []);
 			this.listenTo(this.status, "change:discipline", this.selectDiscipline);
+			this.listenTo(this.status, "change:editing", this.selectDiscipline);
 			this.groupEnabled = this.checkGroupTeamsEnabled();
 		},
 		"checkGroupTeamsEnabled": function(){
@@ -44,11 +53,11 @@ define("views/SelectedTeamsView", [
 			}, this);
 		},
 		"group": function(){
-            if (!this.disciplineCollection) {
+            if (!this.discipline) {
                 return;
             }
             if(!this.groupEnabled) {
-                this.disciplineCollection.each(function(team){
+                this.discipline.teams.each(function(team){
                     team.startGrouping = false;
                     team.endGrouping = false;
                     this.collection.add(team);
@@ -62,7 +71,7 @@ define("views/SelectedTeamsView", [
 				return _.map(team.schedules.sortBy(onGetSchedule), onGetSchedule).join("|");
 			};
             var teams_schedules = {};
-			this.disciplineCollection.each(function(team) {
+			this.discipline.teams.each(function(team) {
                 var key = onGetTeam(team);
                 if (!teams_schedules[key]) {
                     teams_schedules[key] = [];
@@ -79,40 +88,71 @@ define("views/SelectedTeamsView", [
             }, this);
 		},
 		"updateCollection": function(){
-			if(!!this.collection) {
-				this.stopListening(this.collection);
-			}
 			var selectedDiscipline = this.status.get("discipline");
 			var discipline = this.selectedDisciplines.get(selectedDiscipline);
             this.collection.reset();
 			if(!selectedDiscipline || !discipline) {
 				return;
 			}
-			this.disciplineCollection = discipline.teams;
+			this.discipline = discipline;
 			this.groupTeams();
 		},
+        "addTeam": function(e){
+            e.preventDefault();
+            if (!this.isEditing()) {
+                return alert("Impossivel adicionar turma em disciplina não-personalizada");
+            }
+            var code, discipline;
+            discipline = this.discipline;
+            code = 1;
+            while (discipline.teams.findWhere({"code": pad(code, 4)})) {
+                ++code;
+            }
+            var team = new Team({
+                "id": pad(code, 4),
+                "code": pad(code, 4),
+                "vacancies_offered": 1,
+                "vacancies_filled": 0,
+                "teachers": [{
+                    "name": "Você"
+                }],
+                "schedules": []
+            });
+            team.discipline = discipline;
+            discipline.teams.add(team);
+            this.updateCollection();
+            team.set({
+                "_selected": true
+            });
+        },
 		"selectDiscipline": function(){
+			this.render();
 			this.updateCollection();
-			this.renderAllItems();
 		},
 		"initItemView": function(model) {
 			if (this.itemView) {
 				return new this.itemView({
-					autoRender: false,
-					model: model,
-					selectedDisciplines: this.selectedDisciplines
+					"autoRender": false,
+					"model": model,
+                    "discipline": this.discipline,
+                    "status": this.status,
+                    "isEditingDiscipline": this.isEditing(),
+                    "isEditingTeam": this.isEditing() && this.discipline.team && this.discipline.team.id === model.id,
+					"selectedDisciplines": this.selectedDisciplines
 				});
 			} else {
 				throw new Error("The CollectionView#itemView property " + "must be defined or the initItemView() must be overridden.");
 			}
 		},
+        "isEditing": function(){
+            return this.status.get("editing") === true && this.discipline && this.discipline.get("_custom");
+        },
 		"getTemplateData": function(){
 			return {
-				"view": this
+                "is_editing": this.isEditing()
 			};
 		},
 		"render": function(){
-			this.group();
 			BaseView.prototype.render.apply(this, []);
 			Chaplin.CollectionView.prototype.render.apply(this, []);
 		}

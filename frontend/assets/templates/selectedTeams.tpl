@@ -14,6 +14,11 @@
 </thead>
 <tbody></tbody>
 <tfoot>
+    <% if (is_editing) { %>
+    <tr>
+        <td colspan="4"><a href="#" id="add-team">Adicionar Turma</a></td>
+    </tr>
+    <% } else { %>
 	<tr>
 		<td>
 			<input type="checkbox" id="groupTeams" checked="checked"/>
@@ -22,4 +27,5 @@
 			<label for="groupTeams">Agrupar turmas com horários iguais</label>
 		</td>
 	</tr>
+    <% } %>
 </tfoot>

@@ -23,7 +23,8 @@ define("views/HomeView", [
 				"status",
                 "history",
                 "plan",
-                "user"
+                "user",
+                "possibilities"
 			]));
 		},
 		"addSubViews": function(){
@@ -41,6 +42,7 @@ define("views/HomeView", [
 			}));
 			this.subview("calendar", new CalendarView({
 				"collection": this.selectedDisciplines,
+                "status": this.status,
 				"container": this.$("#calendar")
 			}));
             this.subview("plans", new PlansView({
@@ -48,6 +50,7 @@ define("views/HomeView", [
                 "history": this.history,
 				"status": this.status,
                 "plan": this.plan,
+                "possibilities": this.possibilities,
                 "user": this.user,
 				"selectedDisciplines": this.selectedDisciplines
 			}));

@@ -3,9 +3,10 @@ define("views/FiltersView", [
 	"templates",
 	"views/BaseView",
 	"models/Discipline",
+    "models/Team",
 	"diacritic",
 	"select2"
-], function(_, templates, BaseView, Discipline, diacritic){
+], function(_, templates, BaseView, Discipline, Team, diacritic){
 	"use strict";
 	var filterCollectionByQuery = function(collection, query, onGet) {
 		var count = 0;
@@ -16,7 +17,7 @@ define("views/FiltersView", [
 			if(count >= limit){
 				return false;
 			}
-			var result = onGet(model).toLowerCase().indexOf(diacritic.clean(query.term).toLowerCase()) != -1;
+			var result = onGet(model).toLowerCase().indexOf(diacritic.clean(query.term).toLowerCase()) !== -1;
 			if(result){
 				++count;
 			}
@@ -145,12 +146,31 @@ define("views/FiltersView", [
 				"nextSearchTerm": function(selectedObject, currentSearchTerm) {
 					return currentSearchTerm;
 				},
+                "createSearchChoice": function(term) {
+                    term = diacritic.clean(term);
+                    if (term.length === 0 || term.length >= 30) {
+                        return;
+                    }
+                    return {
+                        "id": term.toUpperCase(),
+                        "text": "Criar atividade extra: "+term,
+                        "original": {
+                            "id": term.toUpperCase().substr(0,7),
+                            "code": term.toUpperCase().substr(0,7),
+                            "name": term,
+                            "_custom": true
+                        }
+                    };
+                },
+                "createSearchChoicePosition": function(list, item) {
+                    list.splice(0, 0, item);
+                },
 				"ajax":  {
-					url: Discipline.prototype.urlRoot,
-					dataType: 'json',
-					quietMillis: 250,
-					cache: true,
-					data: function (term, page) {
+					"url": Discipline.prototype.urlRoot,
+					"dataType": "json",
+					"quietMillis": 250,
+					"cache": true,
+					"data": function (term, page) {
 						return {
 							"q": diacritic.clean(term),
 							"page": page,
@@ -165,10 +185,12 @@ define("views/FiltersView", [
 						var r = data.results;
 						for (var i = 0, l = r.length; i < l; i++) {
 							if (view.selectedDisciplines.get(r[i].id)) {
+                                // Ignore duplicated disciplines
 								continue;
 							}
 							var text = onGetDiscipline(r[i]);
 							var result = text.toLowerCase().indexOf(diacritic.clean(query.term).toLowerCase()) != -1;
+                            r[i]._custom = false;
 							if (result) {
 								results.results.push({
 									"id": r[i].id,
@@ -188,13 +210,41 @@ define("views/FiltersView", [
 					alert("Disciplina nao encontrada!");
 					return;
 				}
-				discipline = new Discipline(discipline.original);
-                view.selectedDisciplines.add(discipline);
-                discipline.select().then(function(){
-                    view.selectedDisciplines.updateCombinations();
-                    view.selectedDisciplines.trigger("change:combination");
+                var model;
+                if(discipline.original._custom) {
+                    model = view.selectedDisciplines.get(discipline.id);
+                    var new_model = false;
+                    if (model) {
+                        return alert("Você não pode adicionar uma disciplina com os mesmos primeiros 7 caracteres que outra já selecionada");
+                    } else {
+                        model = new Discipline(discipline.original);
+                        var team = new Team({
+                            "id": "0001",
+                            "code": "0001",
+                            "vacancies_offered": 1,
+                            "vacancies_filled": 0,
+                            "_selected": true,
+                            "teachers": [{
+                                "name": "Você"
+                            }],
+                            "schedules": []
+                        });
+                        team.discipline = model;
+                        model.teams.add(team);
+                        new_model = true;
+                    }
+                } else {
+                    model = new Discipline(discipline.original);
+                }
+                model.select().then(function(){
+                    view.selectedDisciplines.add(model);
                 });
-			});
+			}).on("select2-loaded", function(e){
+                if (e.items.results[0].original._custom) {
+                    // Use the internal API of Select2 to highlight the correct element if the first is a custom one
+                    view.$("#discipline").data("select2").highlight(1);
+                }
+            });
 		}
 	});
 	return FiltersView;

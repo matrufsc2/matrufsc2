@@ -1,3 +1,4 @@
 define("testem", [], function(){
-	window.Testem = function(){};
+	"use strict";
+    window.Testem = function(){};
 });
