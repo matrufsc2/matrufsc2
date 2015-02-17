@@ -23,7 +23,8 @@ define("views/HomeView", [
 				"status",
                 "history",
                 "plan",
-                "user"
+                "user",
+                "possibilities"
 			]));
 		},
 		"addSubViews": function(){
@@ -49,6 +50,7 @@ define("views/HomeView", [
                 "history": this.history,
 				"status": this.status,
                 "plan": this.plan,
+                "possibilities": this.possibilities,
                 "user": this.user,
 				"selectedDisciplines": this.selectedDisciplines
 			}));

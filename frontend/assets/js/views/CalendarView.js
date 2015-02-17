@@ -69,7 +69,6 @@ define("views/CalendarView", [
                 }
                 return old;
             },[], this);
-
 			var matrixEvents = {};
 			for(var i=0; i<events.length; ++i) {
 				var event = events[i];
@@ -78,7 +77,7 @@ define("views/CalendarView", [
 						matrixEvents[row] = {};
 					}
                     if (this.collection.isConflicting()) {
-                        if (!!matrixEvents[row][event.column]) {
+                        if (!!matrixEvents[row][event.column] && !matrixEvents[row][event.column].custom && !event.custom) {
                             matrixEvents[row][event.column] = {
                                 "title": "CONFLITO",
                                 "name": "Conflito entre '"+matrixEvents[row][event.column].name+"' e '"+event.name+"'",
@@ -90,6 +89,8 @@ define("views/CalendarView", [
                                 "custom": false
                             };
                             continue;
+                        } else if (!!matrixEvents[row][event.column] && event.custom) {
+                            event.color = 'red';
                         }
                     }
 					matrixEvents[row][event.column] = {

@@ -26,7 +26,7 @@
 	<% for(var i = 0; i< hours.length;i++){
 		var hour = hours[i];
 	%>
-	<tr>
+	<tr class="hour-<%- i %>">
 		<td>
 			<%- hour %>
 		</td>
