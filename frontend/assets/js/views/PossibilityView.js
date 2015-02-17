@@ -1,11 +1,11 @@
-define("views/HistoricItemView", [
+define("views/PossibilityView", [
     "views/BaseView",
     "backbone",
     "templates"
 ], function(BaseView, Backbone, templates) {
     "use strict";
 	return BaseView.extend({
-        "template": templates.historicItem,
+        "template": templates.possibility,
         "tagName": "li",
         "events": {
             "click a": "click"
@@ -15,10 +15,10 @@ define("views/HistoricItemView", [
         },
         "click": function(e){
             if (this.status.get("editing")){
-                return alert("Você não pode consultar itens no histórico enquanto estiver modo de edição");
+                return alert("Você não pode mudar de plano enquanto estiver modo de edição");
             }
             this.status.set({
-                "version": this.model.id
+                "possibility": this.model.id
             });
             e.preventDefault();
         },

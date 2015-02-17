@@ -1,12 +1,12 @@
-define("views/HistoricListView", [
+define("views/PossibilitiesView", [
     "views/BaseView",
     "chaplin",
     "underscore",
-    "views/HistoricItemView"
-], function(BaseView, Chaplin, _, HistoricItemView) {
+    "views/PossibilityView"
+], function(BaseView, Chaplin, _, PossibilityView) {
     "use strict";
 	var HistoricListView = BaseView.extend({
-        "itemView": HistoricItemView,
+        "itemView": PossibilityView,
 		"tagName": "ul",
 		"attributes": {
 			"class": "dropdown"
@@ -15,7 +15,7 @@ define("views/HistoricListView", [
 			BaseView.prototype.initialize.call(this, options);
 			Chaplin.CollectionView.prototype.initialize.call(this, options);
             this.status = options.status;
-            this.listenTo(this.status, "change:version", this.render);
+            this.listenTo(this.status, "change:possibility", this.highlightSelectedOption);
 		},
         "initItemView": function(model) {
 			if (this.itemView) {
@@ -27,13 +27,15 @@ define("views/HistoricListView", [
 				throw new Error("The CollectionView#itemView property " + "must be defined or the initItemView() must be overridden.");
 			}
 		},
+        "highlightSelectedOption": function(){
+            this.$("li.active").removeClass("active");
+            var possibility = this.status.get("possibility");
+            this.$("a[data-id='"+possibility+"']").parents("li").not(".has-dropdown").addClass("active");
+        },
 		"render": function(){
 			BaseView.prototype.render.call(this);
 			Chaplin.CollectionView.prototype.render.call(this);
-			this.$("li.active").removeClass("active");
-            if (this.status.get("version")) {
-                this.$("a[data-id='"+this.status.get("version")+"']").parents("li").addClass("active");
-            }
+            this.highlightSelectedOption();
 		}
     });
 	_.extend(HistoricListView.prototype,

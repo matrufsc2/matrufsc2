@@ -14,6 +14,7 @@ define("views/PlansView", [
         "initialize": function(options) {
             this.status = options.status;
             this.plan = options.plan;
+            this.possibilities = options.possibilities;
             this.user = options.user;
             this.history = options.history;
             this.listenTo(this.user, "change", this.render);
@@ -37,7 +38,7 @@ define("views/PlansView", [
                 e.preventDefault();
             }
             if (this.status.get("editing")) {
-                return alert("Você não pode salvar o plano enquanto no modo de edição de disciplinas personalizadas");
+                return alert("Você não pode salvar o plano enquanto está no modo de edição de disciplinas personalizadas");
             }
             var code = this.getCode();
             if (!code) {
@@ -47,7 +48,8 @@ define("views/PlansView", [
                 this.plan.unset("id", {"silent": true});
             }
             if (!this.user.get("is_authenticated")) {
-                this.plan.savePlan(this.status, this.selectedDisciplines, this.history, true);
+                this.possibilities.get(this.status.get("possibility")).savePossibility(this.status, this.selectedDisciplines);
+                this.plan.savePlan(this.possibilities, this.history, true);
                 this.plan.set({
                     "code": code
                 }, {"silent": true});
@@ -75,14 +77,20 @@ define("views/PlansView", [
                     if (collection.length) {
                         this.plan.set(collection.at(0));
                     }
-                    this.plan.savePlan(this.status, this.selectedDisciplines, this.history);
+                    var possibility = this.status.get("possibility");
+                    possibility = this.possibilities.get(possibility);
+                    possibility.savePossibility(this.status, this.selectedDisciplines);
+                    this.plan.savePlan(this.possibilities, this.history);
                     this.plan.set({
                         "code": code
                     });
                     this.plan.save({});
                 });
             } else {
-                this.plan.savePlan(this.status, this.selectedDisciplines, this.history, true);
+                var possibility = this.status.get("possibility");
+                possibility = this.possibilities.get(possibility);
+                possibility.savePossibility(this.status, this.selectedDisciplines);
+                this.plan.savePlan(this.possibilities, this.history, true);
                 this.plan.set({
                     "code": code
                 }, {"silent": true});
@@ -98,6 +106,12 @@ define("views/PlansView", [
             }
         },
         "openPlan": function(e){
+            if (e) {
+                e.preventDefault();
+            }
+            if (this.status.get("editing")) {
+                return alert("Você não pode abrir outro plano enquanto está no modo de edição de disciplinas personalizadas");
+            }
             var code = this.getCode();
             if (!code) {
                 return;
@@ -113,9 +127,7 @@ define("views/PlansView", [
                 return;
             }
             button.addClass("disabled").html("Abrindo");
-            if (e) {
-                e.preventDefault();
-            }
+
             var collection = new Plans();
             collection.url = "/api/plans/?code="+code;
             return collection.fetch().bind(this).then(function(){
@@ -125,8 +137,16 @@ define("views/PlansView", [
                 }
                 this.plan.set(collection.models[0].toJSON());
                 this.plan.unset("_version");
-                this.plan.loadPlan(this.status, this.selectedDisciplines, this.history);
-                button.removeClass("disabled").html("Abrir");
+                this.status.set({
+                    "possibility": 1,
+                    "version": null
+                }, {"silent": true});
+                this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history).catch(function(err){
+                    if (_.isString(err)) {
+                        alert(err);
+                    }
+                    button.removeClass("disabled").html("Abrir");
+                });
             });
         },
         "checkPreviousData": function(){

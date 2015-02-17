@@ -35,3 +35,6 @@
 #plans-container .button {
     border-right: 1px solid #FFFFFF;
 }
+#calendar tbody .hour-4 td, #calendar tbody .hour-9 td {
+    border-bottom: 2px solid #000;
+}
