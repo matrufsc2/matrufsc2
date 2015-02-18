@@ -6,42 +6,51 @@ from app.repositories import CampusRepository, DisciplinesRepository, TeamsRepos
     PlansRepository
 from app.decorators import cacheable, searchable
 from app.models import Plan
-
+import operator, sys
 
 __author__ = 'fernando'
 
 logging = logging.getLogger("matrufsc2_api")
 
+# mapping with LAT/LONG for some of the cities
+CAMPI_LAT_LON = {
+    "CBS": [-27.282778, -50.583889],
+    "ARA": [-28.935, -49.485833],
+    "BLN": [-26.908889, -49.072222],
+    "FLO": [-27.596944, -48.548889],
+    "JOI": [-26.303889, -48.845833]
+}
 
-def distance_on_unit_sphere(lat1, long1, lat2, long2):
 
-    # Convert latitude and longitude to
-    # spherical coordinates in radians.
-    degrees_to_radians = math.pi/180.0
+def distance_on_unit_sphere(lat1, lon1, lat2, lon2):
+    return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
 
-    # phi = 90 - latitude
-    phi1 = (90.0 - lat1)*degrees_to_radians
-    phi2 = (90.0 - lat2)*degrees_to_radians
 
-    # theta = longitude
-    theta1 = long1*degrees_to_radians
-    theta2 = long2*degrees_to_radians
+def get_campi_key(campus, lat, lon):
+    campus_lat_lon = CAMPI_LAT_LON.get(campus.name, [0, 0])
+    return distance_on_unit_sphere(lat, lon, campus_lat_lon[0], campus_lat_lon[1])
 
-    # Compute spherical distance from spherical coordinates.
 
-    # For two locations in spherical coordinates
-    # (1, theta, phi) and (1, theta, phi)
-    # cosine( arc length ) =
-    #    sin phi sin phi' cos(theta-theta') + cos phi cos phi'
-    # distance = rho * arc length
+def sort_campi_by_distance(filters):
+    campi = filters["campi"]
+    lat = filters["lat"]
+    lon = filters["lon"]
+    return map(
+        operator.itemgetter(1),
+        sorted(
+            zip(
+                map(
+                    get_campi_key,
+                    campi,
+                    (lat for _ in campi),
+                    (lon for _ in campi),
+                ),
+                campi
+            ),
+            key=operator.itemgetter(0)
+        )
+    )
 
-    cos = (math.sin(phi1)*math.sin(phi2)*math.cos(theta1 - theta2) +
-           math.cos(phi1)*math.cos(phi2))
-    arc = math.acos( cos )
-
-    # Remember to multiply arc by the radius of the earth
-    # in your favorite set of units to get length.
-    return arc
 
 @cacheable(consider_only=[])
 def get_semesters(filters):
