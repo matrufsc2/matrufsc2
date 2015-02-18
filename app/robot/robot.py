@@ -403,6 +403,10 @@ class Robot(CommunityFetcher, object):
             logging.debug("Indexing all the things \o/")
             get_disciplines({
                 "campus": campus.key.id(),
+                "q": ""
+            }, overwrite=True, index=True)
+            get_disciplines({
+                "campus": campus.key.id(),
                 "q": "anything"
             }, overwrite=True, index=True)
             logging.debug("Search (and update) made in %f seconds", time.time()-start)
