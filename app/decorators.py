@@ -184,13 +184,15 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     results = None
                 else:
                     results = get_from_cache(items_key, persistent=True)
-                if results is None:
+                if kwargs.get("index"):
                     results = fn(filters)
                     results = json.loads(json.dumps(results, cls=JSONEncoder, separators=(',', ':')))
                     if prefix:
                         for result in results:
                             result["id"] = result["id"].replace(prefix, "")
                     set_into_cache(items_key, results, persistent=True)
+                elif results is None:
+                    results = []
                 has_more = len(results[page_end:]) > 0
                 results = results[page_start:page_end]
                 if prefix:
