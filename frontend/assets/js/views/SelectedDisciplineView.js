@@ -97,6 +97,10 @@ define("views/SelectedDisciplineView", [
             this.render();
         },
 		"select": function(e){
+            e.stopPropagation();
+            if (this.status.get("editing") && this.status.get("discipline") !== this.model.id) {
+                return alert("Você não selecionar outra disciplina enquanto está no modo de edição de disciplinas personalizadas");
+            }
 			this.status.set({
 				"discipline": this.model.id
 			});
@@ -105,13 +109,23 @@ define("views/SelectedDisciplineView", [
 			e.preventDefault();
 		},
 		"unselect": function(e){
+            e.stopPropagation();
+            if (this.status.get("editing") && this.status.get("discipline") !== this.model.id) {
+                return alert("Você não deselecionar outra disciplina enquanto está no modo de edição de disciplinas personalizadas");
+            }
 			this.model.unselect();
 			this.status.set({
-				"discipline": null
+				"discipline": null,
+                "editing": false
 			});
 			e.preventDefault();
 		},
 		"updateTeams": function(e){
+            e.stopPropagation();
+            if (this.status.get("editing") && this.status.get("discipline") !== this.model.id) {
+                e.preventDefault();
+                return alert("Você não desmarcar as turmas de outra disciplina enquanto está no modo de edição de disciplinas personalizadas");
+            }
 			var isEnabled = this.$(e.currentTarget).is(":checked");
 			this.model.teams.each(function(team) {
 				team.set({
