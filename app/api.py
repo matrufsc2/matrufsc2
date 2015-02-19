@@ -64,22 +64,26 @@ def get_semester(id_value):
     repository = SemesterRepository()
     return repository.find_by_id(id_value).get_result()
 
-@cacheable(consider_only=["semester"])
+@cacheable(consider_only=["semester", "_full"])
 def get_campi(filters):
     repository = CampusRepository()
+    full = filters.pop("_full")
     if filters:
         campi = repository.find_by(filters).get_result()
     else:
         campi = repository.find_all().get_result()
-    for campus in campi:
-        campus.disciplines = []
+    if not full:
+        # Avoid descompression of big data when caching
+        for campus in campi:
+            campus.disciplines = []
     return campi
 
 @cacheable()
 def get_campus(id_value):
     repository = CampusRepository()
     campus = repository.find_by_id(id_value).get_result()
-    campus.disciplines = []
+    if campus:
+        campus.disciplines = []
     return campus
 
 @searchable(
