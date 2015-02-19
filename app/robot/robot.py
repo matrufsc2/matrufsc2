@@ -389,14 +389,15 @@ class Robot(CommunityFetcher, object):
         start = time.time()
         logging.debug("Loading campi..")
         campi = get_campi({
-            "semester": [semesters[0].key.id()]
+            "semester": semesters[0].key.id(),
+            "_full": True
         }, overwrite=True)
         logging.debug("Campi loaded in %f seconds", time.time()-start)
         for campus in campi:
             start = time.time()
             logging.debug("Loading disciplines of the campus %s..", campus.name)
             get_disciplines({
-                "campus": [campus.key.id()]
+                "campus": campus.key.id()
             }, overwrite=True)
             logging.debug("Disciplines loaded in %f seconds", time.time()-start)
             start = time.time()
