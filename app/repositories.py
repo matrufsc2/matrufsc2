@@ -72,6 +72,7 @@ class NDBRepository(Repository):
         :return: The results of the query to NDB in App Engine
         :rtype: ndb.Future
         """
+        filters = filters.copy()
         if not filters:
             results = yield self.find_all()
             raise ndb.Return(results)

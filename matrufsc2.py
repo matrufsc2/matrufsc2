@@ -137,7 +137,9 @@ def get_semester(id_value):
 
 @app.route("/api/campi/")
 def get_campi():
-    result = api.get_campi(request.args.copy())
+    args = request.args.copy()
+    args["_full"] = False
+    result = api.get_campi(args)
     if "X_APPENGINE_CITYLATLONG" in request.headers:
         lat, lon = map(float, request.headers["X_APPENGINE_CITYLATLONG"].split(",", 1))
         result = api.sort_campi_by_distance({
