@@ -6,7 +6,7 @@ from app.repositories import CampusRepository, DisciplinesRepository, TeamsRepos
     PlansRepository
 from app.decorators import cacheable, searchable
 from app.models import Plan
-import operator, sys
+import operator
 
 __author__ = 'fernando'
 
@@ -68,13 +68,19 @@ def get_semester(id_value):
 def get_campi(filters):
     repository = CampusRepository()
     if filters:
-        return repository.find_by(filters).get_result()
-    return repository.find_all().get_result()
+        campi = repository.find_by(filters).get_result()
+    else:
+        campi = repository.find_all().get_result()
+    for campus in campi:
+        campus.disciplines = []
+    return campi
 
 @cacheable()
 def get_campus(id_value):
     repository = CampusRepository()
-    return repository.find_by_id(id_value).get_result()
+    campus = repository.find_by_id(id_value).get_result()
+    campus.disciplines = []
+    return campus
 
 @searchable(
     lambda item: " - ".join([item['code'], item['name']]),
