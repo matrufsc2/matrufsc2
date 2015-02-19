@@ -101,6 +101,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                     for item_id, item in enumerate(items):
                         if prefix:
                             item["id"] = item["id"].replace(prefix, "")
+                        words = get_formatted_string(item).lower().split()
                         index_words.extend(
                             map(
                                 lambda word: [word, len(word), item],
@@ -108,7 +109,19 @@ def searchable(get_formatted_string, prefix=None, consider_only=None):
                                     lambda word: len(word) >= 1,
                                     map(
                                         lambda word: "".join(filter(unicode.isalnum, word)),
-                                        get_formatted_string(item).lower().split()
+                                        words
+                                    )
+                                )
+                            )
+                        )
+                        index_words.extend(
+                            map(
+                                lambda word: [word, len(word), item],
+                                filter(
+                                    lambda word: len(word) >= 1,
+                                    map(
+                                        lambda word: "".join(filter(unicode.isdigit, word)),
+                                        words
                                     )
                                 )
                             )
