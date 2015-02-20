@@ -141,7 +141,9 @@ define("views/PlansView", [
                     "possibility": 1,
                     "version": null
                 }, {"silent": true});
-                this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history).catch(function(err){
+                this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history).then(function() {
+                    button.removeClass("disabled").html("Abrir");
+                }, function(err){
                     if (_.isString(err)) {
                         alert(err);
                     }
