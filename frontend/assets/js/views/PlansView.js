@@ -133,6 +133,7 @@ define("views/PlansView", [
             return collection.fetch().bind(this).then(function(){
                 if (!collection.length) {
                     this.$("#plan-not-found").foundation("reveal", "open");
+                    button.removeClass("disabled").html("Abrir");
                     return;
                 }
                 this.plan.set(collection.models[0].toJSON());
@@ -166,11 +167,12 @@ define("views/PlansView", [
             if (mode === "open") {
                 this.$("#open-button").trigger("click");
             } else if (mode === "save") {
-                this.plan.once("loaded", function(){
-                    this.$("#save-button").trigger("click");
-                }, this);
                 this.plan.set(data);
-                this.plan.loadPlan(this.status, this.selectedDisciplines, this.history);
+                this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history)
+                    .bind(this)
+                    .then(function(){
+                        this.$("#save-button").trigger("click");
+                    });
             }
             localStorage.removeItem("plan-mode");
             localStorage.removeItem("plan-data");
