@@ -1,8 +1,15 @@
 import hashlib
 from google.appengine.api import users
-from app.json_serializer import JSONSerializable
+from app.json_serializer import JSONSerializable, JSONEncoder
 from google.appengine.ext import ndb
+from app.cache import lru_cache as cache
+import json, logging as _logging
 
+logging = _logging.getLogger("matrufsc2-model")
+
+
+cache_count = 0
+fetch_count = 0
 
 class Semester(ndb.Model, JSONSerializable):
     name = ndb.StringProperty(indexed=False)
@@ -61,13 +68,51 @@ class Team(ndb.Model, JSONSerializable):
         return self.key.id()
 
     def to_json(self):
+        global cache_count, fetch_count
+        schedules = []
+        found_schedules = []
+        for schedule in self.schedules:
+            cache_value = cache.get(schedule.id())
+            if cache_value:
+                cache_count += 1
+                found_schedules.append(cache_value)
+            else:
+                schedules.append(schedule)
+        teachers = []
+        found_teachers = []
+        for teacher in self.teachers:
+            cache_value = cache.get(teacher.id())
+            if cache_value:
+                cache_count += 1
+                found_teachers.append(cache_value)
+            else:
+                teachers.append(teacher)
+        schedules, teachers = (ndb.get_multi_async(schedules, use_cache=False, use_memcache=False),
+                               ndb.get_multi_async(teachers, use_cache=False, use_memcache=False))
+        for found_schedule in schedules:
+            found_schedule = json.loads(json.dumps(found_schedule.get_result(), cls=JSONEncoder))
+            if found_schedule:
+                cache[found_schedule["id"]] = found_schedule
+                found_schedules.append(found_schedule)
+                fetch_count += 1
+            else:
+                logging.warning("Not found schedule for team %s. Check manually, please.", self.id)
+        for found_teacher in teachers:
+            found_teacher = json.loads(json.dumps(found_teacher.get_result(), cls=JSONEncoder))
+            if found_teacher:
+                cache[found_teacher["id"]] = found_teacher
+                found_teachers.append(found_teacher)
+                fetch_count += 1
+            else:
+                logging.warning("Not found teacher for team %s. Check manually, please.", self.id)
+
         return {
             "id": self.id,
             "code": self.code,
             "vacancies_offered": self.vacancies_offered,
             "vacancies_filled": self.vacancies_filled,
-            "schedules": ndb.get_multi(self.schedules),
-            "teachers": ndb.get_multi(self.teachers)
+            "schedules": found_schedules,
+            "teachers": found_teachers
         }
 
 class Teacher(ndb.Model, JSONSerializable):

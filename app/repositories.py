@@ -63,12 +63,14 @@ class NDBRepository(Repository):
         return ndb.AND(*result)
 
     @ndb.tasklet
-    def find_by(self, filters):
+    def find_by(self, filters, keys_only=False):
         """
         Created query based on the specified filters
 
         :param filters: The filters to use on the query
         :type filters: dict
+        :param keys_only: Return only keys
+        :type keys_only: bool
         :return: The results of the query to NDB in App Engine
         :rtype: ndb.Future
         """
@@ -100,12 +102,16 @@ class NDBRepository(Repository):
                 raise ndb.Return([])
             if old_keys:
                 filters['key'] = list(set(filters['key']).intersection(old_keys))
-        if len(filters) > 1:
+        if filters.keys() != ["key"]:
             keys = yield self.__get_model__().query(self.__create_filter__(filters)).fetch_async(keys_only=True)
         else:
             # Only parent key was found, search directly on the filters found
             keys = [ndb.Key(self.__get_model__(), key_id) for key_id in filters['key']]
-        results = yield ndb.get_multi_async(keys)
+        if keys_only:
+            results = keys
+        else:
+            results = yield ndb.get_multi_async(keys)
+        results = filter(None, results)
         raise ndb.Return(results)
 
     @ndb.tasklet

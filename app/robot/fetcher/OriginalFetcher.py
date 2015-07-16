@@ -7,6 +7,7 @@ import gzip
 import re
 import logging
 import unicodedata
+import time
 from app.robot.fetcher.base import BaseFetcher
 from app.robot.value_objects import Campus, Semester, Team, Schedule, Teacher, Discipline
 
@@ -111,16 +112,33 @@ class OriginalFetcher(BaseFetcher):
             key = ":".join([name_form, key])
             form_data[key] = str(value)
         form_data = urllib.urlencode(form_data)
-        self.buffer = None
-        logging.debug("Doing request with parameters %s...", form_data)
-        resp = self.opener.open(self.base_request, form_data)
-        logging.debug("Reading data...")
-        if resp.info().get('Content-Encoding') == 'gzip':
-            buf = StringIO(resp.read())
-            resp = gzip.GzipFile(fileobj=buf)
-        self.buffer = resp.read()
-        logging.debug("Parsing XML..")
-        self.xml = ElementTree.fromstring(self.buffer)
+        self.xml = None
+        for _ in xrange(3):
+            self.buffer = None
+            logging.debug("Doing request with parameters %s...", form_data)
+            try:
+                resp = self.opener.open(self.base_request, form_data)
+            except:
+                logging.exception("Awaiting and retrying request..")
+                time.sleep(1)
+                continue
+            logging.debug("Reading data...")
+            if resp.info().get('Content-Encoding') == 'gzip':
+                buf = StringIO(resp.read())
+                resp = gzip.GzipFile(fileobj=buf)
+            self.buffer = resp.read()
+            try:
+                logging.debug("Parsing XML (that has %d bytes)..", len(self.buffer))
+                self.xml = ElementTree.fromstring(self.buffer)
+            except:
+                logging.debug("Repeating parsing...")
+                continue
+            else:
+                logging.debug("Breaking! We have success!")
+                break
+        if not self.xml:
+            logging.error("Three errors consecutives found! Stopping..")
+
 
     def fetch_campi(self):
         campi = ['EaD', 'FLO', 'JOI', 'CBS', 'ARA', 'BLN']
@@ -139,6 +157,8 @@ class OriginalFetcher(BaseFetcher):
     def find_id(self, element_id, parent=None):
         if parent is None:
             parent = self.xml
+        if parent is None:
+            return None
         for element in parent:
             if element.get('id') == element_id:
                 return element
