@@ -74,7 +74,7 @@ define("views/PlansView", [
                 // Try to find the ID for the code specified
                 var collection = new Plans();
                 collection.url = "/api/plans/?code="+code;
-                collection.fetch().bind(this).then(function(){
+                collection.fetch().then(_.bind(function(){
                     if (collection.length) {
                         this.plan.set(collection.at(0));
                     }
@@ -86,7 +86,7 @@ define("views/PlansView", [
                         "code": code
                     });
                     this.plan.save({});
-                });
+                }, this));
             } else {
                 var possibility = this.status.get("possibility");
                 possibility = this.possibilities.get(possibility);
@@ -170,10 +170,9 @@ define("views/PlansView", [
             } else if (mode === "save") {
                 this.plan.set(data);
                 this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history)
-                    .bind(this)
-                    .then(function(){
+                    .then(_.bind(function(){
                         this.$("#save-button").trigger("click");
-                    });
+                    }, this));
             }
             localStorage.removeItem("plan-mode");
             localStorage.removeItem("plan-data");
