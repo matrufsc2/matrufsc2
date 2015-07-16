@@ -1,12 +1,11 @@
 define("collections/SelectedDisciplines", [
 	"collections/CachedCollection",
 	"underscore",
-	"moment",
 	"please",
 	"utils/combinator",
 	"models/Discipline",
-	"bluebird"
-], function(CachedCollection, _, moment, Please, combinator, Discipline, Promise){
+	"es6-promise"
+], function(CachedCollection, _, Please, combinator, Discipline){
 	"use strict";
 	return CachedCollection.extend({
 		"model": Discipline,
@@ -35,7 +34,7 @@ define("collections/SelectedDisciplines", [
 					color = Please.make_color({
 						"saturation": 0.5,
 						"value": (Math.floor(Math.random()*25)+75)/100
-					});
+					})[0];
 					if(collection.findWhere({"_color": color}) !== undefined) {
 						color = null;
 						continue;
@@ -45,12 +44,11 @@ define("collections/SelectedDisciplines", [
 					});
 				}
 			}))
-			.bind(this)
 			.then(function(){
-				this.combinationSelected = _.isNumber(defaultCombination)?defaultCombination:0;
+				collection.combinationSelected = _.isNumber(defaultCombination)?defaultCombination:0;
 			})
-			.then(this.detectCombinations)
-			.then(this.selectCombination);
+			.then(_.bind(this.detectCombinations, this))
+			.then(_.bind(this.selectCombination, this));
 		},
 		"detectCombinations": function(){
 			var onGetSchedule = function(schedule) {

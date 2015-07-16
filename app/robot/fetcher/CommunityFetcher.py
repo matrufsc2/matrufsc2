@@ -47,39 +47,11 @@ class CommunityFetcher(OriginalFetcher):
         self.base_request.add_header("Pragma", "no-cache")
         self.base_request.add_header("Cache-Control", "no-cache")
 
-    @ndb.tasklet
     def login(self):
         """
         Do login in CAGR
         """
-        yield ndb.sleep(0)
         logging.info('Getting view state')
         resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/')
         soup = BeautifulSoup(resp)
         self.view_state = soup.find('input', {'name': 'javax.faces.ViewState'})['value']
-
-    @ndb.tasklet
-    def fetch_campi(self):
-        yield ndb.sleep(0)
-        raise ndb.Return(super(CommunityFetcher, self).fetch_campi())
-
-    @ndb.tasklet
-    def fetch_semesters(self):
-        yield ndb.sleep(0)
-        raise ndb.Return(super(CommunityFetcher, self).fetch_semesters())
-
-    @ndb.tasklet
-    def has_next_page(self):
-        yield ndb.sleep(0)
-        raise ndb.Return(super(CommunityFetcher, self).has_next_page())
-
-    @ndb.tasklet
-    def fetch_teams(self):
-        yield ndb.sleep(0)
-        raise ndb.Return(super(CommunityFetcher, self).fetch_teams())
-
-    @ndb.tasklet
-    def fetch(self, data=None, page_number=1):
-        yield ndb.sleep(0)
-        raise ndb.Return(super(CommunityFetcher, self).fetch(data, page_number))
-

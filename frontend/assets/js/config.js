@@ -5,19 +5,21 @@ require.config({
         "underscore": "vendor/underscore/underscore",
         "backbone": "vendor/backbone/backbone",
         "chaplin": "vendor/chaplin/chaplin",
-        "tv4": "vendor/tv4/tv4",
         "es5-shim": "vendor/es5-shim/es5-shim",
-        "moment": "vendor/moment/moment",
-        "moment-pt-br": "vendor/moment/pt-br",
         "foundation": "vendor/foundation/foundation",
+        "foundation-accordion": "vendor/foundation/foundation.accordion",
+        "foundation-tooltip": "vendor/foundation/foundation.tooltip",
+        "foundation-topbar": "vendor/foundation/foundation.topbar",
+        "foundation-dropdown": "vendor/foundation/foundation.dropdown",
+        "foundation-reveal": "vendor/foundation/foundation.reveal",
+        "foundation-equalizer": "vendor/foundation/foundation.equalizer",
         "modernizr": "vendor/modernizr/modernizr",
         "mocha": "vendor/mocha/mocha",
         "expect": "vendor/expect/index",
         "sinon": "vendor/sinon/index",
-        "bluebird": "vendor/bluebird/bluebird",
-        "select2": "vendor/select2/select2",
+        "es6-promise": "vendor/es6-promise/promise",
         "please": "vendor/pleasejs/Please",
-        "diacritic": "vendor/diacritic/diacritics",
+        "tinyscrollbar": "vendor/TinyScrollbar/jquery.tinyscrollbar",
         "testem": "../testem"
     },
     "shim": {
@@ -27,9 +29,6 @@ require.config({
         },
         "underscore": {
             "exports": "_"
-        },
-        "tv4": {
-            "exports": "tv4"
         },
         "foundation": {
             "deps": ["jquery", "modernizr"],
@@ -44,6 +43,24 @@ require.config({
         },
         "sinon": {
             "exports": "sinon"
+        },
+        "foundation-tooltip": {
+            "deps": ["foundation"]
+        },
+        "foundation-topbar": {
+            "deps": ["foundation"]
+        },
+        "foundation-dropdown": {
+            "deps": ["foundation"]
+        },
+        "foundation-accordion": {
+            "deps": ["foundation"]
+        },
+        "foundation-reveal": {
+            "deps": ["foundation"]
+        },
+        "foundation-equalizer": {
+            "deps": ["foundation"]
         }
     },
     "map": {

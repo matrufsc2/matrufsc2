@@ -23,6 +23,7 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 					this.disposed) {
 					return;
 				}
+                this.semestersRequest = null;
 				this.set({
 					"semester": this.semesters.at(0).id
 				});
@@ -52,20 +53,12 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 				if(this.campi.length === 0 || this.get("campus") !== null || this.campi.disposed || this.disposed) {
 					return;
 				}
+                this.campiRequest = null;
 				this.set({
 					"campus": this.campi.at(0).id
 				});
 			});
 			this.semestersRequest = this.semesters.fetch();
-		},
-		"dispose": function(){
-			if(this.semestersRequest !== null) {
-				this.semestersRequest.cancel();
-			}
-			if(this.campiRequest !== null) {
-				this.campiRequest.cancel();
-			}
-			CachedModel.prototype.dispose.call(this);
 		}
 	});
 });

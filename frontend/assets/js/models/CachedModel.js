@@ -1,4 +1,4 @@
-define("models/CachedModel", ["models/BaseModel", "bluebird", "underscore"], function(BaseModel, Promise, _) {
+define("models/CachedModel", ["models/BaseModel", "underscore", "es6-promise"], function(BaseModel, _) {
 	"use strict";
 	return BaseModel.extend({
 		"_cached": false,
@@ -9,17 +9,21 @@ define("models/CachedModel", ["models/BaseModel", "bluebird", "underscore"], fun
 			});
 			if(model._cached  === false || options.cached === false) {
 				model._cached = BaseModel.prototype.fetch.call(this, options);
-				model._cached.then(function(){
-					model._cached = true;
-				}, function(){
+				model._cached.then(undefined, function(){
 					model._cached = false;
 				});
-				return model._cached.nodeify(callback);
 			}
-			if(model._cached !== true) {
-				return model._cached.nodeify(callback);
-			}
-			return Promise.resolve().nodeify(callback);
+            if(_.isFunction(options.success)) {
+                model._cached.then(function(){
+                    options.success.apply(this, _.toArray(arguments));
+                });
+            }
+            if(_.isFunction(options.error)) {
+                model._cached.then(undefined, function(){
+                    options.error.apply(this, _.toArray(arguments));
+                });
+            }
+			return model._cached;
 		},
 		"reset": function(){
 			this._cached = false;

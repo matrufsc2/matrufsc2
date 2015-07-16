@@ -4,19 +4,6 @@ define("models/Teacher", ["underscore", "models/CachedModel"], function(_, Cache
 		"defaults": {
 			"id": -1,
 			"name": "Sem nome"
-		},
-		"validator": {
-			"type": "object",
-			"required": ["id", "name"],
-			"properties": {
-				"id": {
-					"type": "integer"
-				},
-				"name": {
-					"type"      : "string",
-					"minLength" : 3
-				}
-			}
 		}
 	});
 });
