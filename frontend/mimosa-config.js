@@ -45,8 +45,14 @@ exports.config = {
             "overrides": {
                 "include": [
                     "boot",
-                    "controllers/AboutController",
-                    "controllers/HomeController"
+                    "controllers/HomeController",
+                    "controllers/PageController",
+                    "controllers/ArticleController",
+                    "controllers/HelpController",
+                    "controllers/BlogController",
+                    "controllers/PostController",
+                    "controllers/QuestionsGroupController",
+                    "controllers/QuestionsGroupsController"
                 ],
                 "insertRequire": ["boot"],
                 "out": "main.js",
