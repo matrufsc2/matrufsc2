@@ -38,11 +38,13 @@ define("models/Possibility", [
                         var promiseList;
                         if (selectedDiscipline._custom) {
                             discipline = new Discipline(selectedDiscipline);
+                            discipline.campus = status.get("campus");
                             promiseList = [discipline.select()];
                         } else {
                             discipline = new Discipline({
                                 "id": unpurify(selectedDiscipline.id, "discipline")
                             });
+                            discipline.campus = status.get("campus");
                             promiseList = [discipline.fetch(), discipline.select()];
                         }
 
