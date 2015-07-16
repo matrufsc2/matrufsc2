@@ -120,8 +120,7 @@ define("views/FiltersView", [
                         }
                     } else {
                         model = new Discipline(discipline);
-                        model.campus = parentView.campi.get(parentView.status.get("campus"));
-                        model.semester = parentView.semesters.get(parentView.status.get("semester"));
+                        model.campus = parentView.status.get("campus");
                     }
                     model.select().then(function () {
                         parentView.selectedDisciplines.add(model);

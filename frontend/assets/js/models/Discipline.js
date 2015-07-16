@@ -20,7 +20,6 @@ define("models/Discipline", [
 			this.team = null;
 			this.hoveredTeam = null;
             this.campus = null;
-            this.semester = null;
 			CachedModel.prototype.initialize.apply(this, _.toArray(arguments));
 		},
 		"isDisciplineEnabled": function(){
@@ -41,7 +40,7 @@ define("models/Discipline", [
                 return Promise.resolve();
             }
             var discipline = this;
-			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus.id;
+			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus;
 			this.teamsRequest = this.teams.fetch().then(function(){
 				discipline.teams.map(function(model){
                     model.discipline = discipline;
@@ -66,7 +65,7 @@ define("models/Discipline", [
                 return Promise.resolve();
             }
             var discipline = this;
-			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus.id;
+			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus;
 			this.teamsRequest = this.teams.fetch().then(function(){
 				discipline.teams.each(function(model){
 					model.set({
