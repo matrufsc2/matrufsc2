@@ -14,7 +14,6 @@ dateutils==0.6.6
 docopt==0.6.2
 enum34==1.0.4
 feedgen==0.3.1
-gaenv==0.1.7
 idna==2.0
 ipaddress==1.0.7
 itsdangerous==0.24
