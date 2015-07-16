@@ -46,7 +46,7 @@ define("models/Possibility", [
                             promiseList = [discipline.fetch(), discipline.select()];
                         }
 
-                        return Promise.all(promiseList).bind(this).then(function () {
+                        return Promise.all(promiseList).then(_.bind(function () {
                             return Promise.all(
                                 _.map(_.where(statusSession.teams, {
                                         "discipline": selectedDiscipline.id
@@ -69,8 +69,8 @@ define("models/Possibility", [
                             ).then(function(){
                                 selectedDisciplines.add(discipline);
                             });
-                        });
-                    }, this)).bind(this).then(function(){
+                        }, this));
+                    }, this)).then(function(){
                         return selectedDisciplines.updateCombinations(
                             statusSession.selectedCombination
                         );

@@ -105,13 +105,13 @@ define("controllers/HomeController", [
                             "campus": this.campi.at(0).id
                         });
                     }
-                    possibility.loadPossibility(this.status, this.selectedDisciplines).bind(this).catch(function (err) {
+                    possibility.loadPossibility(this.status, this.selectedDisciplines).catch(_.bind(function (err) {
                         if (_.isString(err)) {
                             var error_container = this.view.$("#error-discipline");
                             error_container.find("p").html(err);
                             error_container.foundation("reveal", "open");
                         }
-                    });
+                    }, this));
                 }, this);
                 this.status.on("change:version", function () {
                     this.plan.loadPlan(
@@ -121,13 +121,13 @@ define("controllers/HomeController", [
                         this.history,
                         this.status.get("version"),
                         this.status.get("possibility")
-                    ).bind(this).catch(function (err) {
+                    ).catch(_.bind(function (err) {
                             if (_.isString(err)) {
                                 var error_container = this.view.$("#error-discipline");
                                 error_container.find("p").html(err);
                                 error_container.foundation("reveal", "open");
                             }
-                        });
+                        }, this));
                 }, this);
                 var updateURL = function(){
                     var url = Chaplin.utils.reverse("Home#index", {
@@ -156,7 +156,7 @@ define("controllers/HomeController", [
             if (statusSession.plan) {
                 this.plan.set({"id": statusSession.plan});
                 this.status.once("change:semester", function () {
-                    this.plan.fetch().bind(this).then(function () {
+                    this.plan.fetch().then(_.bind(function () {
                         return this.plan.loadPlan(
                             this.status,
                             this.selectedDisciplines,
@@ -165,7 +165,7 @@ define("controllers/HomeController", [
                             statusSession.version,
                             statusSession.possibility || 1
                         );
-                    }).then(function () {
+                    }, this)).then(function () {
                         this.status.set({
                             "version": statusSession.version,
                             "possibility": parseInt(statusSession.possibility) || 1
