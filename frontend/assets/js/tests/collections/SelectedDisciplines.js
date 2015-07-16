@@ -1,4 +1,4 @@
-define("tests/collections/SelectedDisciplines", ["expect", "sinon", "collections/SelectedDisciplines", "collections/Disciplines"], function(expect, sinon, SelectedDisciplines, Disciplines) {
+define("tests/collections/SelectedDisciplines", ["expect", "sinon", "collections/SelectedDisciplines"], function(expect, sinon, SelectedDisciplines) {
 	"use strict";
 	describe("SelectedDisciplines", function(){
 		var parentCollection, collection, collectionData = [{
@@ -21,13 +21,8 @@ define("tests/collections/SelectedDisciplines", ["expect", "sinon", "collections
 		}];
 		var server;
 		beforeEach(function(){
-			parentCollection = new Disciplines();
-			collection = new SelectedDisciplines([], {
-				"parentCollection": parentCollection,
-				"live": false
-			});
+			collection = new SelectedDisciplines([]);
 			parentCollection.add(collectionData);
-			collection.query();
 		});
 		before(function(){
 			server = sinon.fakeServer.create();

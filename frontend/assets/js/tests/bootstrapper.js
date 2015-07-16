@@ -1,7 +1,6 @@
 define("tests/bootstrapper", [
 	"tests/collections/BaseCollection",
 	"tests/collections/Campi",
-	"tests/collections/Disciplines",
 	"tests/collections/SelectedDisciplines",
 	"tests/collections/Schedules",
 	"tests/collections/Semesters",

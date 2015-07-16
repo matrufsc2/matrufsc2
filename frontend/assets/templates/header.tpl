@@ -9,11 +9,7 @@
         <ul class="right">
             <li><a href="/">Início</a></li>
             <li class="divider"></li>
-            <li><a href="/sobre">Sobre</a></li>
-            <li class="divider"></li>
-            <li><a href="javascript:void(0);" class="share" id="share-button">Compartilhar</a></li>
-            <li class="divider"></li>
-            <li><a href="javascript:void(0);" class="start-tour">Como usar</a></li>
+            <li><a href="/sobre/VPCrvCkAAPE-I8ch/">Sobre</a></li>
             <li class="divider"></li>
             <li class="has-dropdown possibilities">
                 <a href="#">Plano</a>
@@ -24,18 +20,10 @@
             </li>
             <li class="divider"></li>
             <li>
-                <a href="#" class="auth">Login</a>
+                <a href="#" class="auth noscript">Login</a>
             </li>
         </ul>
     </section>
-</div>
-
-<div id="share" class="reveal-modal" data-reveal>
-  <h2>Compartilhe!</h2>
-  <p>Compartilhe a URL abaixo para compartilhar este quadro de horários com os seus amigos:</p>
-  <input type="text" id="share-url" name="share-url" class="share-url" readonly="readonly" />
-
-  <a class="close-reveal-modal">&#215;</a>
 </div>
  <div id="go-to-home" class="reveal-modal" data-reveal>
   <h2>Erro!</h2>

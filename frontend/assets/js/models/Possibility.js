@@ -2,9 +2,9 @@ define("models/Possibility", [
     "models/BaseModel",
     "models/Discipline",
     "models/Team",
-    "bluebird",
-    "underscore"
-], function(BaseModel, Discipline, Team, Promise, _) {
+    "underscore",
+    "es6-promise"
+], function(BaseModel, Discipline, Team, _) {
     "use strict";
     function purify(id, type) {
         return (id || "").replace("matrufsc2-"+type+"-", "");

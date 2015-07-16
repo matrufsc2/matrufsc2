@@ -1,0 +1,6 @@
+@media print {
+    #header, #footer, #filters, #plans-container, #teams-table-container {
+        display: none;
+    }
+    #disciplines-resume td:
+}

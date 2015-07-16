@@ -30,14 +30,26 @@ define("views/CalendarView", [
                 return [];
             }
             return team.schedules.map(function(schedule){
+                var originalColor = team.discipline.get("_color").substr(1);
+                var color;
+                if (this.actualSchedule && schedule.id === this.actualSchedule.id) {
+                    color = 'black';
+                } else {
+                    color = "rgba("+
+                    parseInt(originalColor.substr(0, 2), 16)+","+
+                    parseInt(originalColor.substr(2, 2), 16)+","+
+                    parseInt(originalColor.substr(4, 2), 16)+","+
+                    (enabled ? 1 : 0.5)+
+                    ")";
+                }
                 return {
                     "title": team.discipline.get("code"),
-                    "color": this.actualSchedule && schedule.id === this.actualSchedule.id ? "black" : team.discipline.get("_color"),
-                    "fontColor": this.actualSchedule && schedule.id === this.actualSchedule.id ? "white" : "black",
+                    "highlight": color === 'black' || !enabled,
+                    "color": color,
+                    "fontColor": color === "black" ? "white" : "black",
                     "name": (custom ? "Clique para editar (ou clique com o botão direito do mouse para apagar)" :
                         team.discipline.get("name")),
-                    "column": daysOfWeek[schedule.getStart().day()],
-                    "enabled": enabled,
+                    "column": daysOfWeek[schedule.getStart().getDay()],
                     "rowStart": schedule.getStartRow(),
                     "rowEnd": schedule.getEndRow(),
                     "custom": custom,
@@ -78,26 +90,29 @@ define("views/CalendarView", [
 					}
                     if (this.collection.isConflicting()) {
                         if (!!matrixEvents[row][event.column] && !matrixEvents[row][event.column].custom && !event.custom) {
-                            matrixEvents[row][event.column] = {
-                                "title": "CONFLITO",
-                                "name": "Conflito entre '"+matrixEvents[row][event.column].name+"' e '"+event.name+"'",
-                                "color": "red",
-                                "fontColor": event.fontColor,
-                                "enabled": true,
-                                "schedule_point": null,
-                                "schedule": null,
-                                "custom": false
-                            };
+                            if (matrixEvents[row][event.column].name.substr(0, 14) !== "Conflito entre") {
+                                matrixEvents[row][event.column] = {
+                                    "title": "CONFLITO",
+                                    "name": "Conflito entre '"+matrixEvents[row][event.column].name+"' e '"+event.name+"'",
+                                    "color": "red",
+                                    "highlight": true,
+                                    "fontColor": event.fontColor,
+                                    "schedule_point": null,
+                                    "schedule": null,
+                                    "custom": false
+                                };
+                            }
                             continue;
                         } else if (!!matrixEvents[row][event.column] && event.custom) {
                             event.color = 'red';
                         }
                     }
+
 					matrixEvents[row][event.column] = {
 						"title": event.title,
 						"name": event.name,
 						"color": event.color,
-						"enabled": event.enabled,
+                        "highlight": event.highlight,
                         "schedule": null,
                         "fontColor": event.fontColor,
                         "custom": event.custom

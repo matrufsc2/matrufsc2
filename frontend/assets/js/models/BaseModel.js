@@ -1,4 +1,4 @@
-define("models/BaseModel", ["underscore", "chaplin", "tv4", "bluebird"], function(_, Chaplin, tv4, Promise) {
+define("models/BaseModel", ["underscore", "chaplin", "es6-promise"], function(_, Chaplin) {
 	"use strict";
 	var BaseModel = Chaplin.Model.extend({
 		"validator": {
@@ -6,15 +6,6 @@ define("models/BaseModel", ["underscore", "chaplin", "tv4", "bluebird"], functio
 		},
 		"initialize": function(){
 			this.trigger("initialize");
-		},
-		"validate": function(){
-			var result = tv4.validateResult(this.toJSON(), _.result(this, "validator"));
-			if (result.missing.length > 0){
-				throw new Error("Missing schemas detected. Please fix it to do perfect validation: "+result.missing.join(","));
-			}
-			if (!result.valid) {
-				return result.error;
-			}
 		},
 		"fetch": function(options, callback){
 			options = _.defaults(options || {}, {
@@ -35,13 +26,6 @@ define("models/BaseModel", ["underscore", "chaplin", "tv4", "bluebird"], functio
 				options.error = reject;
 				xhr = Chaplin.Model.prototype.fetch.call(model, options);
 			}))
-				.cancellable()
-				.catch(Promise.CancellationError, function(e) {
-					xhr.abort();
-					throw e; //Don't swallow it
-				})
-				.bind(context)
-				.nodeify(callback)
 				.then(function(){
 					model.finishSync();
 					if (_.isFunction(oldSuccess)) {
