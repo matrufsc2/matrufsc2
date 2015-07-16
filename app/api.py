@@ -23,6 +23,7 @@ from flask import request
 from prismic import predicates, fragments
 from lxml import html
 from lxml.html.clean import Cleaner
+import gc
 
 __author__ = 'fernando'
 
@@ -179,6 +180,7 @@ def get_disciplines_teams(filters):
             "teams": map(ndb.Key.id, discipline_model.teams)
         })
     logging.debug("Return %d disciplines to the indexing", len(new_disciplines))
+    gc.collect() # Just to avoid too much use of memory
     return new_disciplines
 
 
@@ -193,6 +195,7 @@ def get_discipline(id_value):
 def get_all_teams(filters):
     if "campus" not in filters:
         return []
+    gc.collect() # Just to avoid too much use of memory
     repository = TeamsRepository()
     teams = []
     more = True

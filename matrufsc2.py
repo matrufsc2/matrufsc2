@@ -1,6 +1,6 @@
 import json
 import time
-from app.api import get_feed, get_prismic_api, prismic_full_link_resolver
+from app.api import get_feed, get_prismic_api, prismic_full_link_resolver, get_domain
 from cloudstorage.errors import NotFoundError
 from flask import Flask, request, got_request_exception
 import os
@@ -232,7 +232,6 @@ def get_articles():
     result = api.get_articles(request.args.to_dict())
     return serialize(result)
 
-
 @app.route("/api/articles/<id_value>")
 def get_article(id_value):
     result = api.get_article(id_value)
@@ -327,6 +326,11 @@ def clear_cache():
     lru_cache.clear()
     return "OK", 200, {}
 
+@app.route("/sobre/")
+def about():
+    return "", 301, {
+        "Location": "http://%s/sobre/VPCrvCkAAPE-I8ch"%get_domain()
+    }
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
