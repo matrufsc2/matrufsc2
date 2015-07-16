@@ -148,7 +148,7 @@ class OriginalFetcher(BaseFetcher):
         }) for campus_id, campus in enumerate(campi[1:], start=1)]
 
     def fetch_semesters(self):
-        semesters = ["20151"]
+        semesters = ["20152", "20151"]
         return [Semester(**{
             "id": semester,
             "name": "-".join([semester[:4], semester[4:]])
