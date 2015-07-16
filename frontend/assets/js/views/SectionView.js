@@ -36,6 +36,9 @@ define("views/SectionView", [
                 "collection": this.collection,
                 "autoRender": true
             }));
+            if (this.sectionsCollection.get(this.model.id)) {
+                this.sectionsCollection.remove(this.model.id);
+            }
             this.subview("sections", new CategoriesView({
                 "container": this.$(".sections"),
                 "autoRender": true,
