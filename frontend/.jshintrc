@@ -12,7 +12,10 @@
     "beforeEach": true,
     "afterEach": true,
     "before": true,
-    "after": true
+    "after": true,
+    "alert": true,
+    "confirm": true,
+    "prompt": true
   },
   "globalstrict": true,
   "quotmark": true,

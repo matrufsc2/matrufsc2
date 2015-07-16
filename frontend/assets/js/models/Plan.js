@@ -2,9 +2,8 @@ define("models/Plan", [
     "models/BaseModel",
     "models/Possibility",
     "underscore",
-    "bluebird",
-    "moment"
-], function(BaseModel, Possibility, _, Promise, moment) {
+    "es6-promise"
+], function(BaseModel, Possibility, _) {
     "use strict";
 
     return BaseModel.extend({
@@ -52,7 +51,7 @@ define("models/Plan", [
             this.set({
                 "data": possibilities.toJSON(),
                 "history": this.get("history").concat([{
-                    "id": moment.utc().unix(),
+                    "id": Math.floor((new Date()).getTime()/1000),
                     "data": possibilities.toJSON()
                 }])
             }, {"silent": silent});

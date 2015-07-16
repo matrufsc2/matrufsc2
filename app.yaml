@@ -19,8 +19,17 @@ builtins:
 libraries:
 - name: ssl
   version: latest
+- name: lxml
+  version: latest
 
 handlers:
+- url: /api/.*
+  script: matrufsc2.app
+
+- url: /secret/.*
+  script: matrufsc2.app
+  login: admin
+
 - url: /js
   static_dir: frontend/public/js
   http_headers:
@@ -49,16 +58,5 @@ handlers:
     Cache-Control: public, max-age=86400
     Pragma: cache
 
-- url: /api/.*
-  script: matrufsc2.app
-
-- url: /secret/.*
-  script: matrufsc2.app
-  login: admin
-
-- url: /
-  script: matrufsc2.app
-
-
-- url: /sobre/?
+- url: /.*
   script: matrufsc2.app

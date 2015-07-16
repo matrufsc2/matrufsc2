@@ -1,24 +1,29 @@
-define("collections/CachedCollection", ["collections/BaseCollection", "bluebird", "underscore"], function(BaseCollection, Promise, _) {
+define("collections/CachedCollection", ["collections/BaseCollection", "underscore", "es6-promise"], function(BaseCollection, _) {
 	"use strict";
 	return BaseCollection.extend({
 		"_cached": false,
-		"fetch": function(options, callback){
+		"fetch": function(options){
 			var collection = this;
 			options = _.defaults(options || {}, {
 				"cached": true
 			});
 			if(collection._cached  === false || options.cached === false) {
-				collection._cached = BaseCollection.prototype.fetch.call(this, options, callback);
-				collection._cached.then(function(){
-					collection._cached = true;
-				}, function(){
+				collection._cached = BaseCollection.prototype.fetch.call(this, options);
+				collection._cached.then(undefined, function(){
 					collection._cached = false;
 				});
 			}
-			if(collection._cached !== true) {
-				return collection._cached.nodeify(callback);
-			}
-			return Promise.resolve().nodeify(callback);
+            if(_.isFunction(options.success)) {
+                collection._cached.then(function(){
+                    options.success.apply(collection, _.toArray(arguments));
+                });
+            }
+            if(_.isFunction(options.error)) {
+                collection._cached.then(undefined, function(){
+                    options.error.apply(collection, _.toArray(arguments));
+                });
+            }
+			return collection._cached;
 		},
 		"reset": function(){
 			BaseCollection.prototype.reset.apply(this, _.toArray(arguments));

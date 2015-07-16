@@ -2,7 +2,8 @@ define("views/PlansView", [
     "views/BaseView",
     "templates",
     "underscore",
-    "collections/Plans"
+    "collections/Plans",
+    "foundation-reveal"
 ], function(BaseView, templates, _, Plans) {
     "use strict";
     return BaseView.extend({
@@ -130,7 +131,7 @@ define("views/PlansView", [
 
             var collection = new Plans();
             collection.url = "/api/plans/?code="+code;
-            return collection.fetch().bind(this).then(function(){
+            return collection.fetch().then(_.bind(function(){
                 if (!collection.length) {
                     this.$("#plan-not-found").foundation("reveal", "open");
                     button.removeClass("disabled").html("Abrir");
@@ -150,7 +151,7 @@ define("views/PlansView", [
                     }
                     button.removeClass("disabled").html("Abrir");
                 });
-            });
+            }, this));
         },
         "checkPreviousData": function(){
             var mode = localStorage.getItem("plan-mode");

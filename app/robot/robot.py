@@ -1,19 +1,21 @@
 import collections
-import time
-import hashlib
+import json
 import logging as _logging
+from pprint import pprint
 import time
 import math
-from app.api import get_disciplines, get_semesters, get_campi
+import traceback
+from app import api
+from app.cache import lru_cache, get_from_cache, set_into_cache, delete_from_cache
+from app.decorators import threaded
+from app.json_serializer import JSONEncoder
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
 from app.robot.fetcher.CommunityFetcher import CommunityFetcher
-from app.robot.fetcher.NDBRemoteFetcher import NDBRemoteFetcher
 from google.appengine.api.runtime.runtime import is_shutting_down
 from google.appengine.ext import ndb
 from google.appengine.api import taskqueue, modules
-import cloudstorage as gcs
-from google.appengine.api import app_identity
 import urllib2, cookielib
+from app.robot.cache_helper import CacheHelper
 
 try:
     import cPickle as pickle
@@ -23,12 +25,12 @@ except ImportError:
 __author__ = 'fernando'
 
 logging = _logging.getLogger("robot")
-
+logging.setLevel(_logging.INFO)
 context = ndb.get_context()
 context_options = ndb.ContextOptions(use_cache=False)
 
 
-class Robot(CommunityFetcher, object):
+class Robot(CommunityFetcher, CacheHelper, object):
     __slots__ = ["cookies"]
 
     def __init__(self):
@@ -41,42 +43,8 @@ class Robot(CommunityFetcher, object):
             urllib2.HTTPSHandler(debuglevel=0)
         ))
 
-    def generate_semester_key(self, semester):
-        """
-        Generate the semester key
-
-        :param semester: The semester in which the key is based on
-        :return: The key of the semester
-        :rtype: str
-        """
-        key = "%(id)s-%(name)s" % {
-            "id": semester.id,
-            "name": semester.name
-        }
-        key = "matrufsc2-semester-%s" % hashlib.sha1(key).hexdigest()
-        return key
-
-
-    def generate_campus_key(self, campus, semester):
-        """
-        Generate the campus key
-
-        :param campus: The campus in which the key is based on
-        :param semester: The semester in which the key is based on
-        :return: The key of the campus
-        :rtype: str
-        """
-        key = "%(semester_id)s-%(semester_name)s-%(id)s-%(name)s" % {
-            "id": campus.id,
-            "semester_id": semester.id,
-            "semester_name": semester.name,
-            "name": campus.name
-        }
-        key = "matrufsc2-campus-%s" % hashlib.sha1(key).hexdigest()
-        return key
-
     @ndb.tasklet
-    def update_semester(self, semester, campus_keys):
+    def get_semester_key(self, semester, campus_keys):
         """
         Get (or create) the campus key based on which is available
 
@@ -85,20 +53,28 @@ class Robot(CommunityFetcher, object):
         """
         logging.info("Saving/updating semester %s", semester.name)
         db_key = self.generate_semester_key(semester)
-        campus_keys = list(sorted(campus_keys))
+        modified = False
         logging.debug("Getting (or even inserting) semester from the database")
-        semester_model = yield Semester.get_or_insert_async(
-            db_key,
-            name=semester.name,
-            campi=campus_keys,
-            context_options=context_options
-        )
+        semester_model = api.get_semester(db_key)
+        if semester_model is None:
+            semester_model = Semester(
+                key=ndb.Key(Semester, db_key),
+                name=semester.name,
+                campi=[]
+            )
         """ :type: app.models.Semester """
-        if list(sorted(semester_model.campi)) != campus_keys:
-            logging.debug("Detected changed list of campus..saving it to the database..")
+        if sorted(map(ndb.Key.id, semester_model.campi)) != sorted(map(ndb.Key.id, campus_keys)):
+            modified = True
+            logging.debug("Detected changed list of campus....")
             semester_model.campi = campus_keys
+            logging.warning("Saving to NDB (saving semester '%s')", semester.name)
             yield semester_model.put_async(options=context_options)
-        raise ndb.Return(semester_model.key)
+            api.get_semester(db_key, overwrite=True, update_with=semester_model)
+        raise ndb.Return({
+            "modified": modified,
+            "key": semester_model.key,
+            "model": semester_model
+        })
 
     @ndb.tasklet
     def get_campus_key(self, campus, semester, disciplines_keys):
@@ -111,39 +87,32 @@ class Robot(CommunityFetcher, object):
         :return: The key of the campus created (or updated in the database)
         """
         db_key = self.generate_campus_key(campus, semester)
-        disciplines_keys = sorted(disciplines_keys)
         logging.debug("Getting (or even saving) campus '%s' on the database", campus.name)
-        campus_model = yield Campus.get_or_insert_async(
-            db_key,
-            name=campus.name,
-            disciplines=disciplines_keys,
-            context_options=context_options
-        )
+        modified = False
+        campus_model = api.get_campus(db_key)
+        excluded_disciplines = []
+        if campus_model is None:
+            campus_model = Campus(
+                key=ndb.Key(Campus, db_key),
+                name=campus.name,
+                disciplines=[]
+            )
         """ :type: app.models.Campus """
-        if sorted(campus_model.disciplines) != disciplines_keys:
-            logging.debug("Detected changed list of disciplines..saving it to the database..")
+        old_disciplines_ids = sorted(map(ndb.Key.id, campus_model.disciplines))
+        new_disciplines_ids = sorted(map(ndb.Key.id, disciplines_keys))
+        if old_disciplines_ids != new_disciplines_ids:
+            excluded_disciplines.extend(filter(lambda discipline_id: discipline_id not in new_disciplines_ids, old_disciplines_ids))
+            logging.debug("Detected changed list of disciplines..")
             campus_model.disciplines = disciplines_keys
+            logging.warning("Saving to NDB (saving campus '%s')", campus.name)
             yield campus_model.put_async(options=context_options)
-        raise ndb.Return(campus_model.key)
-
-
-    def generate_schedule_key(self, schedule):
-        """
-        Gets a schedule key to use to save cache and other nice things
-
-        :param schedule: The schedule to base the key on
-        :return: The key of the schedule
-        ;rtype: str
-        """
-        key = "%(hourStart)d-%(minuteStart)d-%(numberOfLessons)d-%(dayOfWeek)d-%(room)s" % {
-            "hourStart": schedule.hourStart,
-            "minuteStart": schedule.minuteStart,
-            "numberOfLessons": schedule.numberOfLessons,
-            "dayOfWeek": schedule.dayOfWeek,
-            "room": schedule.room
-        }
-        key = "matrufsc2-schedule-%s" % hashlib.sha1(key).hexdigest()
-        return key
+            api.get_campus(db_key, overwrite=True, update_with=campus_model)
+        raise ndb.Return({
+            "key": campus_model.key,
+            "modified": modified,
+            "model": campus_model,
+            "excluded_disciplines": excluded_disciplines
+        })
 
     @ndb.tasklet
     def get_schedule_key(self, schedule):
@@ -156,6 +125,11 @@ class Robot(CommunityFetcher, object):
         :rtype: google.appengine.ext.ndb.Key
         """
         key = self.generate_schedule_key(schedule)
+        logging.debug("Searching schedule...")
+        schedule_model = lru_cache.get(key)
+        if schedule_model:
+            logging.debug("Found schedule in LRU cache :D")
+            raise ndb.Return(ndb.Key(Schedule, key))
         logging.debug("Searching (or even registering) schedule in NDB")
         schedule_model = yield Schedule.get_or_insert_async(
             key,
@@ -167,21 +141,9 @@ class Robot(CommunityFetcher, object):
             context_options=context_options
         )
         """ type: app.models.Schedule """
+        lru_cache[key] = schedule_model
         raise ndb.Return(schedule_model.key)
 
-    def generate_teacher_key(self, teacher):
-        """
-        Gets a teacher key to use to save cache and other nice things
-
-        :param teacher: The teacher to base the key on
-        :return: The key of the teacher
-        ;rtype: str
-        """
-        key = "%(teacher_name)s" % {
-            "teacher_name": teacher.name
-        }
-        key = "matrufsc2-teacher-%s" % hashlib.sha1(key).hexdigest()
-        return key
 
     @ndb.tasklet
     def get_teacher_key(self, teacher):
@@ -195,6 +157,10 @@ class Robot(CommunityFetcher, object):
         """
         logging.debug("Searching teacher '%s'", teacher.name)
         key = self.generate_teacher_key(teacher)
+        teacher_model = lru_cache.get(key)
+        if teacher_model:
+            logging.debug("Found teacher in LRU cache :D")
+            raise ndb.Return(ndb.Key(Teacher, key))
         logging.debug("Searching (or even registering) teacher '%s' in NDB", teacher.name.decode("ISO-8859-1"))
         teacher_model = yield Teacher.get_or_insert_async(
             key,
@@ -202,28 +168,13 @@ class Robot(CommunityFetcher, object):
             context_options=context_options
         )
         """ type: app.models.Teacher """
+        lru_cache[key] = teacher_model
         raise ndb.Return(teacher_model.key)
 
-    def generate_discipline_key(self, discipline, campus, semester):
-        """
-        Gets a discipline key to use to save the cache and other nice things
 
-        :param discipline: The discipline to base the key on
-        :param campus: The campus to base the key on
-        :param semester: The semester to base the key on
-        :return: The key of the discipline
-        :rtype: str
-        """
-        key = '%(semester)s-%(campus)s-%(discipline_code)s' % {
-            "semester": semester.id,
-            "campus": campus.id,
-            "discipline_code": discipline.code
-        }
-        key = "matrufsc2-discipline-%s" % hashlib.sha1(key).hexdigest()
-        return key
 
     @ndb.tasklet
-    def get_discipline_key(self, discipline, campus, semester, teams_keys):
+    def get_discipline_key(self, discipline, campus, semester, teams_keys, old_teams, old_discipline):
         """
         Create the discipline key based on the data of discipline and campus
 
@@ -237,51 +188,63 @@ class Robot(CommunityFetcher, object):
         :return: The discipline key
         :rtype: google.appengine.ext.ndb.Key
         """
-        logging.debug("Searching discipline '%s' in cache", discipline.code)
         key = self.generate_discipline_key(discipline, campus, semester)
-        teams_keys = sorted(teams_keys)
-        logging.debug("Searching (or even registering) discipline '%s' in NDB", discipline.code)
-        discipline_model = yield Discipline.get_or_insert_async(
-            key,
-            code=discipline.code,
-            name=discipline.name,
-            teams=teams_keys,
-            context_options=context_options
-        )
-        """ :type: app.models.Discipline """
         modified = False
-        if discipline_model.name != discipline.name:
-            discipline_model.name = discipline.name
+        discipline_model = None
+        model_key = ndb.Key(Discipline, key)
+        if old_discipline is None:
+            logging.debug("Registering new discipline '%s' in NDB", discipline.code)
+            # Well, no discipline found in search index, we need to create the discipline here
+            discipline_model = Discipline(
+                key=model_key,
+                code=discipline.code,
+                name=discipline.name,
+                teams=teams_keys
+            )
+            # And of course update the old entitites to not let their think that this is not new =)
+            old_discipline = json.loads(json.dumps(discipline_model, cls=JSONEncoder))
+            old_teams = []
             modified = True
-        if sorted(discipline_model.teams) != teams_keys:
-            discipline_model.teams = teams_keys
+        else:
+            logging.debug("Discipline '%s' found in cache :D", discipline.code)
+        """ :type: app.models.Discipline """
+        if old_discipline["name"] != discipline.name:
+            logging.warn("The name of the discipline '%s' changed", discipline.code)
+            logging.warn("%s != %s", old_discipline["name"], discipline.name)
+            modified = True
+        if sorted(map(str, old_teams)) != sorted(map(ndb.Key.id, teams_keys)):
+            logging.warn("The list of teams of the discipline '%s' changed :~", discipline.code)
+            logging.warn("%s != %s", sorted(map(str, old_teams)), sorted(map(ndb.Key.id, teams_keys)))
             modified = True
         if modified:
-            logging.debug("The discipline has been modified....saving it to the database..")
+            logging.debug("The discipline '%s' has been modified....loading it from the cache...", discipline.code)
+            # The discipline need to be get from the database (it already exists in the database, for sure)
+            if discipline_model is None:
+                discipline_model = api.get_discipline(key)
+            if discipline_model is None:
+                logging.warning("For some reason the discipline was not found in cache and its not new..."
+                                "Loading/recreating")
+                discipline_model = yield Discipline.get_or_insert_async(
+                    key,
+                    code=discipline.code,
+                    name=discipline.name,
+                    teams=teams_keys,
+                    context_options=context_options
+                )
+            discipline_model.name = discipline.name
+            discipline_model.teams = teams_keys
+            logging.warning("...and saving to NDB..(saving discipline '%s')", discipline.code)
             yield discipline_model.put_async(options=context_options)
-        raise ndb.Return(discipline_model.key)
-
-    def generate_team_key(self, team, campus, semester):
-        """
-        Generate a team key to use with cache and other nice things
-
-        :param team: The team which the key is based on
-        :param campus: The campus which the key is based on
-        :param semester: The semester which the key is based on
-        :return: The key generated for the team
-        :rtype: str
-        """
-        key = '%(semester_id)s-%(campus)s-%(discipline_code)s-%(team_code)s' % {
-            "semester_id": semester.id,
-            'campus': campus.id,
-            'discipline_code': team.discipline.code,
-            'team_code': team.code
-        }
-        key = "matrufsc2-team-%s" % hashlib.sha1(key).hexdigest()
-        return key
+            logging.debug("...and updating the cache..")
+            api.get_discipline(key, overwrite=True, update_with=discipline_model)
+        raise ndb.Return({
+            "modified": modified,
+            "model": discipline_model,
+            "key": model_key
+        })
 
     @ndb.tasklet
-    def get_team_key(self, team, campus, semester):
+    def get_team_key(self, team, campus, semester, team_old=None):
         """
         Get (or create) a team and return its model instance
 
@@ -293,43 +256,67 @@ class Robot(CommunityFetcher, object):
         logging.debug("Getting information about team %s in campus %s and semesters %s", team.code, campus.name,
                       semester.name)
         key = self.generate_team_key(team, campus, semester)
-        teachers, schedules = yield (
-            map(self.get_teacher_key, team.teachers),
-            map(self.get_schedule_key, team.schedules)
-        )
-        """ :type: app.models.Team|None """
-        teachers = sorted(teachers)
-        schedules = sorted(schedules)
-        logging.debug("Searching (or even registering) team '%s' in database", team.code)
-        team_model = yield Team.get_or_insert_async(
-            key,
-            code=team.code,
-            vacancies_offered=team.vacancies_offered,
-            vacancies_filled=team.vacancies_filled,
-            teachers=teachers,
-            schedules=schedules,
-            context_options=context_options
-        )
-        """ :type: app.models.Team """
+        model_key = ndb.Key(Team, key)
         modified = False
-        if team_model.vacancies_offered != team.vacancies_offered:
-            team_model.vacancies_offered = team.vacancies_offered
+        team_model = None
+        if team_old is None:
+            logging.debug("Creating team '%s'", team.code)
+            team_model = Team(
+                key=ndb.Key(Team, key),
+                code=team.code,
+                vacancies_offered=team.vacancies_offered,
+                vacancies_filled=team.vacancies_filled,
+                teachers=[],
+                schedules=[]
+            )
+            team_old = json.loads(json.dumps(team_model, cls=JSONEncoder))
             modified = True
-        if team_model.vacancies_filled != team.vacancies_filled:
-            team_model.vacancies_filled = team.vacancies_filled
+        if str(team_old["vacancies_offered"]) != str(team.vacancies_offered):
+            logging.warn("The vacancies offered of the team '%s' changed", team.code)
+            logging.warn("%s != %s", str(team.vacancies_offered), str(team_old["vacancies_offered"]))
             modified = True
-        if sorted(team_model.teachers) != teachers:
-            team_model.teachers = teachers
+        if str(team_old["vacancies_filled"]) != str(team.vacancies_filled):
+            logging.warn("The vacancies filled of the team '%s' changed", team.code)
+            logging.warn("%s != %s", str(team.vacancies_filled), str(team_old["vacancies_filled"]))
             modified = True
-        if sorted(team_model.schedules) != schedules:
-            team_model.schedules = schedules
+        if sorted(map(self.generate_teacher_key, team.teachers)) != sorted(map(lambda teacher: str(teacher["id"]), team_old["teachers"])):
+            logging.warn("The teachers list of the team '%s' changed", team.code)
+            logging.warn("%s != %s", str(sorted(map(self.generate_teacher_key, team.teachers))), str(sorted(map(lambda teacher: str(teacher["id"]), team_old["teachers"]))))
+            modified = True
+        if sorted(map(self.generate_schedule_key, team.schedules)) != sorted(map(lambda schedule: str(schedule["id"]), team_old["schedules"])):
+            logging.warn("The schedules list of the team '%s' changed", team.code)
+            logging.warn("%s != %s", str(sorted(map(self.generate_schedule_key, team.schedules))), str(sorted(map(lambda schedule: str(schedule["id"]), team_old["schedules"]))))
             modified = True
         if modified:
-            logging.debug("Saving team '%s' on NDB and on cache", team.code)
+            logging.warning("Saving to NDB (team '%s')", team.code)
+            if team_model is None:
+                team_model = api.get_team(key)
+            if team_model is None:
+                logging.warning("For some reason the team was not found in cache and its not new...Loading/recreating")
+                team_model = yield Team.get_or_insert_async(
+                    key,
+                    code=team.code,
+                    vacancies_offered=team.vacancies_offered,
+                    vacancies_filled=team.vacancies_filled,
+                    teachers=[],
+                    schedules=[],
+                    context_options=context_options
+                )
+            team_model.vacancies_offered = team.vacancies_offered
+            team_model.vacancies_filled = team.vacancies_filled
+            if sorted(map(self.generate_teacher_key, team.teachers)) != sorted(map(lambda teacher: str(teacher["id"]), team_old["teachers"])):
+                team_model.teachers = yield map(self.get_teacher_key, team.teachers)
+            if sorted(map(self.generate_schedule_key, team.schedules)) != sorted(map(lambda schedule: str(schedule["id"]), team_old["schedules"])):
+                team_model.schedules = yield map(self.get_schedule_key, team.schedules)
             yield team_model.put_async(options=context_options)
-        raise ndb.Return(team_model.key)
+            api.get_team(key, overwrite=True, update_with=team_model)
+        raise ndb.Return({
+            "model": team_model,
+            "modified": modified,
+            "key": model_key
+        })
 
-    @ndb.tasklet
+    @threaded
     def fetch_page(self, page_number, semester, campus):
         """
         Fetch the page.
@@ -341,18 +328,20 @@ class Robot(CommunityFetcher, object):
         :rtype: google.appengine.ext.ndb.Future
         """
         logging.debug("Setting parameters of the request...")
-        yield self.fetch({
+        self.fetch({
                              "selectSemestre": semester.id,
                              "selectCampus": campus.id
                          }, page_number)
-        logging.info("Processing page")
-        teams = yield self.fetch_teams()
+        logging.info("Processing page %d" % page_number)
+        start = time.time()
+        teams = self.fetch_teams()
         logging.debug("Processing %d teams", len(teams))
-        has_next = yield self.has_next_page()
-        raise ndb.Return({
+        has_next = self.has_next_page()
+        logging.debug("Processed page in %f seconds", time.time()-start)
+        return {
             "teams_to_process": teams,
             "has_next": has_next
-        })
+        }
 
     def calculate_timeout(self):
         timeout = 540
@@ -363,58 +352,57 @@ class Robot(CommunityFetcher, object):
         timeout = time.time() + timeout
         return timeout
 
-    def clear_gcs_cache(self):
-        logging.info("Clearing GCS cache..")
-        retry = gcs.RetryParams(
-            initial_delay=0.2,
-            max_delay=2.0,
-            backoff_factor=2,
-            max_retry_period=15,
-            urlfetch_timeout=60
+    @ndb.tasklet
+    def update_discipline(self, disciplines, modified_disciplines, discipline_entity, campus, semester, teams,
+                          discipline_old_teams, excluded_teams):
+        logging.debug("Searching discipline '%s' in the index of disciplines of the campus", discipline_entity.code)
+        discipline_old = None
+        discipline_old_search_more = True
+        discipline_old_search_page = 1
+        discipline_old_key = self.generate_discipline_key(discipline_entity, campus, semester)
+        while discipline_old is None and discipline_old_search_more:
+            logging.debug("Searching discipline in page %d", discipline_old_search_page)
+            discipline_old_results = api.get_disciplines({
+                "campus": self.generate_campus_key(campus, semester),
+                "q": discipline_entity.code,
+                "limit": 5,
+                "page": discipline_old_search_page
+            })
+            for result in discipline_old_results["results"]:
+                if "".join(["matrufsc2-discipline-",result["id"]]) == discipline_old_key:
+                    discipline_old = result
+                    break
+            if discipline_old is None:
+                discipline_old_search_more = discipline_old_results["more"]
+                if discipline_old_search_more:
+                    discipline_old_search_page += 1
+        discipline_old_teams_keys = map(lambda t: str(t["id"]), discipline_old_teams)
+        teams_ids = map(lambda team_key: str(team_key.id()), teams)
+        excluded_teams.extend(filter(lambda team_id: team_id not in teams_ids, discipline_old_teams_keys))
+        logging.debug(
+            "Found %d teams in cache for discipline '%s'",
+            len(discipline_old_teams_keys),
+            discipline_entity.code
         )
-        bucket_name = app_identity.get_default_gcs_bucket_name()
-        bucket = "/" + bucket_name
-        folder = "/".join([bucket, "cache"])
-        file_instances = gcs.listbucket(folder, retry_params=retry)
-        for file_instance in file_instances:
-            logging.debug("Deleting file %s", file_instance.filename)
-            gcs.delete(file_instance.filename, retry_params=retry)
-        logging.debug("GCS cache cleaned")
-
-    def update_cache(self):
-        start = time.time()
-        logging.debug("Loading semesters..")
-        semesters = get_semesters({}, overwrite=True)
-        logging.debug("Semesters loaded in %f seconds", time.time()-start)
-        start = time.time()
-        logging.debug("Loading campi..")
-        campi = get_campi({
-            "semester": semesters[0].key.id(),
-            "_full": True
-        }, overwrite=True)
-        logging.debug("Campi loaded in %f seconds", time.time()-start)
-        for campus in campi:
-            start = time.time()
-            logging.debug("Loading disciplines of the campus %s..", campus.name)
-            get_disciplines({
-                "campus": campus.key.id()
-            }, overwrite=True)
-            logging.debug("Disciplines loaded in %f seconds", time.time()-start)
-            start = time.time()
-            logging.debug("Indexing all the things \o/")
-            get_disciplines({
-                "campus": campus.key.id(),
-                "q": ""
-            }, overwrite=True, index=True)
-            get_disciplines({
-                "campus": campus.key.id(),
-                "q": "anything"
-            }, overwrite=True, index=True)
-            logging.debug("Search (and update) made in %f seconds", time.time()-start)
+        if not discipline_old_teams_keys and discipline_old:
+            logging.error("Found discipline '%s' without teams! Whatafucke?!?!?!", discipline_entity.code)
+        discipline_key = yield self.get_discipline_key(
+            discipline_entity,
+            campus,
+            semester,
+            teams,
+            discipline_old_teams_keys,
+            discipline_old
+        )
+        if discipline_key["modified"]:
+            logging.warn("Adding discipline to the list of modified disicplines")
+            modified_disciplines.append(discipline_key["model"])
+        disciplines.add(discipline_entity.code)
+        raise ndb.Return((disciplines, modified_disciplines, excluded_teams))
 
 
     @ndb.tasklet
-    def run_worker(self, params):
+    def run_worker(self, params, tasks):
         timeout = self.calculate_timeout()
         params = pickle.loads(params)
         for cookie in params["cookies"]:
@@ -431,6 +419,13 @@ class Robot(CommunityFetcher, object):
         discipline_entity = params.get("discipline_entity")
         disciplines = params.get("disciplines", set())
         teams = params.get("teams", [])
+        registered_campi = params.get("registered_campi", [])
+        discipline_teams = params.get("discipline_teams", [])
+        discipline_old_teams = params.get("discipline_old_teams", [])
+        modified_campi = params.get("modified_campi", [])
+        excluded_teams = params.get("excluded_teams", [])
+        modified_teams = params.get("modified_teams", [])
+        modified_disciplines = params.get("modified_disciplines", [])
         skip = params.get("skip")
         logging.info("Processing semester %s and campus %s..", semester.name, campus.name)
         if skip is not None:
@@ -438,12 +433,33 @@ class Robot(CommunityFetcher, object):
         else:
             logging.info("Hey! Found that this is not a resuming task...Cleaning old task :D")
         if (last_login + 600) < time.time():
-            yield self.login()
+            self.login()
             last_login = time.time()
         logging.info("Processing campus %s", campus.name)
         logging.info("Processing page %d", page_number)
-        data = yield self.fetch_page(page_number, semester, campus)
+        if page_number == 0:
+            data = self.fetch_page(page_number+1, semester, campus).get_result()
+            teams_to_process = data["teams_to_process"]
+            self.check_cache_existence(teams_to_process[0], campus, semester)
+            campi.appendleft(campus)
+            tasks.append(pickle.dumps({
+                "page_number": page_number + 1,
+                "semester": semester,
+                "campi": campi,
+                "registered_campi": registered_campi,
+                "last_login": last_login,
+                "view_state": self.view_state,
+                "modified_campi": modified_campi,
+                "cookies": list(self.cookies),
+                "data": data
+            }, pickle.HIGHEST_PROTOCOL))
+            raise ndb.Return("CHECKED")
+        data = params["data"]
         has_next = data["has_next"]
+        if has_next:
+            next_data = self.fetch_page(page_number + 1, semester, campus)
+        else:
+            next_data = None
         teams_to_process = data["teams_to_process"]
         for count, team in enumerate(teams_to_process, start=1):
             if skip is not None:
@@ -462,23 +478,44 @@ class Robot(CommunityFetcher, object):
                     discipline = team.discipline
                     skip = None
             logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
-            team_key = yield self.get_team_key(team, campus, semester)
+            if team.discipline.code != discipline:
+                logging.debug("Detected new discipline, getting all the teams of that discipline...")
+                discipline_old_teams = discipline_teams
+                discipline_teams = api.get_teams({
+                    "discipline": self.generate_discipline_key(team.discipline, campus, semester),
+                    "campus": self.generate_campus_key(campus, semester)
+                })
+            team_old = next((t for t in discipline_teams if t["code"] == team.code), None)
+            if team_old:
+                logging.debug(
+                    "Located team '%s' in list of cached teams for discipline '%s' :D",
+                    team.code,
+                    team.discipline.code
+                )
+            else:
+                logging.warn("Team '%s' not located in cache for discipline '%s'", team.code, team.discipline.code)
+            team_key = yield self.get_team_key(team, campus, semester, team_old)
+            if team_key["modified"]:
+                logging.warn("Adding team '%s' to the list of modified teams", team.code)
+                modified_teams.append(team_key["model"])
+            team_key = team_key["key"]
             if discipline == team.discipline.code:
                 logging.debug("Appending team to the list of teams in a discipline")
                 teams.append(team_key)
             else:
                 if teams:
-                    logging.debug("Saving discipline..")
-                    yield self.get_discipline_key(
+                    disciplines, modified_disciplines, excluded_teams = yield self.update_discipline(
+                        disciplines,
+                        modified_disciplines,
                         discipline_entity,
                         campus,
                         semester,
-                        teams
+                        teams,
+                        discipline_old_teams,
+                        excluded_teams
                     )
-                    disciplines.add(discipline)
                 discipline_entity = team.discipline
                 discipline = discipline_entity.code
-                logging.debug("Detected new discipline: %s", discipline)
                 teams = [team_key]
             if is_shutting_down():
                 logging.warn("Detected shutdown of the instance. Preparing new task to the queue..")
@@ -493,61 +530,192 @@ class Robot(CommunityFetcher, object):
                 logging.debug("Hey, seems like we need to ignore %d items on the page %d", skip,
                               page_number)
                 campi.appendleft(campus)
-                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                payload = pickle.dumps({
                     "page_number": page_number,
                     "semester": semester,
                     "campi": campi,
                     "skip": skip,
                     "discipline": discipline,
                     "disciplines": disciplines,
+                    "registered_campi": registered_campi,
+                    "modified_disciplines": modified_disciplines,
+                    "modified_campi": modified_campi,
+                    "modified_teams": modified_teams,
+                    "excluded_teams": excluded_teams,
+                    "discipline_teams": discipline_teams,
+                    "discipline_old_teams": discipline_old_teams,
                     "last_login": last_login + 60,
                     "view_state": self.view_state,
-                    "cookies": list(self.cookies)
-                }, pickle.HIGHEST_PROTOCOL), method="POST")
+                    "cookies": list(self.cookies),
+                    "data": params["data"]
+                }, pickle.HIGHEST_PROTOCOL)
+                while len(payload) >= 9e4:
+                    if modified_teams or excluded_teams:
+                        logging.debug("Saving %d modified teams and %d excluded teams", len(modified_teams), len(excluded_teams))
+                        modified_teams, excluded_teams = self.update_teams_index(
+                            modified_teams,
+                            excluded_teams,
+                            campus,
+                            semester
+                        )
+                    elif modified_disciplines:
+                        logging.debug("Saving %d modified disciplines", len(modified_disciplines))
+
+                        modified_disciplines, excluded_disciplines = self.update_disciplines_index(
+                            campus,
+                            semester,
+                            modified_disciplines,
+                            []
+                        )
+                    elif modified_campi:
+                        modified_campi = self.update_campi_cache(modified_campi, semester)
+                    else:
+                        logging.error("Well, we doing everything we can and nothing resolved the problem :(")
+                        print pprint(pickle.loads(payload))
+                        break
+                    payload = pickle.dumps({
+                        "page_number": page_number,
+                        "semester": semester,
+                        "campi": campi,
+                        "skip": skip,
+                        "discipline": discipline,
+                        "disciplines": disciplines,
+                        "registered_campi": registered_campi,
+                        "modified_disciplines": modified_disciplines,
+                        "modified_campi": modified_campi,
+                        "modified_teams": modified_teams,
+                        "excluded_teams": excluded_teams,
+                        "discipline_teams": discipline_teams,
+                        "discipline_old_teams": discipline_old_teams,
+                        "last_login": last_login + 60,
+                        "view_state": self.view_state,
+                        "cookies": list(self.cookies),
+                        "data": params["data"]
+                    }, pickle.HIGHEST_PROTOCOL)
+                taskqueue.add(url="/secret/update/", payload=payload, method="POST")
                 raise ndb.Return("PAUSED")
             if time.time() >= timeout:
                 raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
-        logging.info("Flushing all the things :D")
-        yield context.flush()
-        logging.info("All the things is flushed :D")
-        if has_next and page_number < 120:
+        if has_next:
             logging.info("Scheduling task to process the next page..(page %d)", page_number + 1)
             campi.appendleft(campus)
-            taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+            payload = pickle.dumps({
                 "page_number": page_number + 1,
                 "semester": semester,
                 "campi": campi,
                 "discipline": discipline,
                 "discipline_entity": discipline_entity,
+                "discipline_teams": discipline_teams,
+                "discipline_old_teams": discipline_old_teams,
                 "teams": teams,
                 "disciplines": disciplines,
+                "registered_campi": registered_campi,
+                "modified_disciplines": modified_disciplines,
+                "modified_teams": modified_teams,
+                "modified_campi": modified_campi,
                 "last_login": last_login + 60,
                 "view_state": self.view_state,
-                "cookies": list(self.cookies)
-            }, pickle.HIGHEST_PROTOCOL), method="POST")
-        else:
-            if teams:
-                logging.debug("Saving discipline..")
-                yield self.get_discipline_key(discipline_entity, campus, semester, teams)
-                disciplines.add(discipline)
-            yield self.get_campus_key(
-                campus,
-                semester,
-                (ndb.Key(Discipline, self.generate_discipline_key(Discipline(code=discipline), campus, semester))
-                 for discipline in disciplines)
-            )
-            if campi:
-                logging.debug("Hey, we have %d campus to process yet...registering...", len(campi))
-                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                    "page_number": 1,
+                "cookies": list(self.cookies),
+                "data": next_data.get_result()
+            }, pickle.HIGHEST_PROTOCOL)
+            while len(payload) >= 9e4:
+                if modified_teams or excluded_teams:
+                    logging.debug("Saving %d modified teams and %d excluded teams", len(modified_teams), len(excluded_teams))
+                    modified_teams, excluded_teams = self.update_teams_index(
+                        modified_teams,
+                        excluded_teams,
+                        campus,
+                        semester
+                    )
+                elif modified_disciplines:
+                    logging.debug("Saving %d modified disciplines", len(modified_disciplines))
+
+                    modified_disciplines, excluded_disciplines = self.update_disciplines_index(
+                        campus,
+                        semester,
+                        modified_disciplines,
+                        []
+                    )
+                elif modified_campi:
+                    modified_campi = self.update_campi_cache(modified_campi, semester)
+                else:
+                    logging.error("Well, we doing everything we can and nothing resolved the problem :(")
+                    print pprint(pickle.loads(payload))
+                    break
+                payload = pickle.dumps({
+                    "page_number": page_number + 1,
                     "semester": semester,
                     "campi": campi,
+                    "discipline": discipline,
+                    "discipline_entity": discipline_entity,
+                    "discipline_teams": discipline_teams,
+                    "discipline_old_teams": discipline_old_teams,
+                    "teams": teams,
+                    "disciplines": disciplines,
+                    "registered_campi": registered_campi,
+                    "modified_disciplines": modified_disciplines,
+                    "modified_teams": modified_teams,
+                    "modified_campi": modified_campi,
+                    "excluded_teams": excluded_teams,
+                    "last_login": last_login + 60,
+                    "view_state": self.view_state,
+                    "cookies": list(self.cookies),
+                    "data": next_data.get_result()
+                }, pickle.HIGHEST_PROTOCOL)
+            tasks.append(payload)
+        else:
+            if teams:
+                discipline_old_teams = discipline_teams
+                disciplines, modified_disciplines, excluded_teams = yield self.update_discipline(
+                    disciplines,
+                    modified_disciplines,
+                    discipline_entity,
+                    campus,
+                    semester,
+                    teams,
+                    discipline_old_teams,
+                    excluded_teams
+                )
+            campus_key = yield self.get_campus_key(
+                campus,
+                semester,
+                map(lambda code: ndb.Key(Discipline, self.generate_discipline_key(Discipline(code=code), campus, semester)), disciplines)
+            )
+            if campus_key["modified"]:
+                modified_campi.append(campus_key["model"])
+            excluded_disciplines = campus_key["excluded_disciplines"]
+            campus_key = campus_key["key"]
+            registered_campi.append(campus_key)
+            if modified_teams or excluded_teams:
+                logging.debug("Saving %d modified teams and %d excluded teams", len(modified_teams), len(excluded_teams))
+                modified_teams, excluded_teams = self.update_teams_index(modified_teams, excluded_teams, campus, semester)
+            if modified_disciplines or excluded_disciplines:
+                logging.debug("Saving %d modified and %d excluded disciplines", len(modified_disciplines), len(excluded_disciplines))
+                modified_disciplines, excluded_disciplines = self.update_disciplines_index(
+                    campus,
+                    semester,
+                    modified_disciplines,
+                    excluded_disciplines
+                )
+            if modified_campi:
+                modified_campi = self.update_campi_cache(modified_campi, semester)
+            if campi:
+                logging.debug("Hey, we have %d campus to process yet...registering...", len(campi))
+                tasks.append(pickle.dumps({
+                    "page_number": 0,
+                    "semester": semester,
+                    "campi": campi,
+                    "registered_campi": registered_campi,
                     "last_login": last_login,
                     "view_state": self.view_state,
                     "cookies": list(self.cookies)
-                }, pickle.HIGHEST_PROTOCOL), method="POST")
+                }, pickle.HIGHEST_PROTOCOL))
             else:
-                taskqueue.add(url="/secret/clear_cache/", method="GET")
+                semester_key = yield self.get_semester_key(semester, registered_campi)
+                self.update_semester_cache(semester_key)
+        logging.info("Flushing all the things :D")
+        yield context.flush()
+        logging.info("All the things is flushed :D")
 
     @ndb.tasklet
     def run(self, params):
@@ -557,31 +725,46 @@ class Robot(CommunityFetcher, object):
         :return: google.appengine.ext.ndb.Future
         """
         if params:
-            response = yield self.run_worker(params)
-            if response:
-                raise ndb.Return(response)
+            tasks = [params]
+            count = 0
+            while tasks:
+                logging.debug("There are %d tasks to process (done %d tasks)", len(tasks), count)
+                params = tasks.pop(0)
+                if count > 2:
+                    logging.debug("Adding task to the AppEngine's queue and closing request")
+                    taskqueue.add(
+                        url="/secret/update/",
+                        payload=params,
+                        method="POST"
+                    )
+                    break
+                if tasks:
+                    logging.warning("There are more than a task to process yet o.O")
+                try:
+                    response = yield self.run_worker(params, tasks)
+                    logging.debug("The response of the task is: %s", response)
+                except Exception:
+                    traceback.print_exc()
+                    break
+                count += 1
+            raise ndb.Return("OK")
         else:
-            semesters_data, campi_data = yield self.fetch_semesters(), self.fetch_campi()
-            count_semesters = 0
-            yield self.login()
+            semesters_data, campi_data = self.fetch_semesters(), self.fetch_campi()
+            self.login()
             last_login = time.time()
-            for semester in semesters_data:
+            for count_semesters, semester in enumerate(semesters_data):
                 if count_semesters >= 1:
                     logging.warn("Ignoring semester %s as it's not new to database and its not recent too",
-                                 semester['name'])
+                                 semester.name)
                     continue
 
                 logging.info("Scheduling task for semester %s..", semester.name)
                 taskqueue.add(url="/secret/update/", payload=pickle.dumps({
-                    "page_number": 1,
+                    "page_number": 0,
                     "semester": semester,
                     "campi": collections.deque(campi_data),
                     "last_login": last_login,
                     "view_state": self.view_state,
                     "cookies": list(self.cookies)
                 }, pickle.HIGHEST_PROTOCOL), method="POST")
-                count_semesters += 1
-                yield self.update_semester(semester, (ndb.Key(Campus, self.generate_campus_key(campus, semester))
-                                                      for campus in campi_data))
-
         raise ndb.Return("OK")

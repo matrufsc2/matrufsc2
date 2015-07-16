@@ -1,8 +1,7 @@
-define("collections/BaseCollection", ["underscore", "chaplin", "bluebird"], function(_, Chaplin, Promise) {
+define("collections/BaseCollection", ["underscore", "chaplin", "es6-promise"], function(_, Chaplin) {
 	"use strict";
 	var BaseCollection = Chaplin.Collection.extend({
-		"fetch": function(options, callback){
-			// Do the request using OboeJS, which allow progressive loading of the collection.
+		"fetch": function(options){
 			options = _.defaults(options || {}, {
 				"cached": true,
 				"url": _.result(this, "url"),
@@ -14,20 +13,12 @@ define("collections/BaseCollection", ["underscore", "chaplin", "bluebird"], func
 			var collection = this;
 			var oldSuccess = options.success;
 			var oldError = options.error;
-			var xhr;
 			return (new Promise(function(resolve, reject) {
 				collection.beginSync();
 				options.success = resolve;
 				options.error = reject;
-				xhr = Chaplin.Collection.prototype.fetch.call(collection, options);
+				Chaplin.Collection.prototype.fetch.call(collection, options);
 			}))
-				.cancellable()
-				.catch(Promise.CancellationError, function(e) {
-					xhr.abort();
-					throw e; //Don't swallow it
-				})
-				.bind(context)
-				.nodeify(callback)
 				.then(function(){
 					collection.finishSync();
 					if (_.isFunction(oldSuccess)) {

@@ -2,9 +2,10 @@ define("views/SelectedDisciplineView", [
 		"templates",
 		"jquery",
 		"underscore",
-        "diacritic",
-		"views/BaseView"
-		], function(templates, $, _, diacritic, BaseView){
+		"views/BaseView",
+        "foundation-tooltip",
+        "foundation-dropdown"
+		], function(templates, $, _, BaseView){
 	"use strict";
 	return BaseView.extend({
 		"template" : templates.selectedDiscipline,
@@ -31,7 +32,6 @@ define("views/SelectedDisciplineView", [
             while (valid === false) {
                 name = prompt("Informe o nome que você deseja dar a essa disciplina:");
                 if(name) {
-                    name = diacritic.clean(name);
                     valid = name.length > 0 && name.length < 30;
                     if (!valid) {
                         alert("Informe um codigo valido! (entre 1 e 29 caracteres)");
@@ -106,6 +106,7 @@ define("views/SelectedDisciplineView", [
 			});
 			this.model.collection.updateCombinations();
 			this.model.collection.trigger("change:combination");
+            this.render();
 			e.preventDefault();
 		},
 		"unselect": function(e){
@@ -118,6 +119,7 @@ define("views/SelectedDisciplineView", [
 				"discipline": null,
                 "editing": false
 			});
+            this.render();
 			e.preventDefault();
 		},
 		"updateTeams": function(e){
@@ -165,7 +167,14 @@ define("views/SelectedDisciplineView", [
 					});
 				}, 500, this, false);
 			}
-			this.$el.css("background-color", this.model.get("_color"));
+            var originalColor = this.model.get("_color").substr(1);
+            var color = "rgba("+
+                parseInt(originalColor.substr(0, 2), 16)+","+
+                parseInt(originalColor.substr(2, 2), 16)+","+
+                parseInt(originalColor.substr(4, 2), 16)+","+
+                (this.model.isDisciplineEnabled() ? 1 : 0.5)+
+                ")";
+			this.$el.css("background-color", color);
 		}
 	});
 });

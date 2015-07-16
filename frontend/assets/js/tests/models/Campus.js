@@ -1,4 +1,4 @@
-define("tests/models/Campus", ["expect", "underscore", "models/Campus", "collections/Disciplines"], function(expect, _, Campus, Disciplines) {
+define("tests/models/Campus", ["expect", "underscore", "models/Campus"], function(expect, _, Campus) {
 	"use strict";
 	describe("Campus", function(){
 		var model, modelData = {
@@ -16,7 +16,6 @@ define("tests/models/Campus", ["expect", "underscore", "models/Campus", "collect
 			model = new Campus(modelData);
 		});
 		it("Should have Disciplines as an attribute of the object", function(){
-			expect(model.disciplines).to.be.a(Disciplines);
 			expect(model.disciplines.pluck("id")).to.eql(_.pluck(model.get("disciplines"), "id"));
 			expect(model.disciplines.pluck("name")).to.eql(_.pluck(model.get("disciplines"), "name"));
 		});

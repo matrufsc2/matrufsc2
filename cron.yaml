@@ -2,4 +2,4 @@ cron:
 - description: Update the database
   url: /secret/update/
   target: robot
-  schedule: every 12 hours
+  schedule: every 90 minutes

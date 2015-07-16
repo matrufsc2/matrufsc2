@@ -2,7 +2,8 @@ define("views/SelectedTeamView", [
     "templates",
     "jquery",
     "underscore",
-    "views/BaseView"
+    "views/BaseView",
+    "foundation-tooltip"
 ], function (templates, $, _, BaseView) {
     "use strict";
     return BaseView.extend({
@@ -129,9 +130,15 @@ define("views/SelectedTeamView", [
                 return;
             }
             var el = this.$("td");
+            var originalColor = this.model.discipline.get("_color").substr(1);
+            var color = "rgba("+
+                parseInt(originalColor.substr(0, 2), 16)+","+
+                parseInt(originalColor.substr(2, 2), 16)+","+
+                parseInt(originalColor.substr(4, 2), 16)+","+
+                (this.model.get("_selected") ? 1 : 0.5)+
+                ")";
             el.css({
-                "background-color": this.model.discipline.get("_color"),
-                "opacity": this.model.get("_selected") ? 1 : 0.5,
+                "background-color": color,
                 "border-top": this.model.startGrouping ? "2px #000000 solid" : "",
                 "border-bottom": this.model.endGrouping ? "2px #000000 solid" : ""
             });

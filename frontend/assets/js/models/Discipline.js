@@ -1,9 +1,9 @@
 define("models/Discipline", [
     "underscore",
-    "bluebird",
     "models/CachedModel",
-    "collections/Teams"
-], function(_, Promise, CachedModel, Teams) {
+    "collections/Teams",
+    "es6-promise"
+], function(_, CachedModel, Teams) {
 	"use strict";
 	return CachedModel.extend({
 		"defaults": {
@@ -14,29 +14,13 @@ define("models/Discipline", [
             "_custom": false
 		},
 		"urlRoot": "/api/disciplines/",
-		"validator": {
-			"type"     : "object",
-			"required" : ["id", "code", "name"],
-			"properties": {
-				"id": {
-					"type": "integer"
-				},
-				"code": {
-					"type"    : "string",
-					"pattern" : "[A-Z]{3}[0-9]{4}"
-				},
-				"name": {
-					"type"      : "string",
-					"minLength" : 3
-				}
-			}
-		},
 		"initialize": function(){
 			this.teams = new Teams();
-			this.teams.url = "/api/teams/?discipline="+this.id;
 			this.teamsRequest = null;
 			this.team = null;
 			this.hoveredTeam = null;
+            this.campus = null;
+            this.semester = null;
 			CachedModel.prototype.initialize.apply(this, _.toArray(arguments));
 		},
 		"isDisciplineEnabled": function(){
@@ -56,8 +40,8 @@ define("models/Discipline", [
 				});
                 return Promise.resolve();
             }
-			this.teams.url = "/api/teams/?discipline="+this.id;
             var discipline = this;
+			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus.id;
 			this.teamsRequest = this.teams.fetch().then(function(){
 				discipline.teams.map(function(model){
                     model.discipline = discipline;
@@ -81,15 +65,16 @@ define("models/Discipline", [
 				});
                 return Promise.resolve();
             }
-			this.teams.url = "/api/teams/?discipline="+this.id;
-			this.teamsRequest = this.teams.fetch().bind(this).then(function(){
-				this.teams.each(function(model){
+            var discipline = this;
+			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus.id;
+			this.teamsRequest = this.teams.fetch().then(function(){
+				discipline.teams.each(function(model){
 					model.set({
 						"_selected": false
 					});
 				});
-				this.teams.dispose();
-				this.dispose();
+				discipline.teams.dispose();
+				discipline.dispose();
 			});
 			return this.teamsRequest;
 		},
