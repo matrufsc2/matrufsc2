@@ -338,7 +338,7 @@ def get_prismic_form(ref=None, form="everything"):
         if "io.prismic.preview" in request.cookies:
             ref = request.cookies["io.prismic.preview"]
         else:
-            ref = prismic_api.get_ref("master")
+            ref = prismic_api.get_master()
     form = prismic_api.form(form)
     form.ref(ref)
     return form
@@ -500,7 +500,7 @@ def get_posts(filters, full=False):
     else:
         page_size = 1
     if "category" in filters:
-        preds.append(predicates.at('my.post.categories.category', filters["category"]))
+        preds.append(predicates.at('my.post.category', filters["category"]))
     q = filters.get("q")
     if q:
         preds.append(predicates.fulltext('document', unidecode.unidecode(q)))
