@@ -173,5 +173,5 @@ class Plan(ndb.Model, JSONSerializable):
         user = users.get_current_user()
         if user:
             user = user.user_id()
-        hash_code = "matrufsc2-plan-%s"%hashlib.sha1("-".join([code, str(user)])).hexdigest()
+        hash_code = "matrufsc2-plan-%s"%hashlib.sha1("-".join([code.encode("utf-8"), str(user)])).hexdigest()
         return hash_code
