@@ -53,7 +53,7 @@ define("models/HistoryItem", ["models/BaseModel"], function (BaseModel) {
             };
         },
         "getDate": function () {
-            return new Date(this.id);
+            return new Date(this.id*1000);
         },
         "getFormattedRelativeDate": function () {
             return relativeDate(this.getDate(), new Date());

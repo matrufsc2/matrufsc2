@@ -115,8 +115,8 @@ class LRUCache(AVLTree):
 
 ndb_context = ndb.get_context()
 lru_cache = LRUCache()
-lru_cache.set_capacity(200)  # 200 items
-lru_cache.set_expiration(600)  # For 120 seconds
+lru_cache.set_capacity(50)  # 50 items
+lru_cache.set_expiration(600)  # For 600 seconds
 
 @ndb.tasklet
 def get_gcs_filename(filename):
@@ -140,7 +140,7 @@ def get_from_cache(key, persistent=True, memcache=True, log=True):
         pass
     start = time.time()
     if memcache:
-        result = yield ndb_context.memcache_get(key)
+        result = yield ndb_context.memcache_get(key, use_cache=False)
         if result is not None:
             size = "small"
             if isinstance(result, basestring) and result.translate(None, TEXTCHARS):

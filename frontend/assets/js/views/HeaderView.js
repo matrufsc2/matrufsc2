@@ -26,7 +26,7 @@ define("views/HeaderView", [
             this.activateMenuItem(options.route);
         },
 		"isHome": function(){
-			return $(this.$("a[href='/']")).parents("li").is(".active");
+			return this.$("a[href='/']").parents("li").is(".active");
 		},
 		"activateMenuItem": function(route) {
 			this.route = route;

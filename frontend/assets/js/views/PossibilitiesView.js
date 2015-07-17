@@ -5,7 +5,7 @@ define("views/PossibilitiesView", [
     "views/PossibilityView"
 ], function(BaseView, Chaplin, _, PossibilityView) {
     "use strict";
-	var HistoricListView = BaseView.extend({
+	var PossibilitiesView = BaseView.extend({
         "itemView": PossibilityView,
 		"tagName": "ul",
 		"attributes": {
@@ -38,12 +38,12 @@ define("views/PossibilitiesView", [
             this.highlightSelectedOption();
 		}
     });
-	_.extend(HistoricListView.prototype,
+	_.extend(PossibilitiesView.prototype,
 		_.omit(
 			Chaplin.CollectionView.prototype,
-			_.keys(HistoricListView.prototype),
+			_.keys(PossibilitiesView.prototype),
 			_.keys(BaseView.prototype)
 		)
 	);
-    return HistoricListView;
+    return PossibilitiesView;
 });

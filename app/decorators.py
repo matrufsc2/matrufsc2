@@ -21,6 +21,7 @@ CACHE_INDEX_KEY = "cache/searchIndex/%s/%s/%s"
 CACHE_CACHEABLE_KEY = "cache/functions/%s/%s"
 filters_cache = LRUCache()
 filters_cache.set_expiration(86400 * 365)
+filters_cache.set_expiration(50)
 
 
 def cacheable(consider_only=None):

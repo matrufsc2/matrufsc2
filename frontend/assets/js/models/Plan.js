@@ -24,7 +24,8 @@ define("models/Plan", [
                 if (!_.isNumber(possibilityId) || _.isNaN(possibilityId)) {
                     return reject("Plano inválido!");
                 }
-                if (!version) {
+                version = parseInt(version);
+                if (!_.isNumber(version) || _.isNaN(version)) {
                     possibility = this.get("data");
                 } else {
                     possibility = _.findWhere(this.get("history"), {
@@ -33,6 +34,7 @@ define("models/Plan", [
                     if (!possibility) {
                         return reject("Versão nao encontrada");
                     }
+                    possibility = possibility.data;
                 }
                 if (!_.isArray(possibility)) {
                     possibility.id = 1;
