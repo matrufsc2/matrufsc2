@@ -1,8 +1,9 @@
 define("views/HistoricItemView", [
     "views/BaseView",
+    "underscore",
     "backbone",
     "templates"
-], function(BaseView, Backbone, templates) {
+], function(BaseView, _, Backbone, templates) {
     "use strict";
 	return BaseView.extend({
         "template": templates.historicItem,

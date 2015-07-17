@@ -142,7 +142,7 @@ define("views/PlansView", [
                 this.status.set({
                     "possibility": 1,
                     "version": null
-                }, {"silent": true});
+                });
                 this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history).then(function() {
                     button.removeClass("disabled").html("Abrir");
                 }, function(err){

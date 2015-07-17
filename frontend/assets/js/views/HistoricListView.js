@@ -15,7 +15,7 @@ define("views/HistoricListView", [
 			BaseView.prototype.initialize.call(this, options);
 			Chaplin.CollectionView.prototype.initialize.call(this, options);
             this.status = options.status;
-            this.listenTo(this.status, "change:version", this.render);
+            this.listenTo(this.status, "change:version", this.highlightSelectedOption);
 		},
         "initItemView": function(model) {
 			if (this.itemView) {
@@ -27,13 +27,19 @@ define("views/HistoricListView", [
 				throw new Error("The CollectionView#itemView property " + "must be defined or the initItemView() must be overridden.");
 			}
 		},
+        "highlightSelectedOption": function(){
+            this.$("li.active").removeClass("active");
+            var version = this.status.get("version");
+            if (version) {
+                this.$("a[data-id='"+version+"']").parents("li").not(".has-dropdown").addClass("active");
+            } else {
+                this.$("a").first().parents("li").not(".has-dropdown").addClass("active");
+            }
+        },
 		"render": function(){
 			BaseView.prototype.render.call(this);
 			Chaplin.CollectionView.prototype.render.call(this);
-			this.$("li.active").removeClass("active");
-            if (this.status.get("version")) {
-                this.$("a[data-id='"+this.status.get("version")+"']").parents("li").addClass("active");
-            }
+            this.highlightSelectedOption();
 		}
     });
 	_.extend(HistoricListView.prototype,

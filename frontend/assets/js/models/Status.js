@@ -30,7 +30,8 @@ define("models/Status", ["models/CachedModel"], function(CachedModel){
 			});
 			this.on("change:semester", function fetchCampi(){
 				if(this.campi.isSyncing()) {
-					return this.campi.once("syncStateChange", fetchCampi, this);
+					this.campi.once("syncStateChange", fetchCampi, this);
+					return;
 				}
 				var url = "/api/campi/?semester="+this.get("semester");
 				if (this.campi.url === url || this.campi.disposed || this.disposed) {
