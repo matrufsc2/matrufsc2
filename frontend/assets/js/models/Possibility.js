@@ -38,13 +38,13 @@ define("models/Possibility", [
                         var promiseList;
                         if (selectedDiscipline._custom) {
                             discipline = new Discipline(selectedDiscipline);
-                            discipline.campus = status.get("campus");
+                            discipline.campus = unpurify(statusSession.campus, 'campus');
                             promiseList = [discipline.select()];
                         } else {
                             discipline = new Discipline({
                                 "id": unpurify(selectedDiscipline.id, "discipline")
                             });
-                            discipline.campus = status.get("campus");
+                            discipline.campus = unpurify(statusSession.campus, 'campus');
                             promiseList = [discipline.fetch(), discipline.select()];
                         }
 
@@ -65,7 +65,7 @@ define("models/Possibility", [
                                         team.set({"_selected": teamOriginal._selected});
                                         return Promise.resolve();
                                     } else {
-                                        return Promise.reject("Foram encontradas turmas que nao existem mais na disciplina "+discipline.get("name"));
+                                        return reject("Foram encontradas turmas que nao existem mais na disciplina "+discipline.get("name"));
                                     }
                                 }, this)
                             ).then(function(){
@@ -105,6 +105,7 @@ define("models/Possibility", [
                     status.set({
                         "semester": semester
                     });
+                    status.trigger("change:semester");
                 } else {
                     status.trigger("change:campus");
                 }

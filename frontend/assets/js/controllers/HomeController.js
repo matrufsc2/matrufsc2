@@ -165,21 +165,21 @@ define("controllers/HomeController", [
                             statusSession.version,
                             statusSession.possibility || 1
                         );
-                    }, this)).then(function () {
+                    }, this)).then(_.bind(function () {
                         this.status.set({
                             "version": statusSession.version,
                             "possibility": parseInt(statusSession.possibility) || 1
                         }, {"silent": true});
                         this.getHeader().render();
                         listen();
-                    }, function (err) {
+                    }, this), _.bind(function (err) {
                         if (_.isString(err)) {
                             var error_container = this.view.$("#error-discipline");
                             error_container.find("p").html(err);
                             error_container.foundation("reveal", "open");
                         }
                         listen();
-                    });
+                    }, this));
                 }, this);
             } else {
                 listen();
