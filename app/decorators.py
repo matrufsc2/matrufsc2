@@ -132,11 +132,11 @@ def sort(x, y):
 
 
 class Trie(AVLTree):
+    __slots__ = ["nodes", "__editable__"]
     def __init__(self):
         super(Trie, self).__init__()
         self.nodes = []
         self.__editable__ = True
-        self.__step__ = 1
 
     def __getstate__(self):
         s = super(Trie, self).__getstate__()
@@ -144,14 +144,11 @@ class Trie(AVLTree):
             s["nodes"] = self.nodes
         if self.__editable__ is True:
             s["editable"] = self.__editable__
-        if self.__step__ != 1:
-            s["step"] = self.__step__
         return s
 
     def __setstate__(self, state):
         self.nodes = state.pop("nodes", [])
         self.__editable__ = state.pop("editable", False)
-        self.__step__ = state.pop("step", 1)
         super(Trie, self).__setstate__(state)
 
     def append(self, val):
@@ -164,7 +161,7 @@ class Trie(AVLTree):
         return self.nodes.extend(values)
 
     def remove(self, val):
-        return self.items_ids.remove(val)
+        return self.nodes.remove(val)
 
     @property
     def editable(self):
@@ -176,18 +173,6 @@ class Trie(AVLTree):
         while queue:
             el = queue.pop()
             el.__editable__ = editable
-            queue.extend(el.values())
-
-    @property
-    def step(self):
-        return self.__step__
-
-    @step.setter
-    def step(self, step):
-        queue = [self]
-        while queue:
-            el = queue.pop()
-            el.__step__ = step
             queue.extend(el.values())
 
     @classmethod
@@ -222,13 +207,10 @@ class Trie(AVLTree):
         return []
 
     def has_key(self, item):
-        if len(item) > self.__step__:
+        if len(item) > 1:
             s = self
             try:
-                buf = list(item)
-                while buf:
-                    letter = "".join(islice(buf, 0, s.__step__))
-                    buf = list(islice(buf, s.__step__))
+                for letter in item:
                     s = s[letter]
             except KeyError:
                 return False
@@ -236,13 +218,10 @@ class Trie(AVLTree):
         return item in self.keys()
 
     def __getitem__(self, item):
-        if len(item) > self.__step__:
+        if len(item) > 1:
             s = self
             try:
-                buf = list(item)
-                while buf:
-                    letter = "".join(islice(buf, 0, s.__step__))
-                    buf = list(islice(buf, s.__step__))
+                for letter in item:
                     s = s[letter]
             except KeyError:
                 raise KeyError(item)
@@ -252,7 +231,6 @@ class Trie(AVLTree):
         except KeyError:
             if self.__editable__:
                 self[item] = value = Trie()
-                value.__step__ = self.__step__
             elif len(self) == 0: #If its not editable its ok to simply return the actual instance
                 return self
             else:
@@ -276,15 +254,15 @@ class Trie(AVLTree):
     def get(self, key, default):
         editable = self.__editable__
         if editable is True:
-            self.set_editable(False)
+            self.editable = False
         try:
             val = self[key]
             if editable is True:
-                self.set_editable(editable)
+                self.editable = editable
             return val
         except KeyError:
             if editable is True:
-                self.set_editable(editable)
+                self.editable = editable
             return default
 
     def get_words(self):
@@ -432,15 +410,19 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                         get_from_cache(index_key, persistent=True),
                         get_from_cache(items_key, persistent=True)
                     ]
-                    ndb.Future.wait_all(index_items)
                     index = index_items[0].get_result()
-                    items = index_items[1].get_result()
-                    if not isinstance(index, Trie):
+                    if min_word_length == 1 and not isinstance(index, Trie):
                         index = None
+                    elif min_word_length > 1 and not isinstance(index, dict):
+                        index = None
+                    items = index_items[1].get_result()
                 if kwargs.get("index"):
                     logging.debug("Index not found, creating index..(as authorized)")
-                    index = Trie()
-                    index.step = min_word_length
+                    if min_word_length == 1:
+                        index = Trie()
+                        index.editable = True
+                    else:
+                        index = defaultdict(lambda: [])
                     items_ids = AVLTree()
                     start = time.time()
                     index_words = []
@@ -499,8 +481,6 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     index_words.sort(key=lambda item: item[0])
                     word = None
                     word_items = []
-                    # for crop_at in xrange(min_word_length, max_letter[1]+1):
-                    index.editable = True
                     for index_word in index_words:
                         if word is None:
                             word = index_word[0]
@@ -513,7 +493,10 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     if word is not None:
                         index[word].extend(set([items_ids[item['id']] for item in word_items]))
                         index[word].sort()
-                    index.editable = False
+                    if min_word_length == 1:
+                        index.editable = False
+                    else:
+                        index = dict(index)
                     del items_ids
                     start = time.time()
                     logging.debug(
@@ -535,7 +518,10 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     index = Trie()
                     items = []
                 suggestions = []
-                found = [[i, word, list(index[word].as_list())] for i, word in enumerate(query_words)]
+                if min_word_length == 1:
+                    found = [[i, word, list(index[word].as_list())] for i, word in enumerate(query_words)]
+                else:
+                    found = [[i, word, list(index.get(word, []))] for i, word in enumerate(query_words)]
                 not_found = []
                 results = None
                 for item in found:
@@ -551,7 +537,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     # If no results are found, search for a suggestion if possible
                     not_found = [[item[0], item[1]] for item in found]
                 queue = []
-                if not_found and min_word_length == 1:
+                if not_found and min_word_length == 1: # If each letter is individually indexed, we can suggest things!
                     all_words = get_from_cache(words_key).get_result()
                     if all_words:
                         words_cache = {}
