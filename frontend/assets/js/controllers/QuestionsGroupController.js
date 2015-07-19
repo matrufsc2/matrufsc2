@@ -14,18 +14,18 @@ define("controllers/QuestionsGroupController", [
             this.view = new QuestionsGroupView({
                 "model": this.model
             });
-            this.model.fetch().then(_.bind(function(){
+            this.model.fetch().then(_.bind(function () {
                 if (!this.model.has("title") && !this.model.has("body")) {
                     alert("A página não existe! Redirecionando para a página principal..");
                     Backbone.history.navigate("/", {"replace": true, "trigger": true});
                 } else {
                     if (params.slug !== this.model.get("slug")) {
-                        Backbone.history.navigate("/perguntas-frequentes/"+this.model.get("slug")+"/"+this.model.id, {
+                        Backbone.history.navigate("/perguntas-frequentes/" + this.model.get("slug") + "/" + this.model.id, {
                             "replace": true,
                             "trigger": true
                         });
                     }
-                    this.adjustTitle(this.model.get("title")+" - Perguntas Frequentes");
+                    this.adjustTitle(this.model.get("title") + " - Perguntas Frequentes");
                 }
             }, this));
         }

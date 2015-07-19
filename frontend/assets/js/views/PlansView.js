@@ -4,7 +4,7 @@ define("views/PlansView", [
     "underscore",
     "collections/Plans",
     "foundation-reveal"
-], function(BaseView, templates, _, Plans) {
+], function (BaseView, templates, _, Plans) {
     "use strict";
     return BaseView.extend({
         "template": templates.plan,
@@ -12,7 +12,7 @@ define("views/PlansView", [
             "click #open-button": "openPlan",
             "click #save-button": "savePlan"
         },
-        "initialize": function(options) {
+        "initialize": function (options) {
             this.status = options.status;
             this.plan = options.plan;
             this.possibilities = options.possibilities;
@@ -23,7 +23,7 @@ define("views/PlansView", [
             this.selectedDisciplines = options.selectedDisciplines;
             this.checkPreviousData();
         },
-        "getCode": function(){
+        "getCode": function () {
             var code = this.$("#plan-code").val();
             if (!code.length) {
                 this.$("#code-empty").foundation("reveal", "open");
@@ -31,10 +31,10 @@ define("views/PlansView", [
             }
             return code;
         },
-        "getTemplateData": function(){
+        "getTemplateData": function () {
             return {"user": this.user};
         },
-        "savePlan": function(e){
+        "savePlan": function (e) {
             if (e) {
                 e.preventDefault();
             }
@@ -60,21 +60,21 @@ define("views/PlansView", [
                 return;
             }
             var button = this.$("#save-button");
-            if(button.is(".disabled")) {
+            if (button.is(".disabled")) {
                 return;
             }
             button.addClass("disabled").html("Salvando");
-            this.plan.once("sync", function(){
+            this.plan.once("sync", function () {
                 button.html("Salvo!");
-                setTimeout(function(){
+                setTimeout(function () {
                     button.removeClass("disabled").html("Salvar");
                 }, 2000);
             }, this);
             if (this.plan.isNew()) {
                 // Try to find the ID for the code specified
                 var collection = new Plans();
-                collection.url = "/api/plans/?code="+code;
-                collection.fetch().then(_.bind(function(){
+                collection.url = "/api/plans/?code=" + code;
+                collection.fetch().then(_.bind(function () {
                     if (collection.length) {
                         this.plan.set(collection.at(0));
                     }
@@ -96,7 +96,7 @@ define("views/PlansView", [
                     "code": code
                 }, {"silent": true});
                 this.plan.save({}, {
-                    "error": _.bind(function(){
+                    "error": _.bind(function () {
                         // When the code is the same, the server return 404 and we need to
                         // remove ID of the known model, remove disabled class and call click on button again
                         this.plan.unset("id");
@@ -106,7 +106,7 @@ define("views/PlansView", [
                 });
             }
         },
-        "openPlan": function(e){
+        "openPlan": function (e) {
             if (e) {
                 e.preventDefault();
             }
@@ -124,14 +124,14 @@ define("views/PlansView", [
                 return;
             }
             var button = this.$("#open-button");
-            if(button.is(".disabled")) {
+            if (button.is(".disabled")) {
                 return;
             }
             button.addClass("disabled").html("Abrindo");
 
             var collection = new Plans();
-            collection.url = "/api/plans/?code="+code;
-            return collection.fetch().then(_.bind(function(){
+            collection.url = "/api/plans/?code=" + code;
+            return collection.fetch().then(_.bind(function () {
                 if (!collection.length) {
                     this.$("#plan-not-found").foundation("reveal", "open");
                     button.removeClass("disabled").html("Abrir");
@@ -143,9 +143,9 @@ define("views/PlansView", [
                     "possibility": 1,
                     "version": null
                 });
-                this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history).then(function() {
+                this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history).then(function () {
                     button.removeClass("disabled").html("Abrir");
-                }, function(err){
+                }, function (err) {
                     if (_.isString(err)) {
                         alert(err);
                     }
@@ -153,7 +153,7 @@ define("views/PlansView", [
                 });
             }, this));
         },
-        "checkPreviousData": function(){
+        "checkPreviousData": function () {
             var mode = localStorage.getItem("plan-mode");
             var data = localStorage.getItem("plan-data");
             if (!data || !data.length || !mode || !this.user.get("is_authenticated")) {
@@ -161,7 +161,7 @@ define("views/PlansView", [
             }
             try {
                 data = JSON.parse(data);
-            } catch(ex) {
+            } catch (ex) {
                 return;
             }
             this.$("#plan-code").val(data.code);
@@ -170,7 +170,7 @@ define("views/PlansView", [
             } else if (mode === "save") {
                 this.plan.set(data);
                 this.plan.loadPlan(this.status, this.selectedDisciplines, this.possibilities, this.history)
-                    .then(_.bind(function(){
+                    .then(_.bind(function () {
                         this.$("#save-button").trigger("click");
                     }, this));
             }

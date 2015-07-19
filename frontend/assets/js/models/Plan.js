@@ -3,7 +3,7 @@ define("models/Plan", [
     "models/Possibility",
     "underscore",
     "es6-promise"
-], function(BaseModel, Possibility, _) {
+], function (BaseModel, Possibility, _) {
     "use strict";
 
     return BaseModel.extend({
@@ -13,8 +13,8 @@ define("models/Plan", [
             "history": [],
             "data": []
         },
-        "loadPlan": function(status, selectedDisciplines, possibilities, history, version, possibilityId) {
-            return new Promise(_.bind(function(resolve, reject){
+        "loadPlan": function (status, selectedDisciplines, possibilities, history, version, possibilityId) {
+            return new Promise(_.bind(function (resolve, reject) {
                 if (status.get("editing")) {
                     return reject("Saia do modo de edição antes de editar outro plano");
                 }
@@ -38,7 +38,7 @@ define("models/Plan", [
                 }
                 if (!_.isArray(possibility)) {
                     possibility.id = 1;
-                    possibility = [possibility, {"id": 2}, {"id": 3}, {"id":4}];
+                    possibility = [possibility, {"id": 2}, {"id": 3}, {"id": 4}];
                 }
                 possibilities.set(possibility);
                 history.set(this.get("history"), {"sort": true});
@@ -49,11 +49,11 @@ define("models/Plan", [
                 return resolve(possibility.loadPossibility(status, selectedDisciplines));
             }, this));
         },
-        "savePlan": function(possibilities, history, silent) {
+        "savePlan": function (possibilities, history, silent) {
             this.set({
                 "data": possibilities.toJSON(),
                 "history": this.get("history").concat([{
-                    "id": Math.floor((new Date()).getTime()/1000),
+                    "id": Math.floor((new Date()).getTime() / 1000),
                     "data": possibilities.toJSON()
                 }])
             }, {"silent": silent});

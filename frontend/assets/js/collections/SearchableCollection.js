@@ -1,8 +1,8 @@
-define("collections/SearchableCollection", ["chaplin"], function(Chaplin) {
+define("collections/SearchableCollection", ["chaplin"], function (Chaplin) {
     "use strict";
     return Chaplin.Collection.extend({
         "query": null,
-        "fetch": function(options) {
+        "fetch": function (options) {
             options = options || {};
             options.data = options.data || {};
             if (this.query !== null) {
@@ -10,11 +10,11 @@ define("collections/SearchableCollection", ["chaplin"], function(Chaplin) {
             }
             return this.__super__.fetch(options);
         },
-        "search": function(query) {
+        "search": function (query) {
             this.query = query;
             this.fetch();
         },
-        "getQuery": function() {
+        "getQuery": function () {
             return this.query;
         }
     });

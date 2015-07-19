@@ -11,7 +11,7 @@ define("controllers/HelpController", [
 ], function (Chaplin, _, Backbone, BaseController, Articles, Section, HelpView, SectionView, Sections) {
     "use strict";
     return BaseController.extend({
-        "getSectionsCollection": function() {
+        "getSectionsCollection": function () {
             var sectionsCollection = new Sections();
             sectionsCollection.fetch();
             return sectionsCollection;
@@ -21,7 +21,7 @@ define("controllers/HelpController", [
             this.collection = new Sections();
             this.collection.currentPage = parseInt(request.query.page, 10) || 1;
             this.collection.query = request.query.q;
-            this.listenTo(this.collection, "sync", function() {
+            this.listenTo(this.collection, "sync", function () {
                 var data = {};
                 if (this.collection.currentPage !== 1) {
                     data.page = this.collection.currentPage;
@@ -53,12 +53,12 @@ define("controllers/HelpController", [
                 "model": this.model,
                 "sectionsCollection": this.getSectionsCollection()
             });
-            this.model.fetch().then(_.bind(function() {
-                this.adjustTitle(this.model.get("title")+" - Ajuda");
+            this.model.fetch().then(_.bind(function () {
+                this.adjustTitle(this.model.get("title") + " - Ajuda");
                 this.collection.currentPage = parseInt(request.query.page, 10) || 1;
                 this.collection.query = request.query.q;
-                this.collection.url = "/api/articles/?section="+this.model.id;
-                this.listenTo(this.collection, "sync", function() {
+                this.collection.url = "/api/articles/?section=" + this.model.id;
+                this.listenTo(this.collection, "sync", function () {
                     var data = {};
                     if (this.collection.currentPage !== 1) {
                         data.page = this.collection.currentPage;
@@ -66,7 +66,9 @@ define("controllers/HelpController", [
                     if (this.collection.getQuery()) {
                         data.q = this.collection.getQuery();
                     }
-                    if (!data.q && !data.page) { return; }
+                    if (!data.q && !data.page) {
+                        return;
+                    }
                     Backbone.history.navigate(
                         Chaplin.utils.reverse("Help#section", {
                             "id": params.id,

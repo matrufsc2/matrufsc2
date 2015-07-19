@@ -3,19 +3,19 @@ define("views/HistoricItemView", [
     "underscore",
     "backbone",
     "templates"
-], function(BaseView, _, Backbone, templates) {
+], function (BaseView, _, Backbone, templates) {
     "use strict";
-	return BaseView.extend({
+    return BaseView.extend({
         "template": templates.historicItem,
         "tagName": "li",
         "events": {
             "click a": "click"
         },
-        "initialize": function(options){
+        "initialize": function (options) {
             this.status = options.status;
         },
-        "click": function(e){
-            if (this.status.get("editing")){
+        "click": function (e) {
+            if (this.status.get("editing")) {
                 return alert("Você não pode consultar itens no histórico enquanto estiver modo de edição");
             }
             this.status.set({
@@ -23,10 +23,10 @@ define("views/HistoricItemView", [
             });
             e.preventDefault();
         },
-		"getTemplateData": function(){
-			return {
-				"model": this.model
-			};
-		}
+        "getTemplateData": function () {
+            return {
+                "model": this.model
+            };
+        }
     });
 });
