@@ -66,8 +66,10 @@ def prismic_link_resolver(doc):
     else:
         return fmt % (doc.slug, doc.id)
 
+
 def prismic_full_link_resolver(doc):
     return "".join(["http://", get_domain(), prismic_link_resolver(doc)])
+
 
 def prismic_html_serializer(block, content):
     return None
@@ -206,8 +208,7 @@ def get_all_teams(filters):
             "campus": filters["campus"],
             "q": "",
             "page": page,
-            "limit": 50,
-            "log": False
+            "limit": 50
         })
         for result in disciplines_teams["results"]:
             teams.extend(result["teams"])
@@ -231,7 +232,7 @@ def get_teams(filters):
                   filters["campus"])
     disciplines = get_disciplines_teams({
         "q": str(filters["discipline"]).replace("matrufsc2-discipline-", ""),
-        "campus": filters["campus"]
+        "campus": str(filters["campus"])
     })
     teams = []
     if not disciplines["results"]:
