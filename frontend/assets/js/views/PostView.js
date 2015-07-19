@@ -1,23 +1,23 @@
 define("views/PostView", [
-	"templates",
-	"underscore",
+    "templates",
+    "underscore",
     "views/BaseView",
     "views/RelatedPostsView",
     "foundation-accordion"
-], function(templates, _, BaseView, RelatedPostsView){
-	"use strict";
-	return BaseView.extend({
-		"template" : templates.post,
-		"region"   : "main",
-        "listen"   : {
+], function (templates, _, BaseView, RelatedPostsView) {
+    "use strict";
+    return BaseView.extend({
+        "template": templates.post,
+        "region": "main",
+        "listen": {
             "sync model": "render"
         },
-        "getTemplateData": function() {
+        "getTemplateData": function () {
             return {
                 "post": this.model
             };
         },
-        "render": function() {
+        "render": function () {
             BaseView.prototype.render.apply(this, _.toArray(arguments));
             this.subview("relatedPosts", new RelatedPostsView({
                 "collection": this.collection,
@@ -26,5 +26,5 @@ define("views/PostView", [
                 "autoRender": true
             }));
         }
-	});
+    });
 });

@@ -1,5 +1,5 @@
 // Will load config before loading bootstrapper and all the other modules..
-require(["config"], function(){
+require(["config"], function () {
     "use strict";
-	return require(["bootstraper"]);
+    return require(["bootstraper"]);
 });

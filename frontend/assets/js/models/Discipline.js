@@ -40,7 +40,7 @@ define("models/Discipline", [
                 return Promise.resolve();
             }
             var discipline = this;
-			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus;
+			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus.id;
 			this.teamsRequest = this.teams.fetch().then(function(){
 				discipline.teams.map(function(model){
                     model.discipline = discipline;
@@ -65,7 +65,7 @@ define("models/Discipline", [
                 return Promise.resolve();
             }
             var discipline = this;
-			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus;
+			this.teams.url = "/api/teams/?discipline="+this.id+"&campus="+this.campus.id;
 			this.teamsRequest = this.teams.fetch().then(function(){
 				discipline.teams.each(function(model){
 					model.set({

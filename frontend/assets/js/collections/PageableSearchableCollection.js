@@ -1,11 +1,11 @@
 define("collections/PageableSearchableCollection", [
     "collections/PageableCollection",
     "collections/SearchableCollection"
-], function(PageableCollection, SearchableCollection) {
+], function (PageableCollection, SearchableCollection) {
     "use strict";
     return SearchableCollection.extend(PageableCollection).extend({
         "parse": PageableCollection.prototype.parse,
-        "fetch": function(options) {
+        "fetch": function (options) {
             options = options || {};
             options.data = options.data || {};
             if (this.query !== null) {

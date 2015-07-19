@@ -6,7 +6,7 @@ from flask import Flask, request, got_request_exception
 import os
 import re
 from flask.helpers import make_response
-from app.cache import lru_cache, delete_from_cache
+from app.cache import lru_cache, delete_from_cache, clear_lru_cache
 from google.appengine.api import users
 from google.appengine.api.urlfetch import fetch
 from app import api
@@ -28,7 +28,6 @@ prerender_re = re.compile("Prerender", re.IGNORECASE)
 
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower()
 CACHE_RESPONSE_KEY = "cached/response/%d/%s"
-
 
 if not IN_DEV:
     rollbar.init(
@@ -145,15 +144,18 @@ def get_teams():
     result = api.get_teams(request.args.to_dict())
     return serialize(result)
 
+
 @app.route("/api/teams/<id_value>")
 def get_team(id_value):
     result = api.get_team(id_value)
     return serialize(result)
 
+
 @app.route("/api/plans/")
 def get_plans():
     result = api.get_plans(request.args.to_dict())
     return serialize(result)
+
 
 @app.route("/api/plans/", methods=["POST"])
 def create_plan():
@@ -166,10 +168,12 @@ def create_plan():
         result = None
     return serialize(result)
 
+
 @app.route("/api/plans/<id_value>")
 def get_plan(id_value):
     result = api.get_plan(id_value)
     return serialize(result)
+
 
 @app.route("/api/pages/")
 def get_pages():
@@ -182,6 +186,7 @@ def get_page(slug):
     result = api.get_page(slug)
     return serialize(result)
 
+
 @app.route("/api/categories/")
 def get_categories():
     result = api.get_categories(request.args.to_dict())
@@ -193,6 +198,7 @@ def get_category(id_value):
     result = api.get_category(id_value)
     return serialize(result)
 
+
 @app.route("/api/sections/")
 def get_sections():
     result = api.get_sections(request.args.to_dict())
@@ -203,6 +209,7 @@ def get_sections():
 def get_section(id_value):
     result = api.get_section(id_value)
     return serialize(result)
+
 
 @app.route("/api/posts/")
 def get_posts():
@@ -227,15 +234,18 @@ def get_faq(id_value):
     result = api.get_question_group(id_value)
     return serialize(result)
 
+
 @app.route("/api/articles/")
 def get_articles():
     result = api.get_articles(request.args.to_dict())
     return serialize(result)
 
+
 @app.route("/api/articles/<id_value>")
 def get_article(id_value):
     result = api.get_article(id_value)
     return serialize(result)
+
 
 @app.route("/api/plans/<id_value>", methods=['PUT'])
 def update_plan(id_value):
@@ -246,6 +256,7 @@ def update_plan(id_value):
     except (ValueError, KeyError):
         result = None
     return serialize(result)
+
 
 @app.route("/api/users/current", methods=["GET"])
 def current_user():
@@ -263,6 +274,7 @@ def current_user():
         "logout_url": logout_url
     })
 
+
 @app.route("/api/users", methods=["GET"])
 def get_users():
     is_authenticated = users.get_current_user() is not None
@@ -279,6 +291,7 @@ def get_users():
         "logout_url": logout_url
     }])
 
+
 @app.route("/api/prismic_preview/")
 def prismic_preview():
     form = get_prismic_api()
@@ -290,12 +303,14 @@ def prismic_preview():
     response.set_cookie("io.prismic.preview", preview_token)
     return response
 
+
 @app.route("/blog/feed.<type>", methods=["GET"])
 def get_blog_feed(type):
     type = type.lower()
     if type not in ["rss", "atom"]:
         return make_response("", 404)
     return make_response(get_feed(type=='atom'), 200, {"Content-Type": "application/rss+xml"})
+
 
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
@@ -322,8 +337,7 @@ def clear_lock():
 
 @app.route("/secret/clear_cache/", methods=["GET", "POST"])
 def clear_cache():
-    logging.debug("Clearing %d items of the LRU Cache", len(lru_cache))
-    lru_cache.clear()
+    clear_lru_cache()
     return "OK", 200, {}
 
 @app.route("/sobre/")

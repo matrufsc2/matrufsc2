@@ -1,4 +1,4 @@
-define("models/User", ["models/BaseModel"], function(BaseModel){
+define("models/User", ["models/BaseModel"], function (BaseModel) {
     "use strict";
     return BaseModel.extend({
         "urlRoot": "/api/users/",

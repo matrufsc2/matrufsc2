@@ -1,29 +1,29 @@
 define("views/BlogView", [
-	"templates",
+    "templates",
     "underscore",
-	"views/BaseView",
+    "views/BaseView",
     "views/PaginationView",
     "views/SearchFormView",
     "views/CategoriesView"
-], function(templates, _, BaseView, PaginationView, SearchFormView, CategoriesView){
-	"use strict";
-	return BaseView.extend({
-		"template" : templates.blog,
-		"region"   : "main",
-        "listen"   : {
+], function (templates, _, BaseView, PaginationView, SearchFormView, CategoriesView) {
+    "use strict";
+    return BaseView.extend({
+        "template": templates.blog,
+        "region": "main",
+        "listen": {
             "sync collection": "render"
         },
         "firstTime": true,
-        "initialize": function(options) {
+        "initialize": function (options) {
             this.categoriesCollection = options.categoriesCollection;
         },
-        "getTemplateData": function() {
+        "getTemplateData": function () {
             return {
                 "posts": this.collection,
                 "firstTime": this.firstTime
             };
         },
-        "render": function() {
+        "render": function () {
             BaseView.prototype.render.apply(this, _.toArray(arguments));
             this.subview("pagination", new PaginationView({
                 "container": this.$("#pagination-container"),
@@ -44,5 +44,5 @@ define("views/BlogView", [
             }));
             this.firstTime = false;
         }
-	});
+    });
 });

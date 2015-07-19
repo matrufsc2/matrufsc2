@@ -5,11 +5,11 @@ define("views/SearchFormView", ["views/BaseView", "templates"], function (BaseVi
         "events": {
             "submit form": "search"
         },
-        "search": function(e) {
+        "search": function (e) {
             this.collection.search(this.$("#q").val());
             e.preventDefault();
         },
-        "getTemplateData": function() {
+        "getTemplateData": function () {
             return {
                 "q": this.collection.getQuery()
             };

@@ -2,19 +2,19 @@ define("views/PossibilityView", [
     "views/BaseView",
     "backbone",
     "templates"
-], function(BaseView, Backbone, templates) {
+], function (BaseView, Backbone, templates) {
     "use strict";
-	return BaseView.extend({
+    return BaseView.extend({
         "template": templates.possibility,
         "tagName": "li",
         "events": {
             "click a": "click"
         },
-        "initialize": function(options){
+        "initialize": function (options) {
             this.status = options.status;
         },
-        "click": function(e){
-            if (this.status.get("editing")){
+        "click": function (e) {
+            if (this.status.get("editing")) {
                 return alert("Você não pode mudar de plano enquanto estiver modo de edição");
             }
             this.status.set({
@@ -22,10 +22,10 @@ define("views/PossibilityView", [
             });
             e.preventDefault();
         },
-		"getTemplateData": function(){
-			return {
-				"model": this.model
-			};
-		}
+        "getTemplateData": function () {
+            return {
+                "model": this.model
+            };
+        }
     });
 });

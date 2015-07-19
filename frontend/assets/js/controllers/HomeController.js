@@ -97,7 +97,7 @@ define("controllers/HomeController", [
                         return alert("Plano não encontrado!");
                     }
                     if (previousPossibility && !!previousPossibility.get("selectedDisciplines").length && !possibility.get("selectedDisciplines").length &&
-                        confirm("Você deseja copiar o plano "+previousPossibility.id+" para o plano "+possibility.id+"?")) {
+                        confirm("Você deseja copiar o plano " + previousPossibility.id + " para o plano " + possibility.id + "?")) {
                         possibility.set(_.omit(previousPossibility.toJSON(), 'id'));
                     } else if (!possibility.get("selectedDisciplines").length && this.semesters.length > 0 && this.campi.length > 0) {
                         possibility.set({
@@ -129,7 +129,7 @@ define("controllers/HomeController", [
                             }
                         }, this));
                 }, this);
-                var updateURL = function(){
+                var updateURL = function () {
                     var url = Chaplin.utils.reverse("Home#index", {
                         "plan": this.plan.id,
                         "version": this.status.get("version"),
