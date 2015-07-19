@@ -54,7 +54,7 @@ define("views/FiltersView", [
                 "formatDidYouMean": "Você quis dizer:",
                 "prepareResults": function(results, term) {
                     var newResults = [];
-                    if (results[0] && results[0].custom) {
+                    if (results[0] && results[0]._custom) {
                         results = results.splice(1);
                     }
                     var suggestionsAnswer = _.all(results, function(result) {
@@ -68,7 +68,7 @@ define("views/FiltersView", [
                         if (parentView.selectedDisciplines.get(results[c].id)) {
                             continue;
                         }
-                        results[c].custom = false;
+                        results[c]._custom = false;
                         results[c].text = onGetDiscipline(results[c]);
                         newResults.push(results[c]);
                     }
