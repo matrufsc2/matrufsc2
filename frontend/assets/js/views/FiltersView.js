@@ -84,7 +84,7 @@ define("views/FiltersView", [
                             "id": term.toUpperCase().substr(0, 7),
                             "code": term.toUpperCase().substr(0, 7),
                             "name": term,
-                            "custom": true,
+                            "_custom": true,
                             "highlight": false
                         }].concat(newResults),
                         "selectedItem": newResults.length > 0 ? (suggestionsAnswer ? 0 : 1) : 0
@@ -96,7 +96,7 @@ define("views/FiltersView", [
                 "formatLoading": "Carregando, aguarde...",
                 "processSelectedItem": function(discipline) {
                     var model;
-                    if (discipline.custom) {
+                    if (discipline._custom) {
                         model = parentView.selectedDisciplines.get(discipline.id);
                         var new_model = false;
                         if (model) {

@@ -30,10 +30,10 @@ define("controllers/BaseController", [
             this.route = route;
             this.reuse("site", SiteView);
             this.reuse("header", {
-                "compose": _.bind(function(){
+                "compose": _.bind(function () {
                     return this.getHeader();
                 }, this),
-                "check": function(){
+                "check": function () {
                     return false;
                 }
             });

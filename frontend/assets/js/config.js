@@ -32,7 +32,7 @@ require.config({
         },
         "foundation": {
             "deps": ["jquery", "modernizr"],
-            "exports": "$"
+            "exports": "Foundation"
         },
         "mocha": {
             "deps": ["jquery", "expect"],
@@ -66,6 +66,20 @@ require.config({
     "map": {
         "templates": {
             "vendor/underscore": "underscore"
+        },
+        "*": {
+            "jquery": "utils/jquery-private",
+            "underscore": "utils/underscore-private",
+            "backbone": "utils/backbone-private"
+        },
+        "utils/jquery-private": {
+            "jquery": "jquery"
+        },
+        "utils/underscore-private": {
+            "underscore": "underscore"
+        },
+        "utils/backbone-private": {
+            "backbone": "backbone"
         }
     }
 });

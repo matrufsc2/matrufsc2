@@ -1,4 +1,4 @@
-define("views/SelectView", ["chaplin", "views/ItemView"], function(Chaplin, ItemView) {
+define("views/SelectView", ["chaplin", "underscore", "views/ItemView"], function(Chaplin, _, ItemView) {
     "use strict";
     return Chaplin.CollectionView.extend({
 		"tagName": "select",

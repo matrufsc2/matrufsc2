@@ -3,7 +3,7 @@ import pprint
 import time
 import itertools
 from unidecode import unidecode
-from app.cache import get_from_cache, set_into_cache, delete_from_cache, LRUCache
+from app.cache import get_from_cache, set_into_cache, delete_from_cache, LRUCache, clear_lru_cache, lru_cache
 from google.appengine.ext import ndb
 import threading
 import Queue
@@ -19,9 +19,6 @@ logging = _logging.getLogger("matrufsc2_decorators")
 logging.setLevel(_logging.DEBUG)
 CACHE_INDEX_KEY = "cache/searchIndex/%s/%s/%s"
 CACHE_CACHEABLE_KEY = "cache/functions/%s/%s"
-filters_cache = LRUCache()
-filters_cache.set_expiration(86400 * 365)
-filters_cache.set_expiration(50)
 
 
 def cacheable(consider_only=None):
@@ -30,10 +27,10 @@ def cacheable(consider_only=None):
             if consider_only is not None and filters:
                 filters = {k: filters[k] for k in filters.iterkeys() if k in consider_only}
             try:
-                filters_hash = filters_cache[filters]
+                filters_hash = lru_cache[filters]
             except KeyError:
                 filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest()
-                filters_cache[filters] = filters_hash
+                lru_cache[filters] = filters_hash
             cache_key = CACHE_CACHEABLE_KEY % (
                 fn.__name__,
                 filters_hash
@@ -131,15 +128,18 @@ def sort(x, y):
                     yield y()
 
 
-class Trie(AVLTree):
-    __slots__ = ["nodes", "__editable__"]
+class Trie(dict):
+    __slots__ = ["nodes", "__editable__", "_root", "_count"]
+
     def __init__(self):
         super(Trie, self).__init__()
         self.nodes = []
         self.__editable__ = True
 
     def __getstate__(self):
-        s = super(Trie, self).__getstate__()
+        s = {
+            "data": self.copy()
+        }
         if self.nodes:
             s["nodes"] = self.nodes
         if self.__editable__ is True:
@@ -149,7 +149,7 @@ class Trie(AVLTree):
     def __setstate__(self, state):
         self.nodes = state.pop("nodes", [])
         self.__editable__ = state.pop("editable", False)
-        super(Trie, self).__setstate__(state)
+        self.update(state.pop("data", {}))
 
     def append(self, val):
         return self.nodes.append(val)
@@ -231,7 +231,7 @@ class Trie(AVLTree):
         except KeyError:
             if self.__editable__:
                 self[item] = value = Trie()
-            elif len(self) == 0: #If its not editable its ok to simply return the actual instance
+            elif len(self) == 0:  # If its not editable its ok to simply return the actual instance
                 return self
             else:
                 value = Trie()
@@ -251,7 +251,7 @@ class Trie(AVLTree):
             del s[-1]
         return super(Trie, self).__delitem__(key)
 
-    def get(self, key, default):
+    def get(self, key, d=None):
         editable = self.__editable__
         if editable is True:
             self.editable = False
@@ -263,7 +263,7 @@ class Trie(AVLTree):
         except KeyError:
             if editable is True:
                 self.editable = editable
-            return default
+            return d
 
     def get_words(self):
         edit = self.editable
@@ -301,6 +301,7 @@ def islice(iterable, start, end=None):
             yield item
 
 sift3_offset = xrange(1, 3)
+
 
 def sift3(s1, s2):
     s1L = len(s1)
@@ -342,10 +343,10 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
             page_start = (page - 1) * limit
             page_end = page * limit
             try:
-                filters_hash = filters_cache[filters]
+                filters_hash = lru_cache[filters]
             except KeyError:
                 filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest()
-                filters_cache[filters] = filters_hash
+                lru_cache[filters] = filters_hash
             items_key = CACHE_INDEX_KEY % (
                 fn.__name__,
                 filters_hash,
@@ -398,10 +399,8 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                             inserted_count += 1
                         logging.debug("Inserted %d items", inserted_count)
                         if inserted_count + len(updated_items) != len(update_with):
-                            print map(lambda item: item["id"], update_with)
-                            print updated_items
                             logging.warning("There is %d items duplicated",
-                                            filter(lambda item: updated_items.count(item) > 1, updated_items))
+                                            len(filter(lambda item: updated_items.count(item) > 1, updated_items)))
                             logging.warning(
                                 "Expected to update/insert %d items but inserted %d items and updated %d items" % (
                                     len(update_with), inserted_count, len(updated_items)))
@@ -411,24 +410,32 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                         get_from_cache(items_key, persistent=True)
                     ]
                     index = index_items[0].get_result()
-                    if min_word_length == 1 and not isinstance(index, Trie):
+                    if min_word_length == 1 and not isinstance(index, Trie) and isinstance(index, AVLTree):
+                        logging.warning("Resetting index status because of invalid format "
+                                        "(it should be a Trie, but it is %s)"%type(index).__name__)
                         index = None
                     elif min_word_length > 1 and not isinstance(index, dict):
+                        logging.warning("Resetting index status because of invalid format "
+                                        "(it should be a dict, but it is %s)"%type(index).__name__)
                         index = None
                     items = index_items[1].get_result()
                 if kwargs.get("index"):
                     logging.debug("Index not found, creating index..(as authorized)")
                     if min_word_length == 1:
+                        logging.debug("Creating a Trie instance")
                         index = Trie()
                         index.editable = True
                     else:
+                        logging.debug("Creating a default dict instance")
                         index = defaultdict(lambda: [])
-                    items_ids = AVLTree()
+                    items_ids = {}
                     start = time.time()
                     index_words = []
 
                     if items is None:
+                        clear_lru_cache() # We need nothing before calling the original function..
                         items = fn(filters)
+                        clear_lru_cache() # To guarantee that the memory is clean
                     else:
                         logging.warn("Detected update with %d items", len(items))
                     logging.debug("Simplifying %d items..", len(items))
@@ -504,6 +511,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                         len(items),
                         len(index)
                     )
+                    logging.debug("The index is being saved as a %s", type(index).__name__)
                     futures = [
                         set_into_cache(index_key, index, persistent=True),
                         set_into_cache(items_key, items, persistent=True)

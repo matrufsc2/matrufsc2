@@ -418,13 +418,20 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscroll
             scrollbar.update(height);
         },
         "hoverItem": function(e) {
-            this.selectedItem = $("ul", this.getResultsElement()).children().index(e.currentTarget);
+            var index = $("ul", this.getResultsElement()).children().index(e.currentTarget);
+            if(!this.results[index] || this.results[index].selectable === false) {
+                return;
+            }
+            this.selectedItem = index;
             this.renderSelectedItem();
             if (this.selectedItem >= this.results.length-1-this.preloadBefore) {
                 this.loadMore();
             }
         },
         "selectItem": function() {
+            if (!this.results[this.selectedItem] || this.results[this.selectedItem].selectable === false) {
+                return;
+            }
             if (this.results[this.selectedItem].id) {
                 this.processSelectedItem(this.results[this.selectedItem]);
                 this.getResultsElement().hide();
@@ -463,6 +470,9 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscroll
             do {
                 this.selectedItem++;
             } while (this.results[this.selectedItem] && this.results[this.selectedItem].selectable === false);
+            if (this.selectedItem >= this.results.length-1) {
+                this.selectedItem = this.results.length-1;
+            }
             this.renderSelectedItem();
         },
         "up": function() {
@@ -472,8 +482,8 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscroll
                 do {
                     this.selectedItem--;
                 } while (this.results[this.selectedItem] && this.results[this.selectedItem].selectable === false);
-                if (this.selectedItem === -1) {
-                    this.down();
+                if (this.selectedItem <= 0) {
+                    this.selectedItem = 0;
                 }
             }
             this.renderSelectedItem();

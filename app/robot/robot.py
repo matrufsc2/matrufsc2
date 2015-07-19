@@ -419,6 +419,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
         discipline_entity = params.get("discipline_entity")
         disciplines = params.get("disciplines", set())
         teams = params.get("teams", [])
+        old = params.get("old", False)
         registered_campi = params.get("registered_campi", [])
         discipline_teams = params.get("discipline_teams", [])
         discipline_old_teams = params.get("discipline_old_teams", [])
@@ -441,18 +442,19 @@ class Robot(CommunityFetcher, CacheHelper, object):
             data = self.fetch_page(page_number+1, semester, campus).get_result()
             teams_to_process = data["teams_to_process"]
             self.check_cache_existence(teams_to_process[0], campus, semester)
-            campi.appendleft(campus)
-            tasks.append(pickle.dumps({
-                "page_number": page_number + 1,
-                "semester": semester,
-                "campi": campi,
-                "registered_campi": registered_campi,
-                "last_login": last_login,
-                "view_state": self.view_state,
-                "modified_campi": modified_campi,
-                "cookies": list(self.cookies),
-                "data": data
-            }, pickle.HIGHEST_PROTOCOL))
+            if not old:
+                campi.appendleft(campus)
+                tasks.append(pickle.dumps({
+                    "page_number": page_number + 1,
+                    "semester": semester,
+                    "campi": campi,
+                    "registered_campi": registered_campi,
+                    "last_login": last_login,
+                    "view_state": self.view_state,
+                    "modified_campi": modified_campi,
+                    "cookies": list(self.cookies),
+                    "data": data
+                }, pickle.HIGHEST_PROTOCOL))
             raise ndb.Return("CHECKED")
         data = params["data"]
         has_next = data["has_next"]
@@ -753,11 +755,6 @@ class Robot(CommunityFetcher, CacheHelper, object):
             self.login()
             last_login = time.time()
             for count_semesters, semester in enumerate(semesters_data):
-                if count_semesters >= 1:
-                    logging.warn("Ignoring semester %s as it's not new to database and its not recent too",
-                                 semester.name)
-                    continue
-
                 logging.info("Scheduling task for semester %s..", semester.name)
                 taskqueue.add(url="/secret/update/", payload=pickle.dumps({
                     "page_number": 0,
@@ -765,6 +762,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
                     "campi": collections.deque(campi_data),
                     "last_login": last_login,
                     "view_state": self.view_state,
-                    "cookies": list(self.cookies)
+                    "cookies": list(self.cookies),
+                    "old": count_semesters >= 1
                 }, pickle.HIGHEST_PROTOCOL), method="POST")
         raise ndb.Return("OK")

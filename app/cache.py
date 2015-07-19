@@ -46,7 +46,10 @@ class LRUItem(object):
     def __str__(self):
         return str(self.value)
 
+
 class LRUCache(AVLTree):
+    __slots__ = ["capacity", "expiration", "run_gc", "last_run_gc", "_root", "_count"]
+
     def __init__(self, *args, **kwargs):
         super(LRUCache, self).__init__(*args, **kwargs)
         self.capacity = 1000
@@ -99,8 +102,9 @@ class LRUCache(AVLTree):
                 expired_item = min(self.values(), key=lambda item: item.accessed_on)
                 del self[expired_item.key]
                 dif -= 1
+                del expired_item
 
-            logging.warning("Collected %d objects from GC",  gc.collect())
+            logging.warning("Collected %d objects with GC",  gc.collect())
         return now
 
     def __setitem__(self, key, value):
@@ -115,8 +119,8 @@ class LRUCache(AVLTree):
 
 ndb_context = ndb.get_context()
 lru_cache = LRUCache()
-lru_cache.set_capacity(50)  # 50 items
-lru_cache.set_expiration(600)  # For 600 seconds
+lru_cache.set_capacity(200)  # 50 items
+lru_cache.set_expiration(3600)  # For 3600 seconds
 
 @ndb.tasklet
 def get_gcs_filename(filename):
@@ -192,6 +196,7 @@ def get_from_cache(key, persistent=True, memcache=True, log=True):
             elif not isinstance(e, gcs.NotFoundError):
                 logging.exception("Error detected when getting from GCS")
 
+
 def set(key, value, ttl=None):
     """
     Save the item in a non persistent way, compatible to Memcached API.
@@ -209,6 +214,7 @@ def set(key, value, ttl=None):
     key = "memcache-friendly-%s"%hashlib.sha1(key).hexdigest()
     return set_into_cache(key, item, persistent=False).get_result()
 
+
 def get(key):
     key = "memcache-friendly-%s"%hashlib.sha1(key).hexdigest()
     value = get_from_cache(key).get_result()
@@ -220,6 +226,7 @@ def get(key):
         else:
             value = value.value
     return value
+
 
 @ndb.tasklet
 def set_into_cache(key, value, persistent=True, memcache=True, log=True):
@@ -258,6 +265,7 @@ def set_into_cache(key, value, persistent=True, memcache=True, log=True):
             logging.exception("There is an error when saving to GCS, but okay :v")
             pass
 
+
 @ndb.tasklet
 def delete_from_cache(key, persistent=True):
     logging.debug("Deleting key '%s' from cache", key)
@@ -270,3 +278,9 @@ def delete_from_cache(key, persistent=True):
         except:
             logging.exception("There is an error when deleting from GCS, but okay :v")
             pass
+
+
+def clear_lru_cache():
+    logging.debug("Clearing %d items of the LRU Cache", len(lru_cache))
+    lru_cache.clear()
+    logging.debug("Collected %d objects with GC", gc.collect())

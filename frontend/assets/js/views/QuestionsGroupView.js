@@ -1,21 +1,21 @@
 define("views/QuestionsGroupView", [
-	"templates",
-	"underscore",
+    "templates",
+    "underscore",
     "views/BaseView",
     "foundation-accordion"
-], function(templates, _, BaseView){
-	"use strict";
-	return BaseView.extend({
-		"template" : templates.questionsGroup,
-		"region"   : "main",
-        "listen"   : {
+], function (templates, _, BaseView) {
+    "use strict";
+    return BaseView.extend({
+        "template": templates.questionsGroup,
+        "region": "main",
+        "listen": {
             "sync model": "render",
             "render": "applyFoundation"
         },
-        "getTemplateData": function() {
+        "getTemplateData": function () {
             return {
                 "model": this.model
             };
         }
-	});
+    });
 });

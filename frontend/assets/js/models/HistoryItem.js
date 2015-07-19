@@ -26,7 +26,7 @@ define("models/HistoryItem", ["models/BaseModel"], function (BaseModel) {
     ];
 
     function relativeDate(input, reference) {
-        if(!reference) {
+        if (!reference) {
             reference = new Date();
         }
         if (reference instanceof Date) {
@@ -53,19 +53,19 @@ define("models/HistoryItem", ["models/BaseModel"], function (BaseModel) {
             };
         },
         "getDate": function () {
-            return new Date(this.id*1000);
+            return new Date(this.id * 1000);
         },
         "getFormattedRelativeDate": function () {
             return relativeDate(this.getDate(), new Date());
         },
         "getFormattedDate": function () {
             var old = this.getDate();
-            var day = "0"+ old.getDate();
+            var day = "0" + old.getDate();
             var hours = "0" + old.getHours();
             var minutes = "0" + old.getMinutes();
             var seconds = "0" + old.getSeconds();
-            return WEEKDAYS[old.getDay()]+", "+day.substr(-2, 2)+" de "+MONTHS[old.getMonth()]+" de "+
-                old.getFullYear()+" às "+hours.substr(-2, 2)+":"+minutes.substr(-2, 2)+":"+seconds.substr(-2, 2);
+            return WEEKDAYS[old.getDay()] + ", " + day.substr(-2, 2) + " de " + MONTHS[old.getMonth()] + " de " +
+                old.getFullYear() + " às " + hours.substr(-2, 2) + ":" + minutes.substr(-2, 2) + ":" + seconds.substr(-2, 2);
         }
     });
 });

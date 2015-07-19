@@ -1,4 +1,4 @@
-define("collections/PageableCollection", ["chaplin"], function(Chaplin) {
+define("collections/PageableCollection", ["chaplin"], function (Chaplin) {
     "use strict";
     return Chaplin.Collection.extend({
         "totalPages": 0,
@@ -13,38 +13,38 @@ define("collections/PageableCollection", ["chaplin"], function(Chaplin) {
             }
             return response.results;
         },
-        "fetch": function(options) {
+        "fetch": function (options) {
             options = options || {};
             options.data = options.data || {};
             options.data.page = this.currentPage;
             return Chaplin.Collection.prototype.fetch.call(this, options);
         },
-        "nextPage": function() {
+        "nextPage": function () {
             if (this.currentPage >= this.totalPages) {
                 return;
             }
             this.currentPage++;
             this.fetch();
         },
-        "previousPage": function() {
+        "previousPage": function () {
             if (this.currentPage <= 1) {
                 return;
             }
             this.currentPage--;
             this.fetch();
         },
-        "goToPage": function(page) {
+        "goToPage": function (page) {
             if (page > this.totalPages || page < 1) {
                 return;
             }
             this.currentPage = page;
             this.fetch();
         },
-        "goToFirstPage": function() {
+        "goToFirstPage": function () {
             this.currentPage = 1;
             this.fetch();
         },
-        "goToLastPage": function() {
+        "goToLastPage": function () {
             this.currentPage = this.totalPages;
             this.fetch();
         }
