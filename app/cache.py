@@ -33,6 +33,7 @@ gcs.set_default_retry_params(
     )
 )
 
+
 class CacheItem(object):
     __slots__ = ["value", "expire_on"]
 
@@ -103,8 +104,7 @@ class LRUCache(AVLTree):
                 del self[expired_item.key]
                 dif -= 1
                 del expired_item
-
-            logging.warning("Collected %d objects with GC",  gc.collect())
+            gc_collect()
         return now
 
     def __setitem__(self, key, value):
@@ -119,8 +119,16 @@ class LRUCache(AVLTree):
 
 ndb_context = ndb.get_context()
 lru_cache = LRUCache()
-lru_cache.set_capacity(200)  # 50 items
+lru_cache.set_capacity(100)  # 100 items
 lru_cache.set_expiration(3600)  # For 3600 seconds
+
+
+def gc_collect():
+    logging.warning("Collected %d objects with GC",  gc.collect())
+    garbage = len(gc.garbage)
+    if garbage:
+        logging.warning("There are %d objects with reference cycles", garbage)
+
 
 @ndb.tasklet
 def get_gcs_filename(filename):
@@ -281,6 +289,6 @@ def delete_from_cache(key, persistent=True):
 
 
 def clear_lru_cache():
-    logging.debug("Clearing %d items of the LRU Cache", len(lru_cache))
+    logging.warning("Clearing %d items of the LRU Cache", len(lru_cache))
     lru_cache.clear()
-    logging.debug("Collected %d objects with GC", gc.collect())
+    gc_collect()
