@@ -83,8 +83,8 @@ class Team(ndb.Model, JSONSerializable):
                 found_teachers.append(cache_value)
             else:
                 teachers.append(teacher)
-        schedules, teachers = (ndb.get_multi_async(schedules, use_cache=False, use_memcache=False),
-                               ndb.get_multi_async(teachers, use_cache=False, use_memcache=False))
+        schedules, teachers = (ndb.get_multi_async(schedules, use_cache=False, use_memcache=True),
+                               ndb.get_multi_async(teachers, use_cache=False, use_memcache=True))
         for found_schedule in schedules:
             found_schedule = json.loads(json.dumps(found_schedule.get_result(), cls=JSONEncoder))
             if found_schedule:
