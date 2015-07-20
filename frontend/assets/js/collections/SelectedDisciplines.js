@@ -15,7 +15,6 @@ define("collections/SelectedDisciplines", [
         "initialize": function (models, options) {
             _.extend(this, _.pick(options, ["status", "campi", "semesters"]));
             this.on("add remove", this.updateCombinations, this);
-            this.status = options.status;
             this.listenTo(this.status, "change:campus", function () {
                 this.reset();
                 this.status.set({
