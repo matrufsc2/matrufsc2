@@ -101,7 +101,9 @@ def sort(x, y):
             try:
                 xo = x()
             except StopIteration:
-                yield yo
+
+                if xo != yo:
+                    yield yo
                 while 1:
                     yield y()
             try:
@@ -115,7 +117,8 @@ def sort(x, y):
             try:
                 yo = y()
             except StopIteration:
-                yield xo
+                if xo != yo:
+                    yield xo
                 while 1:
                     yield x()
         else:
@@ -123,73 +126,52 @@ def sort(x, y):
             try:
                 xo = x()
             except StopIteration:
-                yield yo
+                if xo != yo:
+                    yield yo
                 while 1:
                     yield y()
 
 
 class Trie(dict):
-    __slots__ = ["nodes", "__editable__", "_root", "_count"]
+    __slots__ = ["editable"]
 
     def __init__(self):
         super(Trie, self).__init__()
-        self.nodes = []
-        self.__editable__ = True
+        self.editable = True
 
     def __getstate__(self):
         s = {
-            "data": self.copy()
+            "data": self.copy(),
         }
-        if self.nodes:
-            s["nodes"] = self.nodes
-        if self.__editable__ is True:
-            s["editable"] = self.__editable__
+        if self.editable is True:
+            s["editable"] = self.editable
         return s
 
     def __setstate__(self, state):
-        self.nodes = state.pop("nodes", [])
-        self.__editable__ = state.pop("editable", False)
+        self.editable = state.pop("editable", False)
         self.update(state.pop("data", {}))
 
-    def append(self, val):
-        return self.nodes.append(val)
+    def get_words(self):
+        return sorted(self.iterkeys())
 
-    def sort(self):
-        return self.nodes.sort()
+    def get(self, key, d=None):
+        editable = self.editable
+        if editable is True:
+            self.editable = False
+        try:
+            val = self[key]
+            if editable is True:
+                self.editable = editable
+            return val
+        except KeyError:
+            if editable is True:
+                self.editable = editable
+            return d
 
-    def extend(self, values):
-        return self.nodes.extend(values)
-
-    def remove(self, val):
-        return self.nodes.remove(val)
-
-    @property
-    def editable(self):
-        return self.__editable__
-
-    @editable.setter
-    def editable(self, editable):
-        queue = [self]
-        while queue:
-            el = queue.pop()
-            el.__editable__ = editable
-            queue.extend(el.values())
-
-    @classmethod
-    def from_keys(cls, iterable):
-        tree = cls()
-        for k in iterable:
-            tree[k]
-        return tree
-
-    def as_list(self):
-        queue = [self]
-        i = 0
-        while i < len(queue):
-            el = queue[i]
-            queue.extend(el.values())
-            i += 1
-        queue = [item.nodes for item in queue]
+    def get_list(self, item):
+        item_length = len(item)
+        words = (word for word in self.iterkeys() if word[:item_length] == item)
+        queue = [self[word] for word in words]
         while len(queue) > 1:
             item_old = None
             temp = []
@@ -203,83 +185,18 @@ class Trie(dict):
                 temp[-1] = sort(item_old, temp[-1])
             queue = temp
         if queue:
-            return queue[0]
+            return list(queue[0])
         return []
 
-    def has_key(self, item):
-        if len(item) > 1:
-            s = self
-            try:
-                for letter in item:
-                    s = s[letter]
-            except KeyError:
-                return False
-            return True
-        return item in self.keys()
-
     def __getitem__(self, item):
-        if len(item) > 1:
-            s = self
-            try:
-                for letter in item:
-                    s = s[letter]
-            except KeyError:
-                raise KeyError(item)
-            return s
         try:
             value = super(Trie, self).__getitem__(item)
         except KeyError:
-            if self.__editable__:
-                self[item] = value = Trie()
-            elif len(self) == 0:  # If its not editable its ok to simply return the actual instance
-                return self
+            if self.editable:
+                self[item] = value = []
             else:
-                value = Trie()
-                value.__editable__ = False
+                value = []
         return value
-
-    def __setitem__(self, key, value):
-        if isinstance(value, Trie):
-            return super(Trie, self).__setitem__(key, value)
-        raise NotImplementedError
-
-    def __delitem__(self, key):
-        if len(key) > 1:
-            s = self
-            for letter in key[:-1]:
-                s = s[letter]
-            del s[-1]
-        return super(Trie, self).__delitem__(key)
-
-    def get(self, key, d=None):
-        editable = self.__editable__
-        if editable is True:
-            self.editable = False
-        try:
-            val = self[key]
-            if editable is True:
-                self.editable = editable
-            return val
-        except KeyError:
-            if editable is True:
-                self.editable = editable
-            return d
-
-    def get_words(self):
-        edit = self.editable
-        if edit is True:
-            self.editable = False
-        s = self
-        try:
-            queue = [[k, val] for k, val in s.items()]
-            while queue:
-                sug = queue.pop()
-                queue.extend([["".join([sug[0],k]), val] for k, val in sug[1].items()])
-                if sug[1].nodes:
-                    yield sug[0]
-        finally:
-            if edit is True:
-                self.editable = edit
 
 
 def islice(iterable, start, end=None):
@@ -410,11 +327,11 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                         get_from_cache(items_key, persistent=True)
                     ]
                     index = index_items[0].get_result()
-                    if min_word_length == 1 and not isinstance(index, Trie) and isinstance(index, AVLTree):
+                    if min_word_length == 1 and index and isinstance(index, Trie) and hasattr(index, "nodes"):
                         logging.warning("Resetting index status because of invalid format "
                                         "(it should be a Trie, but it is %s)"%type(index).__name__)
                         index = None
-                    elif min_word_length > 1 and not isinstance(index, dict):
+                    elif min_word_length > 1 and index and not isinstance(index, dict):
                         logging.warning("Resetting index status because of invalid format "
                                         "(it should be a dict, but it is %s)"%type(index).__name__)
                         index = None
@@ -527,7 +444,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     items = []
                 suggestions = []
                 if min_word_length == 1:
-                    found = [[i, word, list(index[word].as_list())] for i, word in enumerate(query_words)]
+                    found = [[i, word, list(index.get_list(word))] for i, word in enumerate(query_words)]
                 else:
                     found = [[i, word, list(index.get(word, []))] for i, word in enumerate(query_words)]
                 not_found = []
@@ -557,7 +474,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                                 words_cache[l],
                                 key=lambda word: sift3(word, item[1])
                             ), 0, 50)
-                            queue.extend([item, suggestion, list(index[suggestion].as_list())] for suggestion in item_suggestions)
+                            queue.extend([item, suggestion, list(index.get_list(suggestion))] for suggestion in item_suggestions)
                         del words_cache
                     if results:
                         get_results = lambda item: list(islice(reduce(intersect, map(lambda suggestion: suggestion[2], item)+[results]), 0, 10))
