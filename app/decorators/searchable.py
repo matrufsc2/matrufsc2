@@ -1,246 +1,23 @@
-from collections import defaultdict
-import pprint
-import time
-import itertools
-from unidecode import unidecode
-from app.cache import get_from_cache, set_into_cache, delete_from_cache, LRUCache, clear_lru_cache, lru_cache
-from google.appengine.ext import ndb
-import threading
-import Queue
-import hashlib
-import logging as _logging
 import json
-from bintrees import AVLTree
+import time
+from google.appengine.ext import ndb
+from app.cache import get_from_cache, set_into_cache, clear_lru_cache, gc_collect
 from app.json_serializer import JSONEncoder
+from app.support.islice import islice
+from app.support.intersect import intersect
+from app.support.sift3 import sift3
+from app.support.Trie import Trie
+from collections import defaultdict
+import logging as _logging
+import hashlib, itertools, pprint
+from unidecode import unidecode
 
 __author__ = 'fernando'
 
-logging = _logging.getLogger("matrufsc2_decorators")
+logging = _logging.getLogger("matrufsc2_searchable")
 logging.setLevel(_logging.DEBUG)
+
 CACHE_INDEX_KEY = "cache/searchIndex/%s/%s/%s"
-CACHE_CACHEABLE_KEY = "cache/functions/%s/%s"
-
-
-def cacheable(consider_only=None):
-    def decorator(fn):
-        def dec(filters, **kwargs):
-            if consider_only is not None and filters:
-                filters = {k: filters[k] for k in filters.iterkeys() if k in consider_only}
-            try:
-                filters_hash = lru_cache[filters]
-            except KeyError:
-                filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest()
-                lru_cache[filters] = filters_hash
-            cache_key = CACHE_CACHEABLE_KEY % (
-                fn.__name__,
-                filters_hash
-            )
-            persistent = kwargs.get("persistent", True)
-            if kwargs.get("overwrite"):
-                update_with = kwargs.get("update_with")
-                if update_with:
-                    result = get_from_cache(cache_key, persistent=persistent).get_result()
-                    if not result:
-                        result = update_with
-                    if type(result) == type(update_with):
-                        logging.debug("Updating cache with passed in value")
-                        set_into_cache(cache_key, update_with, persistent=persistent).get_result()
-                    else:
-                        raise Exception("Types differents: %s != %s" % (str(type(result)), str(type(update_with))))
-                elif kwargs.get("exclude"):
-                    return delete_from_cache(cache_key, persistent=persistent).get_result()
-                else:
-                    result = None
-            else:
-                result = get_from_cache(cache_key, persistent=persistent).get_result()
-            if not result:
-                result = fn(filters)
-                set_into_cache(cache_key, result, persistent=persistent).get_result()
-            return result
-
-        dec.__name__ = fn.__name__
-        dec.__doc__ = fn.__doc__
-        return dec
-    return decorator
-
-
-def intersect(x, y):
-    x = iter(x if x else []).next
-    y = iter(y if y else []).next
-    xo = x()
-    yo = y()
-    while 1:
-        if xo == yo:
-            yield xo
-            xo = x()
-            yo = y()
-        elif xo > yo:
-            yo = y()
-        else:
-            xo = x()
-
-
-def sort(x, y):
-    x = iter(x if x else []).next
-    y = iter(y if y else []).next
-    try:
-        xo = x()
-    except StopIteration:
-        while 1:
-            yield y()
-        raise StopIteration
-    try:
-        yo = y()
-    except StopIteration:
-        yield xo
-        while 1:
-            yield x()
-    while 1:
-        if xo == yo:
-            yield xo
-            try:
-                xo = x()
-            except StopIteration:
-
-                if xo != yo:
-                    yield yo
-                while 1:
-                    yield y()
-            try:
-                yo = y()
-            except StopIteration:
-                yield xo
-                while 1:
-                    yield x()
-        elif xo > yo:
-            yield yo
-            try:
-                yo = y()
-            except StopIteration:
-                if xo != yo:
-                    yield xo
-                while 1:
-                    yield x()
-        else:
-            yield xo
-            try:
-                xo = x()
-            except StopIteration:
-                if xo != yo:
-                    yield yo
-                while 1:
-                    yield y()
-
-
-class Trie(dict):
-    __slots__ = ["editable"]
-
-    def __init__(self):
-        super(Trie, self).__init__()
-        self.editable = True
-
-    def __getstate__(self):
-        s = {
-            "data": self.copy(),
-        }
-        if self.editable is True:
-            s["editable"] = self.editable
-        return s
-
-    def __setstate__(self, state):
-        self.editable = state.pop("editable", False)
-        self.update(state.pop("data", {}))
-
-    def get_words(self):
-        return sorted(self.iterkeys())
-
-    def get(self, key, d=None):
-        editable = self.editable
-        if editable is True:
-            self.editable = False
-        try:
-            val = self[key]
-            if editable is True:
-                self.editable = editable
-            return val
-        except KeyError:
-            if editable is True:
-                self.editable = editable
-            return d
-
-    def get_list(self, item):
-        item_length = len(item)
-        words = (word for word in self.iterkeys() if word[:item_length] == item)
-        queue = [self[word] for word in words]
-        while len(queue) > 1:
-            item_old = None
-            temp = []
-            for item in queue:
-                if item_old is None:
-                    item_old = item
-                else:
-                    temp.append(sort(item, item_old))
-                    item_old = None
-            if item_old is not None:
-                temp[-1] = sort(item_old, temp[-1])
-            queue = temp
-        if queue:
-            return list(queue[0])
-        return []
-
-    def __getitem__(self, item):
-        try:
-            value = super(Trie, self).__getitem__(item)
-        except KeyError:
-            if self.editable:
-                self[item] = value = []
-            else:
-                value = []
-        return value
-
-
-def islice(iterable, start, end=None):
-    iterable = iter(iterable if iterable else [])
-    if end is not None:
-        end = start - end + 1
-        for item in iterable:
-            start -= 1
-            if start >= 0:
-                continue
-            yield item
-            if start < end:
-                break
-    else:
-        for item in iterable:
-            start -= 1
-            if start >= 0:
-                continue
-            yield item
-
-sift3_offset = xrange(1, 3)
-
-
-def sift3(s1, s2):
-    s1L = len(s1)
-    s2L = len(s2)
-    c1 = 0
-    c2 = 0
-    lcs = 0
-    while c1 < s1L and c2 < s2L:
-        if s1[c1] == s2[c2]:
-            lcs += 1
-        else:
-            for i in sift3_offset:
-                if c1 + i < s1L and s1[c1 + i] == s2[c2]:
-                    c1 += i
-                    break
-                if c2 + i < s2L and s1[c1] == s2[c2 + i]:
-                    c2 += i
-                    break
-        c1 += 1
-        c2 += 1
-    return (s1L+s2L)/2 - lcs
-
 
 def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_length=1):
     if consider_only is None:
@@ -259,11 +36,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
             limit = int(filters.pop("limit", 5))
             page_start = (page - 1) * limit
             page_end = page * limit
-            try:
-                filters_hash = lru_cache[filters]
-            except KeyError:
-                filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest()
-                lru_cache[filters] = filters_hash
+            filters_hash = hashlib.sha1(json.dumps(filters, sort_keys=True)).hexdigest()
             items_key = CACHE_INDEX_KEY % (
                 fn.__name__,
                 filters_hash,
@@ -350,13 +123,15 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     index_words = []
 
                     if items is None:
-                        clear_lru_cache() # We need nothing before calling the original function..
+                        clear_lru_cache()  # We need nothing before calling the original function..
                         items = fn(filters)
-                        clear_lru_cache() # To guarantee that the memory is clean
+                        clear_lru_cache()  # To guarantee that the memory is clean
                     else:
                         logging.warn("Detected update with %d items", len(items))
                     logging.debug("Simplifying %d items..", len(items))
-                    items = json.loads(json.dumps(items, cls=JSONEncoder, separators=(',', ':')))
+                    clear_lru_cache()
+                    items = json.loads(JSONEncoder(separators=(',', ':')).encode(items))
+                    clear_lru_cache()
                     logging.debug("%d Items simplified in %f seconds!", len(items), time.time() - start)
                     logging.debug("Filtering non None items on the list of results (total actually: %d)", len(items))
                     items = filter(lambda item: item and isinstance(item, dict), items)
@@ -417,6 +192,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                     if word is not None:
                         index[word].extend(set([items_ids[item['id']] for item in word_items]))
                         index[word].sort()
+                    del index_words
                     if min_word_length == 1:
                         index.editable = False
                     else:
@@ -553,7 +329,7 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                                     suggestions.append(sug)
                                     if len(suggestions) > 5:
                                         break
-                        if suggestions: # If we already have suggestions, stops the loop!
+                        if suggestions:  # If we already have suggestions, stops the loop!
                             break
 
                 # If the total number of results is less than N items, we send all the results we found
@@ -608,66 +384,3 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
         return dec
 
     return decorator
-
-
-def get_result(q):
-    def wrap():
-        result = q.get()
-        q.put(result)
-        if result["error"]:
-            raise result["exception"]
-        return result["result"]
-
-    return wrap
-
-
-def wait(q):
-    def wrap():
-        q.put(q.get())
-
-    return wrap
-
-
-def check_success(q):
-    def wrap():
-        result = q.get()
-        q.put(result)
-        if result["error"]:
-            raise result["exception"]
-
-    return wrap
-
-
-def threaded(f, daemon=False):
-    def wrapped_f(q, *args, **kwargs):
-        '''this function calls the decorated function and puts the
-        result in a queue'''
-        try:
-            ret = f(*args, **kwargs)
-        except Exception, e:
-            q.put({
-                "error": True,
-                "exception": e
-            })
-        else:
-            q.put({
-                "error": False,
-                "result": ret
-            })
-
-    def wrap(*args, **kwargs):
-        '''this is the function returned from the decorator. It fires off
-        wrapped_f in a new thread and returns the thread object with
-        the result queue attached'''
-
-        q = Queue.Queue(1)
-
-        t = threading.Thread(target=wrapped_f, args=(q,) + args, kwargs=kwargs)
-        t.daemon = daemon
-        t.start()
-        t.get_result = get_result(q)
-        t.check_success = check_success(q)
-        t.wait = wait(q)
-        return t
-
-    return wrap

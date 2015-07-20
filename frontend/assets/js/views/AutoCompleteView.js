@@ -1,5 +1,6 @@
-define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscrollbar"], function(Chaplin, _, $) {
+define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promise", "tinyscrollbar"], function(Chaplin, _, $, ES6Promise) {
     "use strict";
+    var Promise = ES6Promise.Promise;
     var reference = [
         {"base":"A",    "letters":"\u0041\u24B6\uFF21\u00C0\u00C1\u00C2\u1EA6\u1EA4\u1EAA\u1EA8\u00C3\u0100\u0102\u1EB0\u1EAE\u1EB4\u1EB2\u0226\u01E0\u00C4\u01DE\u1EA2\u00C5\u01FA\u01CD\u0200\u0202\u1EA0\u1EAC\u1EB6\u1E00\u0104\u023A\u2C6F"},
         {"base":"AA",   "letters":"\uA732"},
@@ -128,6 +129,7 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscroll
         "preloadBefore": 2,
         "cancelFocusOut": false,
         "cache": {},
+        "lastSearch": null,
         "cacheResponse": {},
         "events": {
             "keyup input": "search",
@@ -175,35 +177,8 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscroll
                 return word.length > 0;
             });
             lowerSearchString = words.join(" ");
-            var matcher = function(result) {
-                var str = this.getFormattedString(result).toLowerCase();
-                for(var c=0; c<words.length; c++) {
-                    if (str.indexOf(words[c]) === -1) {
-                        return false;
-                    }
-                }
-                return true;
-            };
             this.searchString = lowerSearchString;
             this.page = 1;
-            for (var key in this.cache) {
-                if (this.cache.hasOwnProperty(key) && lowerSearchString.indexOf(key) === 0) {
-                    resp = _.clone(this.cache[key]);
-                    resp.query = lowerSearchString;
-                    resp.results = _.filter(resp.results, matcher, this);
-                    if (resp.results.length > 0) { // If we have results, use local results, otherwise query the server
-                        this.oldUrl = this.generateUrl();
-                        resp.more = resp.results.length > this.pageSize;
-                        this.renderResults(resp);
-                        return;
-                    }
-                }
-            }
-            if (_.has(this.cacheResponse, lowerSearchString)) {
-                this.oldUrl = this.generateUrl();
-                this.renderResults(_.clone(this.cacheResponse[lowerSearchString]));
-                return;
-            }
             this.lockMore = true;
             this.doRequest(lowerSearchString);
         },
@@ -217,21 +192,65 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "tinyscroll
             return url;
         },
         "doRequest": function() {
-            var url = this.generateUrl();
-            if (url === this.oldUrl) {
-                // Does not render if actually called it
-                return;
+            var promise = _.bind(function() {
+                var resp;
+                var lowerSearchString = this.searchString;
+                var words = lowerSearchString.split(" ");
+                var matcher = function(result) {
+                    var str = this.getFormattedString(result).toLowerCase();
+                    for(var c=0; c<words.length; c++) {
+                        if (str.indexOf(words[c]) === -1) {
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+                for (var key in this.cache) {
+                    if (this.cache.hasOwnProperty(key) && lowerSearchString.indexOf(key) === 0) {
+                        resp = _.clone(this.cache[key]);
+                        resp.query = lowerSearchString;
+                        resp.results = _.filter(resp.results, matcher, this);
+                        if (resp.results.length > 0) { // If we have results, use local results, otherwise query the server
+                            this.oldUrl = this.generateUrl();
+                            resp.more = resp.results.length > this.pageSize;
+                            this.renderResults(resp);
+                            return Promise.resolve();
+                        }
+                    }
+                }
+                if (_.has(this.cacheResponse, lowerSearchString)) {
+                    this.oldUrl = this.generateUrl();
+                    this.renderResults(_.clone(this.cacheResponse[lowerSearchString]));
+                    return Promise.resolve();
+                }
+                var url = this.generateUrl();
+                if (url === this.oldUrl) {
+                    // Does not render if actually called it
+                    return Promise.resolve();
+                }
+                this.oldUrl = url;
+                var view = this;
+                return new Promise(function(resolve) {
+                    $.ajax({
+                        "url": url,
+                        "type": "GET",
+                        "cache": true,
+                        "success": function() {
+                            view.renderResults.apply(view, _.toArray(arguments));
+                            resolve();
+                        },
+                        "error": function() {
+                            resolve();
+                        }
+                    });
+                });
+            }, this);
+            if (this.request === null) {
+                this.request = promise();
+            } else {
+                this.request = this.request.then(promise);
             }
-            this.oldUrl = url;
-            if (this.request) {
-                this.request.abort();
-            }
-            this.request = $.ajax({
-                "url": url,
-                "type": "GET",
-                "cache": true,
-                "success": _.bind(this.renderResults, this)
-            });
+
         },
         "mousedown": function() {
             this.cancelFocusOut = true;

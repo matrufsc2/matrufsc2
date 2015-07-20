@@ -1,25 +1,19 @@
 import json
 import time
-from app.api import get_feed, get_prismic_api, prismic_full_link_resolver, get_domain
-from cloudstorage.errors import NotFoundError
+from app.api import campi, semesters, disciplines, teams, plans, pages, blog, help
+from app.support.prismic_api import get_prismic_api, prismic_full_link_resolver
 from flask import Flask, request, got_request_exception
 import os
 import re
 from flask.helpers import make_response
-from app.cache import lru_cache, delete_from_cache, clear_lru_cache
+from app.cache import clear_lru_cache
 from google.appengine.api import users
 from google.appengine.api.urlfetch import fetch
-from app import api
 from app.json_serializer import JSONEncoder
 from app.robot.robot import Robot
 import hashlib, logging
 import rollbar
 import rollbar.contrib.flask
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 app = Flask(__name__)
 
@@ -97,13 +91,13 @@ def serialize(result, status=200, headers=None):
 
 @app.route("/api/semesters/")
 def get_semesters():
-    result = api.get_semesters(request.args.to_dict())
+    result = semesters.get_semesters(request.args.to_dict())
     return serialize(result)
 
 
 @app.route("/api/semesters/<id_value>/")
 def get_semester(id_value):
-    result = api.get_semester(id_value)
+    result = semesters.get_semester(id_value)
     return serialize(result)
 
 
@@ -111,10 +105,10 @@ def get_semester(id_value):
 def get_campi():
     args = request.args.to_dict()
     args["_full"] = False
-    result = api.get_campi(args)
+    result = campi.get_campi(args)
     if "X_APPENGINE_CITYLATLONG" in request.headers:
         lat, lon = map(float, request.headers["X_APPENGINE_CITYLATLONG"].split(",", 1))
-        result = api.sort_campi_by_distance({
+        result = campi.sort_campi_by_distance({
             "campi": result,
             "lat": lat,
             "lon": lon
@@ -123,37 +117,37 @@ def get_campi():
 
 @app.route("/api/campi/<id_value>")
 def get_campus(id_value):
-    result = api.get_campus(id_value)
+    result = campi.get_campus(id_value)
     return serialize(result)
 
 
 @app.route("/api/disciplines/")
 def get_disciplines():
-    result = api.get_disciplines(request.args.to_dict())
+    result = disciplines.get_disciplines(request.args.to_dict())
     return serialize(result)
 
 
 @app.route("/api/disciplines/<id_value>")
 def get_discipline(id_value):
-    result = api.get_discipline(id_value)
+    result = disciplines.get_discipline(id_value)
     return serialize(result)
 
 
 @app.route("/api/teams/")
 def get_teams():
-    result = api.get_teams(request.args.to_dict())
+    result = teams.get_teams(request.args.to_dict())
     return serialize(result)
 
 
 @app.route("/api/teams/<id_value>")
 def get_team(id_value):
-    result = api.get_team(id_value)
+    result = teams.get_team(id_value)
     return serialize(result)
 
 
 @app.route("/api/plans/")
 def get_plans():
-    result = api.get_plans(request.args.to_dict())
+    result = plans.get_plans(request.args.to_dict())
     return serialize(result)
 
 
@@ -162,88 +156,10 @@ def create_plan():
     try:
         request_body = request.get_data(as_text=True)
         request_body = json.loads(request_body)
-        result = api.create_plan(request_body)
+        result = plans.create_plan(request_body)
     except (ValueError, KeyError), e:
         print e
         result = None
-    return serialize(result)
-
-
-@app.route("/api/plans/<id_value>")
-def get_plan(id_value):
-    result = api.get_plan(id_value)
-    return serialize(result)
-
-
-@app.route("/api/pages/")
-def get_pages():
-    result = api.get_pages(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/pages/<slug>")
-def get_page(slug):
-    result = api.get_page(slug)
-    return serialize(result)
-
-
-@app.route("/api/categories/")
-def get_categories():
-    result = api.get_categories(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/categories/<id_value>")
-def get_category(id_value):
-    result = api.get_category(id_value)
-    return serialize(result)
-
-
-@app.route("/api/sections/")
-def get_sections():
-    result = api.get_sections(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/sections/<id_value>")
-def get_section(id_value):
-    result = api.get_section(id_value)
-    return serialize(result)
-
-
-@app.route("/api/posts/")
-def get_posts():
-    result = api.get_posts(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/posts/<id_value>")
-def get_post(id_value):
-    result = api.get_post(id_value)
-    return serialize(result)
-
-
-@app.route("/api/questions-groups/")
-def get_faqs():
-    result = api.get_questions_groups(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/questions-groups/<id_value>")
-def get_faq(id_value):
-    result = api.get_question_group(id_value)
-    return serialize(result)
-
-
-@app.route("/api/articles/")
-def get_articles():
-    result = api.get_articles(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/articles/<id_value>")
-def get_article(id_value):
-    result = api.get_article(id_value)
     return serialize(result)
 
 
@@ -252,9 +168,95 @@ def update_plan(id_value):
     try:
         request_body = request.get_data(as_text=True)
         request_body = json.loads(request_body)
-        result = api.update_plan(id_value, request_body)
+        result = plans.update_plan(id_value, request_body)
     except (ValueError, KeyError):
         result = None
+    return serialize(result)
+
+
+@app.route("/api/plans/<id_value>")
+def get_plan(id_value):
+    result = plans.get_plan(id_value)
+    return serialize(result)
+
+
+@app.route("/api/pages/")
+def get_pages():
+    result = pages.get_pages(request.args.to_dict())
+    return serialize(result)
+
+
+@app.route("/api/pages/<slug>")
+def get_page(slug):
+    result = pages.get_page(slug)
+    return serialize(result)
+
+
+@app.route("/api/categories/")
+def get_categories():
+    result = blog.get_categories(request.args.to_dict())
+    return serialize(result)
+
+
+@app.route("/api/categories/<id_value>")
+def get_category(id_value):
+    result = blog.get_category(id_value)
+    return serialize(result)
+
+
+@app.route("/api/posts/")
+def get_posts():
+    result = blog.get_posts(request.args.to_dict())
+    return serialize(result)
+
+
+@app.route("/api/posts/<id_value>")
+def get_post(id_value):
+    result = blog.get_post(id_value)
+    return serialize(result)
+
+
+
+@app.route("/blog/feed.<type>", methods=["GET"])
+def get_blog_feed(type):
+    type = type.lower()
+    if type not in ["rss", "atom"]:
+        return make_response("", 404)
+    return make_response(blog.get_feed(type == 'atom'), 200, {"Content-Type": "application/rss+xml"})
+
+@app.route("/api/sections/")
+def get_sections():
+    result = help.get_sections(request.args.to_dict())
+    return serialize(result)
+
+
+@app.route("/api/sections/<id_value>")
+def get_section(id_value):
+    result = help.get_section(id_value)
+    return serialize(result)
+
+
+@app.route("/api/questions-groups/")
+def get_questions_groups():
+    result = help.get_questions_groups(request.args.to_dict())
+    return serialize(result)
+
+
+@app.route("/api/questions-groups/<id_value>")
+def get_question_group(id_value):
+    result = help.get_question_group(id_value)
+    return serialize(result)
+
+
+@app.route("/api/articles/")
+def get_articles():
+    result = help.get_articles(request.args.to_dict())
+    return serialize(result)
+
+
+@app.route("/api/articles/<id_value>")
+def get_article(id_value):
+    result = help.get_article(id_value)
     return serialize(result)
 
 
@@ -304,14 +306,6 @@ def prismic_preview():
     return response
 
 
-@app.route("/blog/feed.<type>", methods=["GET"])
-def get_blog_feed(type):
-    type = type.lower()
-    if type not in ["rss", "atom"]:
-        return make_response("", 404)
-    return make_response(get_feed(type=='atom'), 200, {"Content-Type": "application/rss+xml"})
-
-
 @app.route("/secret/update/", methods=["GET", "POST"])
 def update():
     logging.debug("Updating...")
@@ -325,26 +319,18 @@ def update():
     logging.debug("Updated one page in %f seconds", time.time()-start)
     return result
 
-
-@app.route("/secret/clear_lock/", methods=["GET", "POST"])
-def clear_lock():
-    try:
-        delete_from_cache("robot_lock").get_result()
-    except NotFoundError:
-        pass
-    return "OK", 200, {}
-
-
 @app.route("/secret/clear_cache/", methods=["GET", "POST"])
 def clear_cache():
     clear_lru_cache()
     return "OK", 200, {}
 
+
 @app.route("/sobre/")
 def about():
     return "", 301, {
-        "Location": "http://%s/sobre/VPCrvCkAAPE-I8ch"%get_domain()
+        "Location": "/sobre/VPCrvCkAAPE-I8ch"
     }
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

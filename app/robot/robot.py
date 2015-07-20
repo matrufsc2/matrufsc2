@@ -5,9 +5,9 @@ from pprint import pprint
 import time
 import math
 import traceback
-from app import api
-from app.cache import lru_cache, get_from_cache, set_into_cache, delete_from_cache
-from app.decorators import threaded
+from app.api import semesters, campi, disciplines as disciplines_module, teams as teams_module
+from app.cache import lru_cache
+from app.decorators.threaded import threaded
 from app.json_serializer import JSONEncoder
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
 from app.robot.fetcher.CommunityFetcher import CommunityFetcher
@@ -55,7 +55,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
         db_key = self.generate_semester_key(semester)
         modified = False
         logging.debug("Getting (or even inserting) semester from the database")
-        semester_model = api.get_semester(db_key)
+        semester_model = semesters.get_semester(db_key)
         if semester_model is None:
             semester_model = Semester(
                 key=ndb.Key(Semester, db_key),
@@ -69,7 +69,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
             semester_model.campi = campus_keys
             logging.warning("Saving to NDB (saving semester '%s')", semester.name)
             yield semester_model.put_async(options=context_options)
-            api.get_semester(db_key, overwrite=True, update_with=semester_model)
+            semesters.get_semester(db_key, overwrite=True, update_with=semester_model)
         raise ndb.Return({
             "modified": modified,
             "key": semester_model.key,
@@ -89,7 +89,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
         db_key = self.generate_campus_key(campus, semester)
         logging.debug("Getting (or even saving) campus '%s' on the database", campus.name)
         modified = False
-        campus_model = api.get_campus(db_key)
+        campus_model = campi.get_campus(db_key)
         excluded_disciplines = []
         if campus_model is None:
             campus_model = Campus(
@@ -106,7 +106,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
             campus_model.disciplines = disciplines_keys
             logging.warning("Saving to NDB (saving campus '%s')", campus.name)
             yield campus_model.put_async(options=context_options)
-            api.get_campus(db_key, overwrite=True, update_with=campus_model)
+            campi.get_campus(db_key, overwrite=True, update_with=campus_model)
         raise ndb.Return({
             "key": campus_model.key,
             "modified": modified,
@@ -220,7 +220,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
             logging.debug("The discipline '%s' has been modified....loading it from the cache...", discipline.code)
             # The discipline need to be get from the database (it already exists in the database, for sure)
             if discipline_model is None:
-                discipline_model = api.get_discipline(key)
+                discipline_model = disciplines_module.get_discipline(key)
             if discipline_model is None:
                 logging.warning("For some reason the discipline was not found in cache and its not new..."
                                 "Loading/recreating")
@@ -236,7 +236,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
             logging.warning("...and saving to NDB..(saving discipline '%s')", discipline.code)
             yield discipline_model.put_async(options=context_options)
             logging.debug("...and updating the cache..")
-            api.get_discipline(key, overwrite=True, update_with=discipline_model)
+            disciplines_module.get_discipline(key, overwrite=True, update_with=discipline_model)
         raise ndb.Return({
             "modified": modified,
             "model": discipline_model,
@@ -290,7 +290,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
         if modified:
             logging.warning("Saving to NDB (team '%s')", team.code)
             if team_model is None:
-                team_model = api.get_team(key)
+                team_model = teams_module.get_team(key)
             if team_model is None:
                 logging.warning("For some reason the team was not found in cache and its not new...Loading/recreating")
                 team_model = yield Team.get_or_insert_async(
@@ -309,7 +309,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
             if sorted(map(self.generate_schedule_key, team.schedules)) != sorted(map(lambda schedule: str(schedule["id"]), team_old["schedules"])):
                 team_model.schedules = yield map(self.get_schedule_key, team.schedules)
             yield team_model.put_async(options=context_options)
-            api.get_team(key, overwrite=True, update_with=team_model)
+            teams_module.get_team(key, overwrite=True, update_with=team_model)
         raise ndb.Return({
             "model": team_model,
             "modified": modified,
@@ -362,7 +362,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
         discipline_old_key = self.generate_discipline_key(discipline_entity, campus, semester)
         while discipline_old is None and discipline_old_search_more:
             logging.debug("Searching discipline in page %d", discipline_old_search_page)
-            discipline_old_results = api.get_disciplines({
+            discipline_old_results = disciplines_module.get_disciplines({
                 "campus": self.generate_campus_key(campus, semester),
                 "q": discipline_entity.code,
                 "limit": 5,
@@ -483,7 +483,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
             if team.discipline.code != discipline:
                 logging.debug("Detected new discipline, getting all the teams of that discipline...")
                 discipline_old_teams = discipline_teams
-                discipline_teams = api.get_teams({
+                discipline_teams = teams_module.get_teams({
                     "discipline": self.generate_discipline_key(team.discipline, campus, semester),
                     "campus": self.generate_campus_key(campus, semester)
                 })

@@ -17,5 +17,5 @@ libraries:
 
 handlers:
 - url: /secret/.*
-  script: matrufsc2.app
+  script: robot.app
   login: admin
