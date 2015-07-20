@@ -8,9 +8,6 @@ import json, logging as _logging
 logging = _logging.getLogger("matrufsc2-model")
 
 
-cache_count = 0
-fetch_count = 0
-
 class Semester(ndb.Model, JSONSerializable):
     name = ndb.StringProperty(indexed=False)
     campi = ndb.KeyProperty(kind="Campus", repeated=True, indexed=False)
@@ -40,6 +37,7 @@ class Campus(ndb.Model, JSONSerializable):
             "name": self.name
         }
 
+
 class Discipline(ndb.Model, JSONSerializable):
     code = ndb.StringProperty(indexed=False)
     name = ndb.StringProperty(indexed=False)
@@ -56,6 +54,7 @@ class Discipline(ndb.Model, JSONSerializable):
             "name": self.name
         }
 
+
 class Team(ndb.Model, JSONSerializable):
     code = ndb.StringProperty(indexed=False)
     vacancies_offered = ndb.IntegerProperty(indexed=False)
@@ -68,13 +67,11 @@ class Team(ndb.Model, JSONSerializable):
         return self.key.id()
 
     def to_json(self):
-        global cache_count, fetch_count
         schedules = []
         found_schedules = []
         for schedule in self.schedules:
             cache_value = cache.get(schedule.id())
             if cache_value:
-                cache_count += 1
                 found_schedules.append(cache_value)
             else:
                 schedules.append(schedule)
@@ -83,7 +80,6 @@ class Team(ndb.Model, JSONSerializable):
         for teacher in self.teachers:
             cache_value = cache.get(teacher.id())
             if cache_value:
-                cache_count += 1
                 found_teachers.append(cache_value)
             else:
                 teachers.append(teacher)
@@ -94,7 +90,6 @@ class Team(ndb.Model, JSONSerializable):
             if found_schedule:
                 cache[found_schedule["id"]] = found_schedule
                 found_schedules.append(found_schedule)
-                fetch_count += 1
             else:
                 logging.warning("Not found schedule for team %s. Check manually, please.", self.id)
         for found_teacher in teachers:
@@ -102,7 +97,6 @@ class Team(ndb.Model, JSONSerializable):
             if found_teacher:
                 cache[found_teacher["id"]] = found_teacher
                 found_teachers.append(found_teacher)
-                fetch_count += 1
             else:
                 logging.warning("Not found teacher for team %s. Check manually, please.", self.id)
 
@@ -114,6 +108,7 @@ class Team(ndb.Model, JSONSerializable):
             "schedules": found_schedules,
             "teachers": found_teachers
         }
+
 
 class Teacher(ndb.Model, JSONSerializable):
     name = ndb.StringProperty(indexed=False)

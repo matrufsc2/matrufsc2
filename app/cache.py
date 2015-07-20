@@ -1,5 +1,4 @@
 import hashlib
-from bintrees import AVLTree
 
 try:
     import cPickle as pickle
@@ -48,8 +47,8 @@ class LRUItem(object):
         return str(self.value)
 
 
-class LRUCache(AVLTree):
-    __slots__ = ["capacity", "expiration", "run_gc", "last_run_gc", "_root", "_count"]
+class LRUCache(dict):
+    __slots__ = ["capacity", "expiration", "run_gc", "last_run_gc"]
 
     def __init__(self, *args, **kwargs):
         super(LRUCache, self).__init__(*args, **kwargs)
@@ -95,12 +94,13 @@ class LRUCache(AVLTree):
         if self.run_gc == 0 or now > self.last_run_gc:
             self.last_run_gc = now + self.expiration
             # Run and remove expired items first
-            expired_items = (item for item in self.values() if now > item.updated_on)
+            expired_items = (item for item in self.itervalues() if now > item.updated_on)
             for expired_item in expired_items:
                 del self[expired_item.key]
+            gc_collect()
             dif = len(self)-self.capacity
             while dif > 0 and self:
-                expired_item = min(self.values(), key=lambda item: item.accessed_on)
+                expired_item = min(self.itervalues(), key=lambda item: item.accessed_on)
                 del self[expired_item.key]
                 dif -= 1
                 del expired_item
@@ -117,14 +117,21 @@ class LRUCache(AVLTree):
         return result
 
 
-ndb_context = ndb.get_context()
 lru_cache = LRUCache()
-lru_cache.set_capacity(100)  # 100 items
+lru_cache.set_capacity(25)  # 25 items
 lru_cache.set_expiration(3600)  # For 3600 seconds
+
+ndb_context = ndb.get_context()
 
 
 def gc_collect():
-    logging.warning("Collected %d objects with GC",  gc.collect())
+    collected = gc.collect()
+    old_collected = 0
+    while collected != old_collected:
+        old_collected = collected
+        collected += gc.collect()
+    if collected > 0:
+        logging.warning("Collected %d objects with GC", collected)
     garbage = len(gc.garbage)
     if garbage:
         logging.warning("There are %d objects with reference cycles", garbage)

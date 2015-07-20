@@ -3,6 +3,7 @@ import datetime
 
 __author__ = 'fernando'
 
+
 class JSONSerializable(object):
     def to_json(self):
         raise NotImplementedError("Implement JSONSerializable.to_json")
