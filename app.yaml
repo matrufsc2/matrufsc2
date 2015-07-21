@@ -3,7 +3,7 @@ version: 1
 module: default
 runtime: python27
 api_version: 1
-threadsafe: yes
+threadsafe: true
 default_expiration: "1h"
 instance_class: F1
 automatic_scaling:
