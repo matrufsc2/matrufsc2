@@ -22,3 +22,4 @@ class JSONEncoder(json.JSONEncoder):
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
         return json.JSONEncoder.default(self, obj)
+encoder = JSONEncoder(separators=(",",":"))
