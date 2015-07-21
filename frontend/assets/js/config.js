@@ -65,7 +65,7 @@ require.config({
     },
     "map": {
         "templates": {
-            "vendor/underscore": "underscore"
+            "vendor/underscore": "utils/underscore-private"
         },
         "*": {
             "jquery": "utils/jquery-private",

@@ -122,8 +122,9 @@ define("views/FiltersView", [
                         model = new Discipline(discipline);
                         model.campus = parentView.campi.get(parentView.status.get("campus"));
                     }
+                    parentView.selectedDisciplines.add(model);
                     model.select().then(function () {
-                        parentView.selectedDisciplines.add(model);
+                        parentView.selectedDisciplines.updateCombinations();
                     });
                 }
             });
