@@ -1,29 +1,36 @@
-import json
-import time
-from app.api import campi, semesters, disciplines, teams, plans, pages, blog, help
-from app.support.prismic_api import get_prismic_api, prismic_full_link_resolver
-from flask import Flask, request, got_request_exception
+from flask import Flask, request
 import os
-import re
 from flask.helpers import make_response
-from app.cache import clear_lru_cache
-from google.appengine.api import users
-from google.appengine.api.urlfetch import fetch
-from app.json_serializer import JSONEncoder
-from app.robot.robot import Robot
-import hashlib, logging
-import rollbar
-import rollbar.contrib.flask
+import hashlib
+from werkzeug.utils import import_string, cached_property
+
+
+class LazyView(object):
+    def __init__(self, import_name):
+        self.__module__, self.__name__ = import_name.rsplit('.', 1)
+        self.import_name = import_name
+
+    @cached_property
+    def view(self):
+        return import_string(self.import_name)
+
+    def __call__(self, *args, **kwargs):
+        return self.view(*args, **kwargs)
 
 app = Flask(__name__)
 
-bots_re = re.compile("(baiduspider|twitterbot|facebookexternalhit|rogerbot|linkedinbot|embedly|quora link preview|showyoubot|outbrain|pinterest|slackbot)", re.IGNORECASE)
-prerender_re = re.compile("Prerender", re.IGNORECASE)
+
+def url(url_rule, import_name, **options):
+    view = LazyView('app.views.' + import_name)
+    app.add_url_rule(url_rule, view_func=view, **options)
+
 
 IN_DEV = "dev" in os.environ.get("SERVER_SOFTWARE", "").lower()
-CACHE_RESPONSE_KEY = "cached/response/%d/%s"
 
 if not IN_DEV:
+    import rollbar
+    import rollbar.contrib.flask
+    from flask import got_request_exception
     rollbar.init(
         'ba9bf3c858294e0882d57a243084e20d',
         'production',
@@ -33,21 +40,6 @@ if not IN_DEV:
     )
 
     got_request_exception.connect(rollbar.contrib.flask.report_exception, app)
-logging = logging.getLogger("matrufsc2")
-
-def can_prerender():
-    prerender = False
-    if "_escaped_fragment_" in request.args:
-        logging.debug("Pre-rendering because of _escaped_fragment_ parameter")
-        prerender = True
-    user_agent = request.user_agent.string
-    if bots_re.search(user_agent):
-        logging.debug("Pre-rendering because of user-agent")
-        prerender = True
-    if prerender_re.search(user_agent):
-        logging.debug("Disabling Pre-rendering because of user-agent")
-        prerender = False
-    return prerender
 
 
 @app.after_request
@@ -68,305 +60,85 @@ def cache_response(response):
         response.set_etag(etag)
     return response
 
-    
-@app.route("/api/")
-def api_index():
-    return "", 404
-
-
-@app.route("/favicon.ico")
-def favicon():
-    return "", 301, {"Location": "/img/favicon/favicon.ico"}
-
-
-def serialize(result, status=200, headers=None):
-    if headers is None:
-        headers = {}
-    headers.setdefault("Content-Type", "application/json")
-    if not result and not isinstance(result, list):
-        return "", 404, headers
-    response = make_response(json.dumps(result, cls=JSONEncoder, separators=(',', ':')), status, headers)
-    return response
+###############################################
+# These URLs will be loaded lazily, on demand #
+###############################################
 
+# Favicon
+url("/favicon.ico", "favicon.favicon")
 
-@app.route("/api/semesters/")
-def get_semesters():
-    result = semesters.get_semesters(request.args.to_dict())
-    return serialize(result)
+# API Index
+url("/api/", "api.api_index")
 
+# Semesters
+url("/api/semesters/", "semesters.get_semesters")
+url("/api/semesters/<id_value>", "semesters.get_semester")
 
-@app.route("/api/semesters/<id_value>/")
-def get_semester(id_value):
-    result = semesters.get_semester(id_value)
-    return serialize(result)
+# Campus
+url("/api/campi/", "campi.get_campi")
+url("/api/campi/<id_value>", "campi.get_campus")
 
+# Disciplines
+url("/api/disciplines/", "disciplines.get_disciplines")
+url("/api/disciplines/<id_value>", "disciplines.get_discipline")
 
-@app.route("/api/campi/")
-def get_campi():
-    args = request.args.to_dict()
-    args["_full"] = False
-    result = campi.get_campi(args)
-    if "X_APPENGINE_CITYLATLONG" in request.headers:
-        lat, lon = map(float, request.headers["X_APPENGINE_CITYLATLONG"].split(",", 1))
-        result = campi.sort_campi_by_distance({
-            "campi": result,
-            "lat": lat,
-            "lon": lon
-        })
-    return serialize(result)
+# Teams
+url("/api/teams/", "teams.get_teams")
+url("/api/teams/<id_value>", "teams.get_team")
 
-@app.route("/api/campi/<id_value>")
-def get_campus(id_value):
-    result = campi.get_campus(id_value)
-    return serialize(result)
+# Plans
+url("/api/plans/", "plans.get_plans")
+url("/api/plans/", "plans.create_plan", methods=["POST"])
+url("/api/plans/<id_value>", "plans.update_plan", methods=["PUT"])
+url("/api/plans/<id_value>", "plans.get_plan")
 
+# Pages
+url("/api/pages/", "pages.get_pages")
+url("/api/pages/<slug>", "pages.get_page")
 
-@app.route("/api/disciplines/")
-def get_disciplines():
-    result = disciplines.get_disciplines(request.args.to_dict())
-    return serialize(result)
+# Blog
+#      - Categories
+url("/api/categories/", "blog.get_categories")
+url("/api/categories/<id_value>", "blog.get_categorie")
 
+#      - Posts
+url("/api/posts/", "blog.get_posts")
+url("/api/posts/<id_value>", "blog.get_post")
 
-@app.route("/api/disciplines/<id_value>")
-def get_discipline(id_value):
-    result = disciplines.get_discipline(id_value)
-    return serialize(result)
+#      - Feed
+url("/blog/feed.<type>", "blog.get_blog_feed")
 
 
-@app.route("/api/teams/")
-def get_teams():
-    result = teams.get_teams(request.args.to_dict())
-    return serialize(result)
+# Help
+#      - Sections
+url("/api/sections/", "help.get_sections")
+url("/api/sections/<id_value>", "help.get_section")
 
+#      - Questions Groups
+url("/api/questions-groups/", "help.get_questions_groups")
+url("/api/questions-groups/<id_value>", "help.get_question_group")
 
-@app.route("/api/teams/<id_value>")
-def get_team(id_value):
-    result = teams.get_team(id_value)
-    return serialize(result)
+#      - Articles
+url("/api/articles/", "help.get_articles")
+url("/api/articles/<id_value>", "help.get_article")
 
+# Users
+url("/api/users/current", "users.get_current_user", methods=["GET"])
+url("/api/users", "users.get_users", methods=["GET"])
 
-@app.route("/api/plans/")
-def get_plans():
-    result = plans.get_plans(request.args.to_dict())
-    return serialize(result)
+# Prismic
+url("/api/prismic_preview/", "prismic.prismic_preview")
 
+# Secret Routes
+url("/secret/update/", "secret.update", methods=["GET", "POST"])
+url("/secret/clear_cache/", "secret.clear_cache", methods=["GET", "POST"])
 
-@app.route("/api/plans/", methods=["POST"])
-def create_plan():
-    try:
-        request_body = request.get_data(as_text=True)
-        request_body = json.loads(request_body)
-        result = plans.create_plan(request_body)
-    except (ValueError, KeyError), e:
-        print e
-        result = None
-    return serialize(result)
+# About
+url("/sobre/", "about.about")
 
-
-@app.route("/api/plans/<id_value>", methods=['PUT'])
-def update_plan(id_value):
-    try:
-        request_body = request.get_data(as_text=True)
-        request_body = json.loads(request_body)
-        result = plans.update_plan(id_value, request_body)
-    except (ValueError, KeyError):
-        result = None
-    return serialize(result)
-
-
-@app.route("/api/plans/<id_value>")
-def get_plan(id_value):
-    result = plans.get_plan(id_value)
-    return serialize(result)
-
-
-@app.route("/api/pages/")
-def get_pages():
-    result = pages.get_pages(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/pages/<slug>")
-def get_page(slug):
-    result = pages.get_page(slug)
-    return serialize(result)
-
-
-@app.route("/api/categories/")
-def get_categories():
-    result = blog.get_categories(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/categories/<id_value>")
-def get_category(id_value):
-    result = blog.get_category(id_value)
-    return serialize(result)
-
-
-@app.route("/api/posts/")
-def get_posts():
-    result = blog.get_posts(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/posts/<id_value>")
-def get_post(id_value):
-    result = blog.get_post(id_value)
-    return serialize(result)
-
-
-
-@app.route("/blog/feed.<type>", methods=["GET"])
-def get_blog_feed(type):
-    type = type.lower()
-    if type not in ["rss", "atom"]:
-        return make_response("", 404)
-    return make_response(blog.get_feed(type == 'atom'), 200, {"Content-Type": "application/rss+xml"})
-
-@app.route("/api/sections/")
-def get_sections():
-    result = help.get_sections(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/sections/<id_value>")
-def get_section(id_value):
-    result = help.get_section(id_value)
-    return serialize(result)
-
-
-@app.route("/api/questions-groups/")
-def get_questions_groups():
-    result = help.get_questions_groups(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/questions-groups/<id_value>")
-def get_question_group(id_value):
-    result = help.get_question_group(id_value)
-    return serialize(result)
-
-
-@app.route("/api/articles/")
-def get_articles():
-    result = help.get_articles(request.args.to_dict())
-    return serialize(result)
-
-
-@app.route("/api/articles/<id_value>")
-def get_article(id_value):
-    result = help.get_article(id_value)
-    return serialize(result)
-
-
-@app.route("/api/users/current", methods=["GET"])
-def current_user():
-    is_authenticated = users.get_current_user() is not None
-    login_url = None
-    logout_url = None
-    if is_authenticated:
-        logout_url = users.create_logout_url("/")
-    else:
-        login_url = users.create_login_url("/")
-    return serialize({
-        "id": "current",
-        "is_authenticated": is_authenticated,
-        "login_url": login_url,
-        "logout_url": logout_url
-    })
-
-
-@app.route("/api/users", methods=["GET"])
-def get_users():
-    is_authenticated = users.get_current_user() is not None
-    login_url = None
-    logout_url = None
-    if is_authenticated:
-        logout_url = users.create_logout_url("/")
-    else:
-        login_url = users.create_login_url("/")
-    return serialize([{
-        "id": "current",
-        "is_authenticated": is_authenticated,
-        "login_url": login_url,
-        "logout_url": logout_url
-    }])
-
-
-@app.route("/api/prismic_preview/")
-def prismic_preview():
-    form = get_prismic_api()
-    preview_token = request.args.to_dict().get("token")
-    if not preview_token:
-        return make_response("", 404)
-    redirect_url = form.preview_session(preview_token, prismic_full_link_resolver, "/")
-    response = make_response("", 302, {"Location": redirect_url})
-    response.set_cookie("io.prismic.preview", preview_token)
-    return response
-
-
-@app.route("/secret/update/", methods=["GET", "POST"])
-def update():
-    logging.debug("Updating...")
-    start = time.time()
-    robot = Robot()
-    fut = robot.run(request.get_data())
-    """ :type: google.appengine.ext.ndb.Future """
-    result = fut.get_result()
-    if fut.get_traceback():
-        print fut.get_traceback()
-    logging.debug("Updated one page in %f seconds", time.time()-start)
-    return result
-
-@app.route("/secret/clear_cache/", methods=["GET", "POST"])
-def clear_cache():
-    clear_lru_cache()
-    return "OK", 200, {}
-
-
-@app.route("/sobre/")
-def about():
-    return "", 301, {
-        "Location": "/sobre/VPCrvCkAAPE-I8ch"
-    }
-
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def index(path):
-    prerender = can_prerender()
-    if prerender:
-        if IN_DEV:
-            prerender_url = "http://127.0.0.1:3000/%s" % request.url
-            prerender_headers = {}
-        else:
-            prerender_url = "http://service.prerender.io/%s" % request.url
-            prerender_headers = {"X-Prerender-Token": "{{prerender_token}}"}
-        try:
-            handler = fetch(prerender_url, headers=prerender_headers, allow_truncated=False,
-                            deadline=60, follow_redirects=False)
-            content = handler.content
-        except:
-            prerender = False
-    if not prerender:
-        if IN_DEV:
-            filename = "frontend/views/index.html"
-        else:
-            filename = "frontend/views/index-optimize.html"
-        arq = open(filename)
-        content = arq.read()
-        if "io.prismic.preview" in request.cookies:
-            content = content.replace(
-                "{{prismicjs}}",
-                "<script type=\"text/javascript\" src=\"//static.cdn.prismic.io/prismic.min.js\"></script>"
-            )
-        else:
-            content = content.replace("{{prismicjs}}", "")
-        arq.close()
-
-    return content, 200, {"Content-Type": "text/html; charset=UTF-8"}
-
+# Other Pages
+url("/", "other_pages.index")
+url("/<path:path>", "other_pages.page")
 
 if __name__ == "__main__":
     app.run()

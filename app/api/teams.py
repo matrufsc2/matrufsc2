@@ -43,7 +43,7 @@ def get_all_teams(filters):
         return []
     gc_collect() # Just to avoid too much use of memory
     repository = TeamsRepository()
-    teams = []
+    results = []
     more = True
     page = 1
     logging.debug("Fetching list of teams based on teams of each discipline")
@@ -55,17 +55,18 @@ def get_all_teams(filters):
             "page": page,
             "limit": 50
         })
+        teams = []
         for result in disciplines_teams["results"]:
             teams.extend(result["teams"])
+        results.extend(repository.find_by({"key": teams}).get_result())
         more = disciplines_teams["more"]
         page += 1
         del disciplines_teams
+        del teams
         gc_collect() # Just to avoid too much use of memory
-    logging.debug("Fetching %d teams (found on %d pages of disciplines)..", len(teams), page)
-    result = list(repository.find_by({"key": teams}).get_result())
-    logging.debug("%d Teams fetched!", len(result))
+    logging.debug("Fetched %d teams (found on %d pages of disciplines)..", len(results), page)
     gc_collect() # Just to avoid too much use of memory
-    return result
+    return results
 
 
 def get_teams(filters):

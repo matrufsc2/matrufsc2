@@ -94,7 +94,7 @@ class LRUCache(dict):
         if self.run_gc == 0 or now > self.last_run_gc:
             self.last_run_gc = now + self.expiration
             # Run and remove expired items first
-            expired_items = (item for item in self.itervalues() if now > item.updated_on)
+            expired_items = [item for item in self.itervalues() if now > item.updated_on]
             for expired_item in expired_items:
                 del self[expired_item.key]
             gc_collect()
@@ -118,7 +118,7 @@ class LRUCache(dict):
 
 
 lru_cache = LRUCache()
-lru_cache.set_capacity(25)  # 25 items
+lru_cache.set_capacity(10)  # 10 items
 lru_cache.set_expiration(3600)  # For 3600 seconds
 
 ndb_context = ndb.get_context()

@@ -9,6 +9,7 @@ logging = _logging.getLogger("matrufsc2-model")
 
 
 class Semester(ndb.Model, JSONSerializable):
+    __slots__ = ["name", "campi"]
     name = ndb.StringProperty(indexed=False)
     campi = ndb.KeyProperty(kind="Campus", repeated=True, indexed=False)
 
@@ -24,6 +25,7 @@ class Semester(ndb.Model, JSONSerializable):
 
 
 class Campus(ndb.Model, JSONSerializable):
+    __slots__ = ["code", "disciplines"]
     name = ndb.StringProperty(indexed=False)
     disciplines = ndb.KeyProperty(kind="Discipline", repeated=True, indexed=False)
 
@@ -39,6 +41,7 @@ class Campus(ndb.Model, JSONSerializable):
 
 
 class Discipline(ndb.Model, JSONSerializable):
+    __slots__ = ["code", "name", "teams"]
     code = ndb.StringProperty(indexed=False)
     name = ndb.StringProperty(indexed=False)
     teams = ndb.KeyProperty(kind="Team", repeated=True, indexed=False)
@@ -56,6 +59,7 @@ class Discipline(ndb.Model, JSONSerializable):
 
 
 class Team(ndb.Model, JSONSerializable):
+    __slots__ = ["code", "vacancies_offered", "vacancies_filled", "schedules", "teachers"]
     code = ndb.StringProperty(indexed=False)
     vacancies_offered = ndb.IntegerProperty(indexed=False)
     vacancies_filled = ndb.IntegerProperty(indexed=False)
@@ -111,6 +115,7 @@ class Team(ndb.Model, JSONSerializable):
 
 
 class Teacher(ndb.Model, JSONSerializable):
+    __slots__ = ["name"]
     name = ndb.StringProperty(indexed=False)
 
     @property
@@ -125,6 +130,7 @@ class Teacher(ndb.Model, JSONSerializable):
 
 
 class Schedule(ndb.Model, JSONSerializable):
+    __slots__ = ["hourStart", "minuteStart", "numberOfLessons", "dayOfWeek", "room"]
     hourStart = ndb.IntegerProperty(indexed=False)
     minuteStart = ndb.IntegerProperty(indexed=False)
     numberOfLessons = ndb.IntegerProperty(indexed=False)
