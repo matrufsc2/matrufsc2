@@ -1,5 +1,5 @@
 from app.support.prismic_api import get_prismic_api, prismic_full_link_resolver
-from flask import request
+from flask import request, make_response
 __author__ = 'fernando'
 
 
@@ -8,7 +8,7 @@ def prismic_preview():
     preview_token = request.args.to_dict().get("token")
     if not preview_token:
         return "", 404
-    redirect_url = form.preview_session(preview_token, prismic_full_link_resolver(), "/")
-    response = "", 302, {"Location": redirect_url}
+    redirect_url = form.preview_session(preview_token, prismic_full_link_resolver, "/")
+    response = make_response("", 302, {"Location": redirect_url})
     response.set_cookie("io.prismic.preview", preview_token)
     return response

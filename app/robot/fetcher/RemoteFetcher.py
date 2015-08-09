@@ -1,5 +1,6 @@
 import urllib
 import zlib
+import time
 from app.robot.fetcher.base import BaseFetcher
 
 try:
@@ -23,12 +24,17 @@ class RemoteFetcher(BaseFetcher):
         if self.last_data:
             parameters.update(self.last_data.copy())
         parameters["page_number"] = self.last_page_number
-        handler = urllib.urlopen(self.base_url % path, urllib.urlencode(parameters))
-        content = handler.read()
-        result = pickle.loads(zlib.decompress(content))
-        if isinstance(result, Exception):
-            raise result
-        return result
+        for _ in xrange(3):
+            try:
+                handler = urllib.urlopen(self.base_url % path, urllib.urlencode(parameters))
+            except:
+                time.sleep(1)
+                continue
+            content = handler.read()
+            result = pickle.loads(zlib.decompress(content))
+            if isinstance(result, Exception):
+                raise result
+            return result
 
     def login(self):
         return self.__fetch_request("login")

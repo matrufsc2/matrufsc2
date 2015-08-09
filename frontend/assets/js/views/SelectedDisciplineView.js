@@ -83,7 +83,7 @@ define("views/SelectedDisciplineView", [
         "save": function (e) {
             if (!this.isEditing()) {
                 e.preventDefault();
-                return alert("Nao e possivel editar esta disciplina pois ela nao está sendo edidtada! (e isso parece um bug)");
+                return alert("Nao e possivel editar esta disciplina pois ela nao está sendo editada! (e isso parece um bug)");
             }
             this.status.set({
                 "editing": false
@@ -97,6 +97,11 @@ define("views/SelectedDisciplineView", [
             this.render();
         },
         "select": function (e) {
+            if (this.$(e.target).is("input[type='checkbox']") || this.$(e.target).is("label")) {
+                // Ignores if clicking on checkbox or its label to deactivate the discipline
+                console.log("Avoiding select");
+                return;
+            }
             e.stopPropagation();
             if (this.status.get("editing") && this.status.get("discipline") !== this.model.id) {
                 return alert("Você não selecionar outra disciplina enquanto está no modo de edição de disciplinas personalizadas");
@@ -104,8 +109,6 @@ define("views/SelectedDisciplineView", [
             this.status.set({
                 "discipline": this.model.id
             });
-            this.model.collection.updateCombinations();
-            this.model.collection.trigger("change:combination");
             this.render();
             e.preventDefault();
         },
@@ -172,7 +175,7 @@ define("views/SelectedDisciplineView", [
                 parseInt(originalColor.substr(0, 2), 16) + "," +
                 parseInt(originalColor.substr(2, 2), 16) + "," +
                 parseInt(originalColor.substr(4, 2), 16) + "," +
-                (this.model.isDisciplineEnabled() ? 1 : 0.5) +
+                (this.model.isDisciplineSelected() ? 1 : 0.5) +
                 ")";
             this.$el.css("background-color", color);
         }

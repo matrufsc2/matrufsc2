@@ -16,3 +16,4 @@ static
 public
 node_modules
 report.tap
+coverage_*.json

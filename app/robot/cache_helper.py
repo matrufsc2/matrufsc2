@@ -103,6 +103,12 @@ class CacheHelper(KeyGenerator, object):
             "campus": self.generate_campus_key(campus, semester),
             "q": team.discipline.code
         })
+        logging.warn(
+            "Checking for discipline %(discipline)s in campus %(campus)s and semester %(semester)s" % {
+            "discipline": team.discipline.code,
+            "campus": campus.name,
+            "semester": semester.name
+        })
         if not disciplines_results["results"]:
             logging.warn("Creating disciplines cache for allow use in the fast searches")
             disciplines.get_disciplines({
@@ -113,6 +119,12 @@ class CacheHelper(KeyGenerator, object):
             "q": self.generate_discipline_key(team.discipline, campus, semester).replace("matrufsc2-discipline-", ""),
             "campus": self.generate_campus_key(campus, semester)
         })
+        logging.warn(
+            "Checking for teams in discipline %(discipline)s in campus %(campus)s and semester %(semester)s" % {
+            "discipline": team.discipline.code,
+            "campus": campus.name,
+            "semester": semester.name
+        })
         if not disciplines_teams_results["results"] or not disciplines_teams_results["results"][0].get("teams"):
             logging.warn("Creating disciplines-teams cache for allow use in the fast searches")
             teams.get_disciplines_teams({
@@ -122,6 +134,13 @@ class CacheHelper(KeyGenerator, object):
         teams_results = teams.get_all_teams({
             "q": self.generate_team_key(team, campus, semester).replace("matrufsc2-team-", ""),
             "campus": self.generate_campus_key(campus, semester)
+        })
+        logging.warn(
+            "Checking for team %(team)s of discipline %(discipline)s in campus %(campus)s and semester %(semester)s" % {
+            "team": team.code,
+            "discipline": team.discipline.code,
+            "campus": campus.name,
+            "semester": semester.name
         })
         if not teams_results["results"]:
             logging.warn("Creating teams cache for allow use in the fast searches")

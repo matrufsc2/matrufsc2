@@ -2,14 +2,16 @@ import collections
 import json
 import logging as _logging
 from pprint import pprint
+import random
 import time
 import math
-import traceback
 from app.api import semesters, campi, disciplines as disciplines_module, teams as teams_module
-from app.cache import lru_cache
+from app.cache import lru_cache, clear_lru_cache, gc_collect
 from app.decorators.threaded import threaded
 from app.json_serializer import JSONEncoder
 from app.models import Campus, Semester, Schedule, Discipline, Team, Teacher
+from app.repositories import DisciplinesRepository
+from app.robot import value_objects
 from app.robot.fetcher.CommunityFetcher import CommunityFetcher
 from google.appengine.api.runtime.runtime import is_shutting_down
 from google.appengine.ext import ndb
@@ -101,7 +103,12 @@ class Robot(CommunityFetcher, CacheHelper, object):
         old_disciplines_ids = sorted(map(ndb.Key.id, campus_model.disciplines))
         new_disciplines_ids = sorted(map(ndb.Key.id, disciplines_keys))
         if old_disciplines_ids != new_disciplines_ids:
-            excluded_disciplines.extend(filter(lambda discipline_id: discipline_id not in new_disciplines_ids, old_disciplines_ids))
+            excluded_disciplines.extend(
+                filter(
+                    lambda discipline_id: discipline_id not in new_disciplines_ids,
+                    old_disciplines_ids
+                )
+            )
             logging.debug("Detected changed list of disciplines..")
             campus_model.disciplines = disciplines_keys
             logging.warning("Saving to NDB (saving campus '%s')", campus.name)
@@ -144,7 +151,6 @@ class Robot(CommunityFetcher, CacheHelper, object):
         lru_cache[key] = schedule_model
         raise ndb.Return(schedule_model.key)
 
-
     @ndb.tasklet
     def get_teacher_key(self, teacher):
         """
@@ -170,8 +176,6 @@ class Robot(CommunityFetcher, CacheHelper, object):
         """ type: app.models.Teacher """
         lru_cache[key] = teacher_model
         raise ndb.Return(teacher_model.key)
-
-
 
     @ndb.tasklet
     def get_discipline_key(self, discipline, campus, semester, teams_keys, old_teams, old_discipline):
@@ -329,10 +333,10 @@ class Robot(CommunityFetcher, CacheHelper, object):
         """
         logging.debug("Setting parameters of the request...")
         self.fetch({
-                             "selectSemestre": semester.id,
-                             "selectCampus": campus.id
-                         }, page_number)
-        logging.info("Processing page %d" % page_number)
+            "selectSemestre": semester.id,
+            "selectCampus": campus.id
+        }, page_number)
+        logging.info("Fetching page %d" % page_number)
         start = time.time()
         teams = self.fetch_teams()
         logging.debug("Processing %d teams", len(teams))
@@ -344,12 +348,11 @@ class Robot(CommunityFetcher, CacheHelper, object):
         }
 
     def calculate_timeout(self):
-        timeout = 540
+        timeout = 30
         if modules.get_current_module_name() == "robot":
             logging.info("Detected that we are at 'robot' module <3")
             timeout = 3600
         logging.info("The timeout of this request is of %d seconds", timeout)
-        timeout = time.time() + timeout
         return timeout
 
     @ndb.tasklet
@@ -400,10 +403,8 @@ class Robot(CommunityFetcher, CacheHelper, object):
         disciplines.add(discipline_entity.code)
         raise ndb.Return((disciplines, modified_disciplines, excluded_teams))
 
-
     @ndb.tasklet
     def run_worker(self, params, tasks):
-        timeout = self.calculate_timeout()
         params = pickle.loads(params)
         for cookie in params["cookies"]:
             self.cookies.set_cookie(cookie)
@@ -439,10 +440,62 @@ class Robot(CommunityFetcher, CacheHelper, object):
         logging.info("Processing campus %s", campus.name)
         logging.info("Processing page %d", page_number)
         if page_number == 0:
-            data = self.fetch_page(page_number+1, semester, campus).get_result()
-            teams_to_process = data["teams_to_process"]
-            self.check_cache_existence(teams_to_process[0], campus, semester)
+            team = None
+            data = None
+            if old:
+                # Try to get row directly from the database to get sample team and test if the index is OK
+                # Getting from the database is somewhat..costly, but its much less costly than getting 100+ pages
+                # from CAGR to get pages from other campus too
+                repository = DisciplinesRepository()
+                disciplines = yield repository.find_by({
+                    "campus": self.generate_campus_key(campus, semester)
+                }, limit=10, keys_only=True)
+                team_model = None
+                discipline_model = None
+                for discipline in disciplines:
+                    discipline = yield discipline.get_async(use_cache=False, use_memcache=True)
+                    for team in discipline.teams:
+                        team_model = yield team.get_async(use_cache=False, use_memcache=True)
+                        if team_model:
+                            discipline_model = discipline
+                            break
+                    if discipline_model:
+                        break
+                if discipline_model and team_model:
+                    # We successfully fetched some data from the database
+                    # Now, ,we create value objects to pass to check_cache_existence test
+                    discipline = value_objects.Discipline(
+                        code=discipline_model.code,
+                        name=discipline_model.name
+                    )
+                    team = value_objects.Team(
+                        code=team_model.code,
+                        discipline=discipline,
+                        teachers=[],
+                        vacancies_offered=team_model.vacancies_offered,
+                        vacancies_filled=team_model.vacancies_filled,
+                        schedules=[]
+                    )
+                else:
+                    old = False
             if not old:
+                data = self.fetch_page(page_number+1, semester, campus).get_result()
+                team = random.choice(data["teams_to_process"])
+            self.check_cache_existence(team, campus, semester)
+            if old and campi:
+                tasks.append(pickle.dumps({
+                    "page_number": 0,
+                    "semester": semester,
+                    "campi": campi,
+                    "last_login": last_login,
+                    "view_state": self.view_state,
+                    "cookies": list(self.cookies),
+                    "old": old
+                }, pickle.HIGHEST_PROTOCOL))
+            elif not old:
+                if not data:
+                    logging.error("Possible bug found (this if should not run)")
+                    data = self.fetch_page(page_number+1, semester, campus).get_result()
                 campi.appendleft(campus)
                 tasks.append(pickle.dumps({
                     "page_number": page_number + 1,
@@ -453,8 +506,11 @@ class Robot(CommunityFetcher, CacheHelper, object):
                     "view_state": self.view_state,
                     "modified_campi": modified_campi,
                     "cookies": list(self.cookies),
-                    "data": data
+                    "data": data,
+                    "old": old
                 }, pickle.HIGHEST_PROTOCOL))
+            if old:
+                clear_lru_cache()
             raise ndb.Return("CHECKED")
         data = params["data"]
         has_next = data["has_next"]
@@ -479,7 +535,7 @@ class Robot(CommunityFetcher, CacheHelper, object):
                         )
                     discipline = team.discipline
                     skip = None
-            logging.info("Processing team %d of %d total teams", count, len(teams_to_process))
+            logging.debug("Processing team %d of %d total teams", count, len(teams_to_process))
             if team.discipline.code != discipline:
                 logging.debug("Detected new discipline, getting all the teams of that discipline...")
                 discipline_old_teams = discipline_teams
@@ -596,8 +652,6 @@ class Robot(CommunityFetcher, CacheHelper, object):
                     }, pickle.HIGHEST_PROTOCOL)
                 taskqueue.add(url="/secret/update/", payload=payload, method="POST")
                 raise ndb.Return("PAUSED")
-            if time.time() >= timeout:
-                raise Exception("Houston, we have a problem. [This is more fucking slow than Windows]")
         if has_next:
             logging.info("Scheduling task to process the next page..(page %d)", page_number + 1)
             campi.appendleft(campus)
@@ -715,6 +769,9 @@ class Robot(CommunityFetcher, CacheHelper, object):
             else:
                 semester_key = yield self.get_semester_key(semester, registered_campi)
                 self.update_semester_cache(semester_key)
+                # Clear LRU cache on the frontend
+                taskqueue.add(url="/secret/clear_cache/", method="GET", queue_name="frontend", target="default")
+            clear_lru_cache()
         logging.info("Flushing all the things :D")
         yield context.flush()
         logging.info("All the things is flushed :D")
@@ -726,37 +783,16 @@ class Robot(CommunityFetcher, CacheHelper, object):
 
         :return: google.appengine.ext.ndb.Future
         """
+        tasks = []
         if params:
-            tasks = [params]
-            count = 0
-            while tasks:
-                logging.debug("There are %d tasks to process (done %d tasks)", len(tasks), count)
-                params = tasks.pop(0)
-                if count > 2:
-                    logging.debug("Adding task to the AppEngine's queue and closing request")
-                    taskqueue.add(
-                        url="/secret/update/",
-                        payload=params,
-                        method="POST"
-                    )
-                    break
-                if tasks:
-                    logging.warning("There are more than a task to process yet o.O")
-                try:
-                    response = yield self.run_worker(params, tasks)
-                    logging.debug("The response of the task is: %s", response)
-                except Exception:
-                    traceback.print_exc()
-                    break
-                count += 1
-            raise ndb.Return("OK")
+            tasks.append(params)
         else:
             semesters_data, campi_data = self.fetch_semesters(), self.fetch_campi()
             self.login()
             last_login = time.time()
             for count_semesters, semester in enumerate(semesters_data):
                 logging.info("Scheduling task for semester %s..", semester.name)
-                taskqueue.add(url="/secret/update/", payload=pickle.dumps({
+                tasks.append(pickle.dumps({
                     "page_number": 0,
                     "semester": semester,
                     "campi": collections.deque(campi_data),
@@ -764,5 +800,38 @@ class Robot(CommunityFetcher, CacheHelper, object):
                     "view_state": self.view_state,
                     "cookies": list(self.cookies),
                     "old": count_semesters >= 1
-                }, pickle.HIGHEST_PROTOCOL), method="POST")
+                }, pickle.HIGHEST_PROTOCOL))
+        count = 0
+        timeout = self.calculate_timeout()
+        start = time.time()
+        while tasks:
+            gc_collect()
+            passed_in = time.time()-start
+            logging.info(
+                "There are %d tasks to process (done %d tasks and %f seconds to timeout)",
+                len(tasks),
+                count,
+                timeout-passed_in
+            )
+            params = tasks.pop()
+            if passed_in >= timeout:
+                logging.info("Adding task to the AppEngine's queue and closing request because of timeout")
+                taskqueue.add(
+                    url="/secret/update/",
+                    payload=params,
+                    method="POST",
+                    queue_name="default",
+                    target="robot"
+                )
+                continue
+            if tasks:
+                logging.warning("There are more than a task to process yet o.O")
+            try:
+                response = yield self.run_worker(params, tasks)
+                logging.debug("The response of the task is: %s", response)
+            except:
+                logging.exception("Exception detected when running worker")
+                break
+            count += 1
+            gc_collect()
         raise ndb.Return("OK")

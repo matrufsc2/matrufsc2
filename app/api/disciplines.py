@@ -18,7 +18,7 @@ def get_disciplines(filters):
         disciplines = repository.find_by(filters).get_result()
     else:
         disciplines = repository.find_all().get_result()
-    gc_collect() # Just to avoid too much use of memory
+    gc_collect()  # Just to avoid too much use of memory
     return disciplines
 
 

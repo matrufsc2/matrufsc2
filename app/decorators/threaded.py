@@ -1,5 +1,6 @@
 import threading
 import Queue
+import sys
 
 __author__ = 'fernando'
 
@@ -9,7 +10,8 @@ def get_result(q):
         result = q.get()
         q.put(result)
         if result["error"]:
-            raise result["exception"]
+            exc_info = result["exception"]
+            raise exc_info[0], exc_info[1], exc_info[2]
         return result["result"]
 
     return wrap
@@ -18,7 +20,6 @@ def get_result(q):
 def wait(q):
     def wrap():
         q.put(q.get())
-
     return wrap
 
 
@@ -27,8 +28,8 @@ def check_success(q):
         result = q.get()
         q.put(result)
         if result["error"]:
-            raise result["exception"]
-
+            exc_info = result["exception"]
+            raise exc_info[0], exc_info[1], exc_info[2]
     return wrap
 
 
@@ -41,7 +42,7 @@ def threaded(f, daemon=False):
         except Exception, e:
             q.put({
                 "error": True,
-                "exception": e
+                "exception": sys.exc_info()
             })
         else:
             q.put({

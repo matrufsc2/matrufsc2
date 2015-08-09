@@ -6,8 +6,9 @@ define("views/HomeView", [
     "views/SelectedDisciplinesView",
     "views/CalendarView",
     "views/PlansView",
-    "views/SelectedTeamsView"
-], function (templates, _, BaseView, FiltersView, SelectedDisciplinesView, CalendarView, PlansView, SelectedTeamsView) {
+    "views/SelectedTeamsView",
+    "views/CombinationsView"
+], function (templates, _, BaseView, FiltersView, SelectedDisciplinesView, CalendarView, PlansView, SelectedTeamsView, CombinationsView) {
     "use strict";
     return BaseView.extend({
         "template": templates.home,
@@ -58,6 +59,11 @@ define("views/HomeView", [
                 "status": this.status,
                 "selectedDisciplines": this.selectedDisciplines,
                 "container": this.$("#teams-table-container")
+            }));
+            this.subview("combinations", new CombinationsView({
+                "container": this.$("#combinations-container"),
+                "status": this.status,
+                "selectedDisciplines": this.selectedDisciplines
             }));
         }
     });

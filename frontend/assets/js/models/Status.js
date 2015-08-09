@@ -1,4 +1,4 @@
-define("models/Status", ["models/CachedModel"], function (CachedModel) {
+define("models/Status", ["models/CachedModel", "underscore"], function (CachedModel, _) {
     "use strict";
     return CachedModel.extend({
         "defaults": {
@@ -8,6 +8,8 @@ define("models/Status", ["models/CachedModel"], function (CachedModel) {
             "editing": false,
             "plan": null,
             "version": null,
+            "periods_allowed": ["morning", "afternoon", "night"],
+            "days_of_week_allowed": [1, 2, 3, 4, 5, 6],
             "possibility": 1
         },
         "initialize": function (attributes, options) {
@@ -44,11 +46,11 @@ define("models/Status", ["models/CachedModel"], function (CachedModel) {
                 this.campi.url = url;
                 this.campiRequest = this.campi.fetch({
                     "context": this
-                }).then(function () {
+                }).then(_.bind(function () {
                     this.campi.map(function (campus) {
                         campus.semester = this.campi.get(this.get("semester"));
                     }, this);
-                });
+                }, this));
             }, this);
             this.listenTo(this.campi, "sync", function () {
                 if (this.campi.length === 0 || this.get("campus") !== null || this.campi.disposed || this.disposed) {

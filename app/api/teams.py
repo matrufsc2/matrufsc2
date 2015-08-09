@@ -1,10 +1,10 @@
 import json
 import logging as _logging
 from google.appengine.ext import ndb
-from app.cache import gc_collect
+from app.cache import gc_collect, clear_lru_cache
 from app.decorators.cacheable import cacheable
 from app.decorators.searchable import searchable
-from app.json_serializer import JSONEncoder
+from app.json_serializer import JSONEncoder, encoder
 from app.repositories import DisciplinesRepository, TeamsRepository
 
 __author__ = 'fernando'
@@ -35,34 +35,42 @@ def get_disciplines_teams(filters):
     return new_disciplines
 
 
-
-
 @searchable(lambda item: item["id"], prefix="matrufsc2-team-", consider_only=["campus"], min_word_length=40)
 def get_all_teams(filters):
     if "campus" not in filters:
         return []
-    gc_collect() # Just to avoid too much use of memory
+    gc_collect()  # Just to avoid too much use of memory
     repository = TeamsRepository()
     results = []
     more = True
     page = 1
     logging.debug("Fetching list of teams based on teams of each discipline")
+    count = 0
     while more:
-        gc_collect() # Just to avoid too much use of memory
         disciplines_teams = get_disciplines_teams({
             "campus": filters["campus"],
             "q": "",
             "page": page,
-            "limit": 50
+            "limit": 500
         })
-        teams = []
-        for result in disciplines_teams["results"]:
-            teams.extend(result["teams"])
-        results.extend(repository.find_by({"key": teams}).get_result())
+        while disciplines_teams["results"]:
+            result = disciplines_teams["results"].pop()
+            gc_collect()  # Just to avoid too much use of memory
+            results.extend(
+                json.loads(
+                    encoder.encode(
+                        repository.find_by(
+                            {"key": result["teams"]}
+                        ).get_result()
+                    )
+                )
+            )
+            gc_collect() # Just to avoid too much use of memory
+            count += 1
+            logging.warn("%d disciplines already processed", count)
         more = disciplines_teams["more"]
         page += 1
         del disciplines_teams
-        del teams
         gc_collect() # Just to avoid too much use of memory
     logging.debug("Fetched %d teams (found on %d pages of disciplines)..", len(results), page)
     gc_collect() # Just to avoid too much use of memory
@@ -72,7 +80,7 @@ def get_all_teams(filters):
 def get_teams(filters):
     """
     Return a list of dict that matches the discipline filter =)
-    :param filters: A dict (containing only discipline field)
+    :param filters: A dict (containing discipline and campus field)
     :return:
     """
     if "discipline" not in filters or "campus" not in filters:

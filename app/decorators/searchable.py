@@ -3,6 +3,7 @@ import time
 from google.appengine.ext import ndb
 from app.cache import get_from_cache, set_into_cache, clear_lru_cache, gc_collect
 from app.json_serializer import JSONEncoder
+from app.support.combinations import combinations
 from app.support.islice import islice
 from app.support.intersect import intersect
 from app.support.sift3 import sift3
@@ -15,9 +16,10 @@ from unidecode import unidecode
 __author__ = 'fernando'
 
 logging = _logging.getLogger("matrufsc2_searchable")
-logging.setLevel(_logging.DEBUG)
+logging.setLevel(_logging.WARNING)
 
 CACHE_INDEX_KEY = "cache/searchIndex/%s/%s/%s"
+
 
 def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_length=1):
     if consider_only is None:
@@ -236,9 +238,23 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                 results = list(results if results else [])
                 if not results and not not_found:
                     # If no results are found, search for a suggestion if possible
-                    not_found = [[item[0], item[1]] for item in found]
-                queue = []
-                if not_found and min_word_length == 1: # If each letter is individually indexed, we can suggest things!
+                    l = len(found)
+                    for n in xrange(l-1, 0, -1):
+                        to_try = combinations([range(l) for _ in xrange(n)])
+                        for combination in to_try:
+                            if len(set(combination)) != len(combination) or sorted(combination) != combination:
+                                continue
+                            results = list(reduce(intersect, (found[word][2] for word in combination)))
+                            if results:
+                                not_found = [[item[0], item[1]] for item in found if item[0] not in combination]
+                                break
+                        if results:
+                            break
+                    if not results:
+                        not_found = [[item[0], item[1]] for item in found]
+                not_found = [item for item in not_found if len(item[1]) > 2]
+                if not_found and min_word_length == 1:  # If each letter is individually indexed, we can suggest things!
+                    queue = []
                     all_words = get_from_cache(words_key).get_result()
                     if all_words:
                         words_cache = {}
@@ -246,45 +262,48 @@ def searchable(get_formatted_string, prefix=None, consider_only=None, min_word_l
                             l = len(item[1])
                             if l not in words_cache:
                                 words_cache[l] = [word for word in all_words if len(word) >= l]
-                            item_suggestions = islice(sorted(
-                                words_cache[l],
-                                key=lambda word: sift3(word, item[1])
-                            ), 0, 50)
-                            queue.extend([item, suggestion, list(index.get_list(suggestion))] for suggestion in item_suggestions)
-                        del words_cache
+                            item_suggestions = list(islice(
+                                sorted(
+                                    (word for word in words_cache[l] if sift3(word, item[1]) <= 3),
+                                    key=lambda word: sift3(word, item[1])
+                                ),
+                                0,
+                                50
+                            ))
+                            queue.append([[item, suggestion, index[suggestion]] for suggestion in item_suggestions])
+                        del words_cache, all_words
                     if results:
-                        get_results = lambda item: list(islice(reduce(intersect, map(lambda suggestion: suggestion[2], item)+[results]), 0, 10))
+                        get_results = lambda item: [item[0], list(intersect(item[1], results))]
                     else:
-                        get_results = lambda item: list(islice(reduce(intersect, map(lambda suggestion: suggestion[2], item)), 0, 10))
+                        get_results = lambda item: item
                     not_found_total = len(not_found)
                     for n in xrange(not_found_total, 0, -1):
-                        new_queue = (item for item in itertools.combinations(queue, r=n) if len(set(s[0][0] for s in item)) == len(item))
+                        gc_collect()
+                        logging.warning("Generating combinations with %d words", n)
+                        new_queue = (item for item in ([item, list(islice(reduce(intersect, (sug[2] for sug in item)), 0, 10))] for item in combinations(queue, n)) if item[1])
                         for item in new_queue:
                             results_list = get_results(item)
-                            if results_list:
+                            if results_list[1]:
                                 sug = query_words[:]
                                 # Replace the initial suggestions in the original query words
-                                for s in item:
+                                for s in item[0]:
                                     sug[s[0][0]] = s[1]
-                                if sift3(query, " ".join(sug)) > 10:
+                                if sift3(query, " ".join(sug)) > 10 or len(set(sug)) != len(sug): # See duplicated words
                                     continue
                                 if n < not_found_total:
                                     # Eliminates words not included in the suggestion in case of trying suggestions
                                     # with less words than wrong words
-                                    item_indexes = [s[0][0] for s in item]
+                                    item_indexes = [s[0][0] for s in item[0]]
                                     for s in sorted(not_found, key=lambda s: s[0], reverse=True):
                                         if s[0] not in item_indexes:
                                             del sug[s[0]]
 
-                                results_list_items = map(items.__getitem__, results_list)
+                                results_list_items = [items[i] for i in results_list[1]]
 
                                 # Reorganize the words of the suggestions in the correct order
                                 # (ex.: 'organizacao no computadores' -> 'organizacao computadores no')
                                 r = get_formatted_string(results_list_items[0]).lower().split(" ")
-                                r = map(
-                                    lambda word: "".join(filter(unicode.isalnum, word)),
-                                    r
-                                )
+                                r = ("".join(filter(unicode.isalnum, word)) for word in r)
                                 nsug = []
                                 for i in r:
                                     for s in sug:

@@ -60,6 +60,9 @@ define("views/FiltersView", [
                     var suggestionsAnswer = _.all(results, function(result) {
                         return !result.id;
                     });
+                    parentView.status.set({
+                        "search_query": term
+                    });
                     for(var c=0; c<results.length; ++c) {
                         if (!results[c].id) {
                             newResults.push(results[c]);
@@ -127,6 +130,9 @@ define("views/FiltersView", [
                         parentView.selectedDisciplines.updateCombinations();
                     });
                 }
+            });
+            this.listenTo(this.status, "change:campus", function() {
+                view.clear();
             });
             this.subview("disciplines", view);
         },

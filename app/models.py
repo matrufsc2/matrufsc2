@@ -1,6 +1,6 @@
 import hashlib
 from google.appengine.api import users
-from app.json_serializer import JSONSerializable, JSONEncoder
+from app.json_serializer import JSONSerializable, JSONEncoder, encoder
 from google.appengine.ext import ndb
 from app.cache import lru_cache as cache
 import json, logging as _logging
@@ -90,14 +90,14 @@ class Team(ndb.Model, JSONSerializable):
         schedules, teachers = (ndb.get_multi_async(schedules, use_cache=False, use_memcache=True),
                                ndb.get_multi_async(teachers, use_cache=False, use_memcache=True))
         for found_schedule in schedules:
-            found_schedule = json.loads(json.dumps(found_schedule.get_result(), cls=JSONEncoder))
+            found_schedule = json.loads(encoder.encode(found_schedule.get_result()))
             if found_schedule:
                 cache[found_schedule["id"]] = found_schedule
                 found_schedules.append(found_schedule)
             else:
                 logging.warning("Not found schedule for team %s. Check manually, please.", self.id)
         for found_teacher in teachers:
-            found_teacher = json.loads(json.dumps(found_teacher.get_result(), cls=JSONEncoder))
+            found_teacher = json.loads(encoder.encode(found_teacher.get_result()))
             if found_teacher:
                 cache[found_teacher["id"]] = found_teacher
                 found_teachers.append(found_teacher)
