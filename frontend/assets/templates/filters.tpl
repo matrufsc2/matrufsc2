@@ -31,7 +31,7 @@
 				<label for="discipline" class="inline" data-tooltip title="Disciplina no qual você pretende se matricular">Disciplina:</label>
 			</div>
 			<div class="small-9 columns filter-input" id="discipline-field">
-				<input type="text" id="discipline" name="discipline" style="width: 100%;" autocomplete="off"/>
+				<input type="text" id="discipline" name="discipline" style="width: 345px;" autocomplete="off"/>
 			</div>
 		</div>
 	</form>

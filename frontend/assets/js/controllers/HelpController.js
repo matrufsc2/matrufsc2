@@ -33,7 +33,7 @@ define("controllers/HelpController", [
                         "id": params.id,
                         "slug": params.slug
                     }, data),
-                    {"trigger": false, "replace": false}
+                    {"trigger": true, "replace": false}
                 );
             });
             this.view = new HelpView({
@@ -43,7 +43,7 @@ define("controllers/HelpController", [
             this.collection.fetch();
         },
         "section": function (params, metadata, request) {
-            this.adjustTitle("Artigos - Ajuda");
+            this.adjustTitle("Ajuda");
             this.collection = new Articles();
             this.model = new Section({
                 "id": params.id
@@ -74,7 +74,7 @@ define("controllers/HelpController", [
                             "id": params.id,
                             "slug": params.slug
                         }, data),
-                        {"trigger": false, "replace": false}
+                        {"trigger": true, "replace": false}
                     );
                 });
                 if (params.slug !== this.model.get("slug")) {

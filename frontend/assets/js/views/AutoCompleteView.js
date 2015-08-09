@@ -352,6 +352,13 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             this.resultsElement = resultsElement;
             return resultsElement;
         },
+        "clear": function() {
+            this.cache = {};
+            this.cacheResponse = {};
+            this.results = [];
+            this.page = 1;
+            this.searchString = "";
+        },
         "render": function() {
             var searchString = this.searchString;
             var incremental = this.page > 1;

@@ -95,6 +95,23 @@ define("views/CalendarView", [
                                     "title": "CONFLITO",
                                     "name": "Conflito entre '" + matrixEvents[row][event.column].name + "' e '" + event.name + "'",
                                     "color": "red",
+                                    "members": [matrixEvents[row][event.column].name, event.name],
+                                    "highlight": true,
+                                    "fontColor": event.fontColor,
+                                    "schedule_point": null,
+                                    "schedule": null,
+                                    "custom": false
+                                };
+                            } else {
+                                var members = matrixEvents[row][event.column].members;
+                                members.push(event.name);
+                                var quotedMembers = _.map(members, function(member){return "'"+member+"'"});
+                                var lastMember = quotedMembers.pop();
+                                matrixEvents[row][event.column] = {
+                                    "title": (members.length-1)+" CONFLITOS",
+                                    "name": "Conflito entre "+ quotedMembers.join(", ")+" e "+lastMember,
+                                    "color": "red",
+                                    "members": [matrixEvents[row][event.column].name, event.name],
                                     "highlight": true,
                                     "fontColor": event.fontColor,
                                     "schedule_point": null,

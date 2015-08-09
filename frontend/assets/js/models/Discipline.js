@@ -27,6 +27,9 @@ define("models/Discipline", [
 				return old || team.get("_selected");
 			}, false);
 		},
+		"isDisciplineSelected": function() {
+			return this.isDisciplineEnabled() && this.team;
+		},
 		"select": function(){
 			if (this.id === -1) {
 				throw "Discipline ID not defined!";

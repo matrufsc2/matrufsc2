@@ -38,6 +38,9 @@ define("models/Possibility", [
                 });
                 status.once("change:semester", function () {
                     status.once("change:campus", function () {
+                        if (!statusSession.selectedDisciplines.length) {
+                            return resolve();
+                        }
                         var selectedDisciplinesModels = [];
                         for (var c = 0; c < statusSession.selectedDisciplines.length; c++) {
                             var sd = statusSession.selectedDisciplines[c];
@@ -58,14 +61,13 @@ define("models/Possibility", [
                             selectedDisciplinesModels.push(model);
                         }
                         selectedDisciplines.add(selectedDisciplinesModels);
-                        selectedDisciplines.updateCombinations();
                         var processSelectedDiscipline = _.bind(function (discipline, selectedDiscipline) {
                             var promiseTemp;
                             if (selectedDiscipline._custom) {
                                 promiseTemp = discipline.select();
                             } else {
                                 promiseTemp = discipline.fetch().then(function () {
-                                    selectedDisciplines.updateCombinations();
+                                    selectedDisciplines.updateCombinations(statusSession.selectedCombination);
                                     return discipline.select();
                                 });
                             }
@@ -91,7 +93,7 @@ define("models/Possibility", [
                                     }, this)
                                 ).then(function () {
                                         // We need to trigger an update in combinations to update the UI too :D
-                                        selectedDisciplines.updateCombinations();
+                                        selectedDisciplines.updateCombinations(statusSession.selectedCombination);
                                     });
                             }, this));
                         }, this);
@@ -144,6 +146,24 @@ define("models/Possibility", [
                 } else {
                     status.trigger("change:semester");
                 }
+                var newFields = _.pick(statusSession, [
+                    "minimum_disciplines",
+                    "maximum_disciplines",
+                    "minimum_ha",
+                    "maximum_ha",
+                    "days_of_week_allowed",
+                    "periods_allowed"
+                ]);
+                if (!_.isEmpty(newFields)) {
+                    status.set({
+                        "minimum_disciplines": statusSession.minimum_disciplines,
+                        "maximum_disciplines": statusSession.maximum_disciplines,
+                        "minimum_ha": statusSession.minimum_ha,
+                        "maximum_ha": statusSession.maximum_ha,
+                        "days_of_week_allowed": statusSession.days_of_week_allowed,
+                        "periods_allowed": statusSession.periods_allowed
+                    });
+                }
             });
         },
         "savePossibility": function (status, selectedDisciplines, silent) {
@@ -151,6 +171,12 @@ define("models/Possibility", [
                 return;
             }
             var data = {};
+            data.minimum_disciplines = status.get("minimum_disciplines");
+            data.maximum_disciplines = status.get("maximum_disciplines");
+            data.minimum_ha = status.get("minimum_ha");
+            data.maximum_ha = status.get("maximum_ha");
+            data.days_of_week_allowed = status.get("days_of_week_allowed");
+            data.periods_allowed = status.get("periods_allowed");
             data.semester = purify(status.get("semester"), "semester");
             data.campus = purify(status.get("campus"), "campus");
             if (status.get("discipline")) {

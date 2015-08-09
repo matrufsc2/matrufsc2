@@ -1,4 +1,4 @@
-define("collections/CachedCollection", ["collections/BaseCollection", "underscore", "es6-promise"], function (BaseCollection, _) {
+define("collections/CachedCollection", ["collections/BaseCollection", "underscore"], function (BaseCollection, _) {
     "use strict";
     return BaseCollection.extend({
         "_cached": false,

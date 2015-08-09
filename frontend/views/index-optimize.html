@@ -27,7 +27,7 @@
     <link rel="stylesheet" href="/css/main.css" />
     <script>
     var _rollbarConfig = {
-        enabled: "{{git_sha}}".indexOf("{{git_sha") === -1,
+        enabled: "{{git_sha}}".indexOf("\{\{git_sha") === -1,
         accessToken: "ec045983b9494d8daf188b47dc6fb7b7",
         captureUncaught: true,
         payload: {

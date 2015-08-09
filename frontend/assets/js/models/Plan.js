@@ -40,8 +40,8 @@ define("models/Plan", [
                     possibility.id = 1;
                     possibility = [possibility, {"id": 2}, {"id": 3}, {"id": 4}];
                 }
-                possibilities.set(possibility);
-                history.set(this.get("history"), {"sort": true});
+                possibilities.reset(possibility);
+                history.reset(this.get("history"), {"sort": true});
                 possibility = possibilities.get(possibilityId);
                 if (!possibility) {
                     return reject("Plano não encontrado!");
@@ -52,10 +52,10 @@ define("models/Plan", [
         "savePlan": function (possibilities, history, silent) {
             this.set({
                 "data": possibilities.toJSON(),
-                "history": this.get("history").concat([{
+                "history": [{
                     "id": Math.floor((new Date()).getTime() / 1000),
                     "data": possibilities.toJSON()
-                }])
+                }].concat(this.get("history") || {})
             }, {"silent": silent});
             history.set(this.get("history"), {"sort": true});
         }
