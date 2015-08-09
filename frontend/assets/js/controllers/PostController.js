@@ -19,7 +19,7 @@ define("controllers/PostController", [
                 "model": this.model,
                 "collection": this.collection
             });
-            this.model.fetch().then(_.bind(function () {
+            this.listenTo(this.model, "sync", function () {
                 if (!this.model.has("title") && !this.model.has("body")) {
                     alert("Este post não existe! Redirecionando para a página principal..");
                     Backbone.history.navigate("/", {"replace": true, "trigger": true});
@@ -33,6 +33,7 @@ define("controllers/PostController", [
                             "replace": true,
                             "trigger": true
                         });
+                        return;
                     }
                     this.adjustTitle(this.model.get("title") + " - Blog");
                     this.collection.fetch();
@@ -41,7 +42,8 @@ define("controllers/PostController", [
                         window.FB.XFBML.parse();
                     }
                 }
-            }, this));
+            });
+            this.model.fetch();
         }
     });
 });

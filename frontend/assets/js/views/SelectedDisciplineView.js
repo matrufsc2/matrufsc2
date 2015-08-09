@@ -99,7 +99,6 @@ define("views/SelectedDisciplineView", [
         "select": function (e) {
             if (this.$(e.target).is("input[type='checkbox']") || this.$(e.target).is("label")) {
                 // Ignores if clicking on checkbox or its label to deactivate the discipline
-                console.log("Avoiding select");
                 return;
             }
             e.stopPropagation();

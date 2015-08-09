@@ -15,7 +15,7 @@ define("controllers/ArticleController", [
             this.view = new ArticleView({
                 "model": this.model
             });
-            this.model.fetch().then(_.bind(function () {
+            this.listenTo(this.model, "sync", function () {
                 if (!this.model.has("title") && !this.model.has("body")) {
                     alert("Este artigo não existe! Redirecionando para a página principal..");
                     Backbone.history.navigate("/", {"replace": true, "trigger": true});
@@ -29,10 +29,12 @@ define("controllers/ArticleController", [
                             "replace": true,
                             "trigger": true
                         });
+                        return;
                     }
                     this.adjustTitle(this.model.get("title") + " - Artigos - Ajuda");
                 }
-            }, this));
+            });
+            this.model.fetch();
         }
     });
 });

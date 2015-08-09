@@ -50,11 +50,11 @@
     border-bottom: 2px solid #000;
 }
 
+/* Tiny Scrollbar */
 #discipline-field #results {
     z-index: 1000000;
     border: 1px dotted #ccc;
     position: absolute;
-    max-width: 348px;
     max-height: 300px;
     height: auto;
     background: #ffffff;
@@ -66,9 +66,7 @@
     padding-right: 100px;
 }
 
-/* Tiny Scrollbar */
 #discipline-field #results .viewport {
-    width: 348px;
     max-height: 300px;
     height: auto;
     overflow: hidden;
@@ -85,9 +83,8 @@
 }
 
 #discipline-field #results .scrollbar {
-    background: transparent url(/img/scrollbar/bg-scrollbar-track-y.png) no-repeat 0 0;
     position: absolute;
-    background-position: 0 0;
+    background: transparent url(/img/scrollbar/bg-scrollbar-track-y.png) no-repeat 0 0;
     top: 0;
     right: 0;
     z-index: 2000000;

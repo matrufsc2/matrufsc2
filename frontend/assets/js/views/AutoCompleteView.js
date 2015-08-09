@@ -153,6 +153,19 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             this.getFormattedString = options.getFormattedString;
             this.prepareResults = options.prepareResults || _.identity;
             this.processSelectedItem = options.processSelectedItem || _.noop;
+            this.resize = _.bind(this.resize, this);
+            $(window).resize(this.resize); // Resize the results box if already shown
+        },
+        "resize": function() {
+            var container = this.getResultsElement();
+            if (!container.is(":visible")) {
+                return;
+            }
+            this.updateWidth(container);
+        },
+        "dispose": function() {
+            Chaplin.View.prototype.call(this);
+            $(window).off("resize", this.resize);
         },
         "search": function(e){
             if (e.keyCode === 13 || e.keyCode === 38 || e.keyCode === 40) {
@@ -163,7 +176,7 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             if (!container.is(":visible")) {
                 container.show();
             }
-            this.updateWidth();
+            this.updateWidth(container);
             var searchString = this.$("input").val();
             if (this.searchString === searchString) {
                 resp =  this.prepareResults(this.results, this.searchString);
@@ -318,18 +331,23 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             this.results = results;
             this.render();
         },
-        "updateWidth": function() {
-            var resultsContainer = this.getResultsElement();
-            if ($(".scrollbar", resultsContainer).is(".disable")) {
-                $(".overview", resultsContainer).css("width", "348px");
-            } else {
-                $(".overview", resultsContainer).css("width", "333px");
+        "updateWidth": function(resultsContainer) {
+            if (!resultsContainer) {
+                resultsContainer = this.getResultsElement();
             }
+            var width = this.$("input").outerWidth();
+            if ($(".scrollbar", resultsContainer).is(".disable")) {
+                $(".overview, .viewport", resultsContainer).css("width", (width+3)+"px");
+            } else {
+                $(".overview", resultsContainer).css("width", (width-12)+"px");
+                $(".viewport", resultsContainer).css("width", (width+3)+"px");
+            }
+            resultsContainer.css("max-width", (width+3)+"px");
         },
         "getResultsElement": function() {
             var resultsElement = this.resultsElement;
             if (resultsElement === null) {
-                 resultsElement = this.$("#results");
+                resultsElement = this.$("#results");
                 if(resultsElement.length === 0) {
                     resultsElement = $("<div id='results'>" +
                         "<div class='scrollbar'>" +
@@ -347,6 +365,7 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
                         "</div>").appendTo(this.$el);
                     this.$(".thumb").on("mouseup", _.bind(this.mouseup, this));
                     this.$(".thumb").on("mousedown", _.bind(this.mousedown, this));
+                    resultsElement.hide();
                 }
             }
             this.resultsElement = resultsElement;
@@ -366,6 +385,9 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             var itemElement;
             var resultsContainer = this.getResultsElement();
             var resultsElement = $("ul", resultsContainer);
+            if (!resultsContainer.is(":visible")) {
+                resultsContainer.show();
+            }
             resultsContainer.tinyscrollbar();
             this.updateWidth();
             if (incremental) {
@@ -413,11 +435,7 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             var resultsElement = $("ul", resultsContainer);
             var listItems = resultsElement.children();
             listItems.removeClass("selected-item");
-            if ($(".scrollbar", resultsContainer).is(".disable")) {
-                $(".overview", resultsContainer).css("width", "348px");
-            } else {
-                $(".overview", resultsContainer).css("width", "333px");
-            }
+            this.updateWidth(resultsContainer);
             var child = $(listItems.get(this.selectedItem));
             child.addClass("selected-item");
             var prevAll = child.prevAll();
