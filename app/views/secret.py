@@ -10,6 +10,7 @@ logging.setLevel(_logging.DEBUG)
 
 logging.debug("Loaded secret functions")
 
+
 def update():
     logging.debug("Updating...")
     start = time.time()
