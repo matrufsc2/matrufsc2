@@ -164,7 +164,7 @@ define("views/AutoCompleteView", ["chaplin", "underscore", "jquery", "es6-promis
             this.updateWidth(container);
         },
         "dispose": function() {
-            Chaplin.View.prototype.call(this);
+            Chaplin.View.prototype.dispose.call(this);
             $(window).off("resize", this.resize);
         },
         "search": function(e){
