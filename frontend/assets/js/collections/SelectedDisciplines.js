@@ -20,6 +20,7 @@ define("collections/SelectedDisciplines", [
                 this.status.set({
                     "discipline": null
                 });
+                this.updateCombinations();
             });
         },
         "updateCombinations": function (defaultCombination) {
