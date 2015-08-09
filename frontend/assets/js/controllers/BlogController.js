@@ -57,7 +57,7 @@ define("controllers/BlogController", [
                 "model": this.model,
                 "categoriesCollection": this.getCategoriesCollection()
             });
-            this.model.fetch().then(_.bind(function () {
+            this.listenTo(this.model, "sync", function () {
                 this.adjustTitle(this.model.get("title") + " - Blog");
                 this.collection.currentPage = parseInt(request.query.page, 10) || 1;
                 this.collection.q = request.query.q;
@@ -90,7 +90,8 @@ define("controllers/BlogController", [
                     return;
                 }
                 this.collection.fetch();
-            }, this));
+            });
+            this.model.fetch();
         }
     });
 });

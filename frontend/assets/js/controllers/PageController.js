@@ -14,7 +14,7 @@ define("controllers/PageController", [
             this.view = new PageView({
                 "model": this.model
             });
-            this.model.fetch().then(_.bind(function () {
+            this.listenTo(this.model, "sync", function () {
                 if (!this.model.has("title") && !this.model.has("body") && !this.model.has("slug")) {
                     alert("A página não existe! Redirecionando para a página principal..");
                     Backbone.history.navigate("/", {"replace": true, "trigger": true});
@@ -24,10 +24,12 @@ define("controllers/PageController", [
                             "replace": true,
                             "trigger": true
                         });
+                        return;
                     }
                     this.adjustTitle(this.model.get("title"));
                 }
-            }, this));
+            });
+            this.model.fetch();
         }
     });
 });
