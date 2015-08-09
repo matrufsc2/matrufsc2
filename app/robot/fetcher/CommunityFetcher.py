@@ -1,3 +1,5 @@
+import gzip
+import time
 from bs4 import BeautifulSoup
 import urllib2
 import cookielib
@@ -16,7 +18,7 @@ try:
 except:
     from StringIO import StringIO
 
-__author__ = 'fernando'
+__author__ = "fernando"
 
 
 class CommunityFetcher(OriginalFetcher):
@@ -38,12 +40,12 @@ class CommunityFetcher(OriginalFetcher):
         """
         super(CommunityFetcher, self).__init__(None, create_opener)
         self.opener = self.create_opener()
-        self.base_request = urllib2.Request('https://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/index.xhtml')
-        self.base_request.add_header('Accept-Encoding', 'gzip')
+        self.base_request = urllib2.Request("https://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/index.xhtml")
+        self.base_request.add_header("Accept-Encoding", "gzip")
         self.base_request.add_header("Referer", "https://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/")
         self.base_request.add_header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
         self.base_request.add_header("User-Agent",
-                                     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0")
+                                     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0")
         self.base_request.add_header("Pragma", "no-cache")
         self.base_request.add_header("Cache-Control", "no-cache")
 
@@ -51,7 +53,23 @@ class CommunityFetcher(OriginalFetcher):
         """
         Do login in CAGR
         """
-        logging.info('Getting view state')
-        resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/')
-        soup = BeautifulSoup(resp)
-        self.view_state = soup.find('input', {'name': 'javax.faces.ViewState'})['value']
+        logging.info("Getting view state")
+        for _ in xrange(3):
+            try:
+                request = urllib2.Request("https://cagr.sistemas.ufsc.br/modules/comunidade/cadastroTurmas/")
+                request.add_header("Accept-Encoding", "gzip")
+                request.add_header("User-Agent",
+                                             "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0")
+                request.add_header("Pragma", "no-cache")
+                request.add_header("Cache-Control", "no-cache")
+                resp = self.opener.open(request)
+            except:
+                logging.exception("Error detected when logging-in")
+                time.sleep(1)
+                continue
+            if resp.info().get('Content-Encoding') == 'gzip':
+                buf = StringIO(resp.read())
+                resp = gzip.GzipFile(fileobj=buf)
+            soup = BeautifulSoup(resp)
+            self.view_state = soup.find("input", {"name": "javax.faces.ViewState"})["value"]
+            break
