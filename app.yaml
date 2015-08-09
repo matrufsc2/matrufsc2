@@ -22,7 +22,22 @@ libraries:
 - name: lxml
   version: latest
 
+skip_files:
+- ^(.*/)?#.*#$
+- ^(.*/)?.*~$
+- ^(.*/)?.*\.py[co]$
+- ^(.*/)?.*/RCS/.*$
+- ^(.*/)?\..*$
+- ^frontend/assets/.*$
+- ^frontend/node_modules/.*$
+- ^frontend/coverage/.*$
+- ^frontend/public/js-instrumented/.*$
+
 handlers:
+- url: /favicon\.ico
+  static_files: frontend/public/img/favicon/favicon.ico
+  upload: frontend/public/img/favicon/favicon\.ico
+
 - url: /api/.*
   script: matrufsc2.app
 
