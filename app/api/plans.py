@@ -39,7 +39,7 @@ def create_plan(data):
             "data": data["data"]
         }]
     )
-    model.put()
+    model.put(use_cache=False, use_memcache=True)
     return model
 
 
@@ -69,6 +69,6 @@ def update_plan(plan_id, data):
     # Hard limit to history: 10 itens
     if len(model.history) > 10:
         model.history.pop()
-    model.put()
+    model.put(use_cache=False, use_memcache=True)
     # Update cache too
     return model
