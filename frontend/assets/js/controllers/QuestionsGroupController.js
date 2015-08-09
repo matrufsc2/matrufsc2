@@ -14,7 +14,7 @@ define("controllers/QuestionsGroupController", [
             this.view = new QuestionsGroupView({
                 "model": this.model
             });
-            this.model.fetch().then(_.bind(function () {
+            this.listenTo(this.model, "sync", function () {
                 if (!this.model.has("title") && !this.model.has("body")) {
                     alert("A página não existe! Redirecionando para a página principal..");
                     Backbone.history.navigate("/", {"replace": true, "trigger": true});
@@ -24,10 +24,12 @@ define("controllers/QuestionsGroupController", [
                             "replace": true,
                             "trigger": true
                         });
+                        return;
                     }
                     this.adjustTitle(this.model.get("title") + " - Perguntas Frequentes");
                 }
-            }, this));
+            });
+            this.model.fetch();
         }
     });
 });

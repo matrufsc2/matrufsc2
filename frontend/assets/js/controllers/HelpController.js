@@ -53,7 +53,7 @@ define("controllers/HelpController", [
                 "model": this.model,
                 "sectionsCollection": this.getSectionsCollection()
             });
-            this.model.fetch().then(_.bind(function () {
+            this.listenTo(this.model, "sync", function() {
                 this.adjustTitle(this.model.get("title") + " - Ajuda");
                 this.collection.currentPage = parseInt(request.query.page, 10) || 1;
                 this.collection.query = request.query.q;
@@ -86,7 +86,8 @@ define("controllers/HelpController", [
                     return;
                 }
                 this.collection.fetch();
-            }, this));
+            });
+            this.model.fetch();
         }
     });
 });
