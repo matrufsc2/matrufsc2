@@ -36,12 +36,17 @@ define("controllers/HomeController", [
             this.plan = new Plan();
             this.campi = new Campi();
             this.semesters = new Semesters();
-            this.possibilities = new Possibilities([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]);
-            this.history = new HistoryCollection();
             this.status = new Status({}, {
                 "campi": this.campi,
                 "semesters": this.semesters
             });
+            this.possibilities = new Possibilities([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]);
+            this.selectedDisciplines = new SelectedDisciplines([], {
+                "status": this.status,
+                "semesters": this.semesters,
+                "campi": this.campi
+            });
+            this.history = new HistoryCollection();
         },
         "getHeader": function () {
             if (!this.header || this.header.disposed) {
@@ -57,11 +62,7 @@ define("controllers/HomeController", [
         },
         "index": function (params, metadata, request) {
             this.adjustTitle("");
-            this.selectedDisciplines = new SelectedDisciplines([], {
-                "status": this.status,
-                "semesters": this.semesters,
-                "campi": this.campi
-            });
+            this.selectedDisciplines.reset();
             this.view = new HomeView({
                 "campi": this.campi,
                 "selectedDisciplines": this.selectedDisciplines,
@@ -75,7 +76,8 @@ define("controllers/HomeController", [
             var statusSessionKeys = [
                 "plan",
                 "version",
-                "possibility"
+                "possibility",
+                "q"
             ];
             var statusSession = _.pick(request.query, statusSessionKeys) || {};
             var listen = _.bind(function () {
@@ -110,6 +112,8 @@ define("controllers/HomeController", [
                             var error_container = this.view.$("#error-discipline");
                             error_container.find("p").html(err);
                             error_container.foundation("reveal", "open");
+                        } else if (window._rollbar) {
+                            window._rollbar.error("Error on loading possibility", err);
                         }
                     }, this));
                 }, this);
@@ -126,6 +130,8 @@ define("controllers/HomeController", [
                                 var error_container = this.view.$("#error-discipline");
                                 error_container.find("p").html(err);
                                 error_container.foundation("reveal", "open");
+                            } else if (window._rollbar) {
+                                window._rollbar.error("Error on loading plan", err);
                             }
                         }, this));
                 }, this);
@@ -135,10 +141,23 @@ define("controllers/HomeController", [
                         "version": this.status.get("version"),
                         "possibility": this.status.get("possibility")
                     });
-                    Backbone.history.navigate(url, {"trigger": false, "replace": false});
+                    Backbone.history.navigate(url, {"trigger": true, "replace": false});
+                };
+                var track = function () {
+                    if (!window.ga) {
+                        return;
+                    }
+                    var url = Chaplin.utils.reverse("Home#index", {
+                        "plan": this.plan.id,
+                        "version": this.status.get("version"),
+                        "possibility": this.status.get("possibility"),
+                        "q": this.status.get("search_query")
+                    });
+                    window.ga('send', 'pageview', url);
                 };
                 this.plan.on("change:id", updateURL, this);
                 this.status.on("change:version change:possibility", updateURL, this);
+                this.status.on("change:search_query", track, this);
             }, this);
             var updateTitle = _.bind(function () {
                 var title = "";
@@ -153,6 +172,7 @@ define("controllers/HomeController", [
             }, this);
             this.status.on("change", updateTitle);
             this.selectedDisciplines.on("change change:combination", updateTitle);
+
             if (statusSession.plan) {
                 this.plan.set({"id": statusSession.plan});
                 this.status.once("change:semester", function () {
@@ -177,6 +197,8 @@ define("controllers/HomeController", [
                             var error_container = this.view.$("#error-discipline");
                             error_container.find("p").html(err);
                             error_container.foundation("reveal", "open");
+                        } else if (window._rollbar) {
+                            window._rollbar.error("Error on loading plan", err);
                         }
                         listen();
                     }, this));

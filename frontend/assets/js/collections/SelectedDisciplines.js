@@ -41,10 +41,10 @@ define("collections/SelectedDisciplines", [
                     });
                 }
             }))
+                .then(_.bind(this.detectCombinations, this))
                 .then(function () {
                     collection.combinationSelected = _.isNumber(defaultCombination) ? defaultCombination : 0;
                 })
-                .then(_.bind(this.detectCombinations, this))
                 .then(_.bind(this.selectCombination, this));
         },
         "detectCombinations": function () {
@@ -81,12 +81,35 @@ define("collections/SelectedDisciplines", [
                 }
                 return old;
             }, [], this);
-            var combinations = combinator(_.clone(teams), teams.length);
             this.map(function (discipline) {
                 discipline.unset("_title");
             });
-            var disciplinesConflicted = {};
-            var combinationsAvailable = _.filter(combinations, function (combination) {
+            var combinations = [];
+            var maximumDisciplines = this.status.get("maximum_disciplines");
+            if (!maximumDisciplines) {
+                maximumDisciplines = teams.length;
+            }
+            var minimumDisciplines = this.status.get("minimum_disciplines");
+            if (!minimumDisciplines) {
+                minimumDisciplines = teams.length; // To maintain normal behavior
+            }
+            for(var c=maximumDisciplines; c>=minimumDisciplines; c--) {
+                 combinations = combinations.concat(combinator(_.clone(teams), c));
+            }
+            if (maximumDisciplines !== null && minimumDisciplines !== null && combinations.length === 0) {
+                this.map(function(discipline) {
+                    discipline.set({
+                        "_title": "Não há combinações disponíveis dado as configurações de combinação (número de disciplinas minimo/máximo) selecionadas"
+                    });
+                });
+                this.combinationsAvailable = [];
+                return;
+            }
+            var maximumHA = this.status.get("maximum_ha");
+            var minimumHA = this.status.get("minimum_ha");
+            var periods = this.status.get("periods_allowed");
+            var daysOfWeeks = this.status.get("days_of_week_allowed") || [];
+            combinations = _.filter(combinations, function (combination) {
                 var disciplines = [];
                 for (var c = combination.length; c--;) {
                     if (disciplines.indexOf(combination[c].discipline.id) !== -1) {
@@ -100,12 +123,49 @@ define("collections/SelectedDisciplines", [
                         return schedule;
                     }));
                 }, []);
-                for (var verifySchedule = schedules.length; verifySchedule--;) {
-                    var schedule = schedules[verifySchedule];
-                    if (_.filter(schedules, schedule.conflictsWith, schedule).length > 1) {
+                var totalHours = _.reduce(combination, function (total, team) {
+                    return total + (team ? team.getNumberOfLessons() : 0);
+                }, 0);
+                if (minimumHA && minimumHA > totalHours) {
+                    return false;
+                }
+                if (maximumHA && maximumHA < totalHours) {
+                    return false;
+                }
+                for (c = schedules.length; c--;) {
+                    var schedule = schedules[c];
+                    if (!schedule.team.discipline.get("_custom")) {
+                        var schedulePeriod = schedule.getPeriod();
+                        for (var d=0; d<schedulePeriod.length; d++) {
+                            if (periods.indexOf(schedulePeriod[d]) === -1) {
+                                return false;
+                            }
+                        }
+                        if (daysOfWeeks.indexOf(schedule.getDayOfWeek()) === -1) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            });
+            var disciplinesConflicted = {};
+            var combinationsAvailable = _.filter(combinations, function(combination) {
+                var schedules = combination.reduce(function (old, team) {
+                    return old.concat(team.schedules.map(function (schedule) {
+                        schedule.team = team;
+                        return schedule;
+                    }));
+                }, []);
+                for (c = schedules.length; c--;) {
+                    var schedule = schedules[c];
+                    var conflicts = _.filter(schedules, schedule.conflictsWith, schedule);
+                    conflicts = _.reject(conflicts, _.matcher({
+                        "id": schedule.id
+                    }));
+                    if (conflicts.length > 0) {
                         var disciplineId = schedule.team.discipline.id;
                         disciplinesConflicted[disciplineId] = disciplinesConflicted[disciplineId] || [];
-                        disciplinesConflicted[disciplineId].push(schedule.team.id);
+                        disciplinesConflicted[disciplineId].push([schedule.team.id, conflicts]);
                         return false;
                     }
                 }
@@ -113,7 +173,8 @@ define("collections/SelectedDisciplines", [
             });
             this.conflicting = false;
             if (combinationsAvailable.length === 0 && teams.length > 0) {
-                this.conflicting = _.reduce(disciplinesConflicted, function (old, teamsDiscipline, discipline_id) {
+                this.conflicting = _.reduce(disciplinesConflicted, function (old, reg, discipline_id) {
+                    var teamsDiscipline = _.pluck(reg, 0);
                     var teamsSelected = _.reduce(teams, function (old, disciplineTeams) {
                         if (old.length > 0) {
                             return old;
@@ -126,24 +187,60 @@ define("collections/SelectedDisciplines", [
                         return old;
                     }, []);
                     var disciplineConflict = _.every(teamsSelected, function (team) {
-                        return teamsDiscipline.indexOf(team.id) > -1;
+                        var result = teamsDiscipline.indexOf(team.id) !== -1;
+                        var schedules = team.schedules.map(function (schedule) {
+                            schedule.team = team;
+                            return schedule;
+                        });
+                        for (c = schedules.length; c--;) {
+                            var schedule = schedules[c];
+                            if (!team.discipline.get("_custom")) {
+                                var schedulePeriod = schedule.getPeriod();
+                                for (var d=0; d<schedulePeriod.length; d++) {
+                                    if (periods.indexOf(schedulePeriod[d]) === -1) {
+                                        result = false;
+                                    }
+                                }
+                                if (daysOfWeeks.indexOf(schedule.getDayOfWeek()) === -1) {
+                                    result = false;
+                                }
+                            }
+                        }
+                        return result;
                     });
                     if (disciplineConflict) {
-                        var discipline = this.get(discipline_id);
-                        discipline.set("_title", "Esta disciplina esta impedindo a geracao de uma combinacao valida");
+                        var conflicts = _.pluck(
+                            _.pluck(
+                                _.pluck(
+                                    _.flatten(
+                                        _.pluck(reg, 1),
+                                        true
+                                    ),
+                                    "team"
+                                ),
+                                "discipline"
+                            ),
+                            "id"
+                        );
+                        conflicts = conflicts.concat([discipline_id]);
+                        conflicts = _.uniq(conflicts);
+                        for(var c=0; c<conflicts.length; c++) {
+                            var discipline = this.get(conflicts[c]);
+                            discipline.set("_title", "Esta disciplina está impedindo a geração de uma combinação válida");
+                        }
+
                     }
                     return disciplineConflict || old;
                 }, this.conflicting, this);
-                combinationsAvailable = _.filter(combinations, function (combination) {
-                    var disciplines = [];
-                    for (var c = combination.length; c--;) {
-                        if (disciplines.indexOf(combination[c].discipline.id) !== -1) {
-                            return false;
-                        }
-                        disciplines.push(combination[c].discipline.id);
-                    }
-                    return true;
-                });
+                if (this.conflicting) {
+                    combinationsAvailable = combinations;
+                } else {
+                    this.map(function(discipline) {
+                        discipline.set({
+                            "_title": "Não há combinações disponíveis dado as configurações de combinação selecionadas"
+                        });
+                    });
+                }
             }
             this.combinationsAvailable = combinationsAvailable;
         },

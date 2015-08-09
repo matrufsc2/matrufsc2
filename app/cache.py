@@ -41,21 +41,25 @@ class LRUItem(object):
     __slots__ = ["value", "key", "updated_on", "accessed_on"]
 
     def __repr__(self):
-        return repr(self.value)
+        if hasattr(self, "value"):
+            return repr(self.value)
+        else:
+            return super(LRUItem, self).__repr__()
 
     def __str__(self):
-        return str(self.value)
-
+        if hasattr(self, "value"):
+            return str(self.value)
+        else:
+            return super(LRUItem, self).__str__()
 
 class LRUCache(dict):
-    __slots__ = ["capacity", "expiration", "run_gc", "last_run_gc"]
+    __slots__ = ["capacity", "expiration", "run_gc"]
 
     def __init__(self, *args, **kwargs):
         super(LRUCache, self).__init__(*args, **kwargs)
         self.capacity = 1000
         self.expiration = 86400
         self.run_gc = 0
-        self.last_run_gc = 0
 
     def set_capacity(self, capacity):
         self.capacity = capacity
@@ -91,14 +95,14 @@ class LRUCache(dict):
     def check(self):
         self.run_gc = (self.run_gc+1)%self.capacity
         now = time.time()
-        if self.run_gc == 0 or now > self.last_run_gc:
-            self.last_run_gc = now + self.expiration
+        dif = len(self)-self.capacity
+        if dif > 0 or self.run_gc == 0:
             # Run and remove expired items first
             expired_items = [item for item in self.itervalues() if now > item.updated_on]
             for expired_item in expired_items:
                 del self[expired_item.key]
+                dif -= 1
             gc_collect()
-            dif = len(self)-self.capacity
             while dif > 0 and self:
                 expired_item = min(self.itervalues(), key=lambda item: item.accessed_on)
                 del self[expired_item.key]
@@ -118,7 +122,7 @@ class LRUCache(dict):
 
 
 lru_cache = LRUCache()
-lru_cache.set_capacity(10)  # 10 items
+lru_cache.set_capacity(250)  # 250 items
 lru_cache.set_expiration(3600)  # For 3600 seconds
 
 ndb_context = ndb.get_context()
@@ -141,10 +145,10 @@ def gc_collect():
 def get_gcs_filename(filename):
     bucket_name = lru_cache.get("matrufsc2_bucket_name")
     if not bucket_name:
-        bucket_name = ndb_context.memcache_get("matrufsc2_bucket_name").get_result()
+        bucket_name = yield ndb_context.memcache_get("matrufsc2_bucket_name")
         if not bucket_name:
             bucket_name = app_identity.get_default_gcs_bucket_name()
-            ndb_context.memcache_set("matrufsc2_bucket_name", bucket_name, CACHE_TIMEOUT).get_result()
+            yield ndb_context.memcache_set("matrufsc2_bucket_name", bucket_name, CACHE_TIMEOUT)
         lru_cache["matrufsc2_bucket_name"] = bucket_name
     bucket = "/" + bucket_name
     raise ndb.Return("/".join([bucket, filename]))

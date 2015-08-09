@@ -12,7 +12,7 @@ def format_page(doc):
     }
     body = doc.get_structured_text("page.body")
     if body:
-        page["body"] = body.as_html(prismic_link_resolver, prismic_html_serializer())
+        page["body"] = body.as_html(prismic_link_resolver, prismic_html_serializer)
     return page
 
 

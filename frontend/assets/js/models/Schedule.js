@@ -2,7 +2,11 @@ define("models/Schedule", ["models/CachedModel"], function (CachedModel) {
     "use strict";
     var hours = ["07:30", "08:20", "09:10", "10:10", "11:00", "13:30", "14:20", "15:10", "16:20", "17:10", "18:30", "19:20", "20:20", "21:10"];
     var daysOfWeek = [null, 0, 1, 2, 3, 4, 5, 6];
-
+    var period = {
+        "morning": ["07:30", "08:20", "09:10", "10:10", "11:00"],
+        "afternoon": ["13:30", "14:20", "15:10", "16:20", "17:10"],
+        "night": ["18:30", "19:20", "20:20", "21:10"]
+    };
     function format(date) {
         var hour = "0" + date.getHours();
         var minute = "0" + date.getMinutes();
@@ -29,9 +33,33 @@ define("models/Schedule", ["models/CachedModel"], function (CachedModel) {
             return (start2 < end1 || start2 === end1) &&
                 (end2 > start1 || end2 === start1);
         },
+        "getPeriod": function() {
+            var result = [];
+            var startRow = this.getStartRow();
+            var endRow = this.getEndRow();
+            for (var key in period) {
+                if (!period.hasOwnProperty(key)) {
+                    continue;
+                }
+                for (var c = startRow; c <= endRow; c++) {
+                    var formattedDate = hours[c];
+                    if (period[key].indexOf(formattedDate) !== -1 ||
+                        period[key].indexOf(formattedDate) !== -1) {
+                        if (result.indexOf(key) !== -1) {
+                            continue;
+                        }
+                        result.push(key);
+                    }
+                }
+            }
+            return result;
+        },
+        "getDayOfWeek": function() {
+            return daysOfWeek[this.get("dayOfWeek")];
+        },
         "getStart": function () {
             var start = new Date(0);
-            while (start.getDay() !== daysOfWeek[this.get("dayOfWeek")]) {
+            while (start.getDay() !== this.getDayOfWeek()) {
                 start.setDate(start.getDate() + 1);
             }
             start.setHours(this.get("hourStart"), this.get("minuteStart"), 0, 0);
@@ -50,7 +78,7 @@ define("models/Schedule", ["models/CachedModel"], function (CachedModel) {
             var minute = parseInt(hourParts[1]);
 
             var end = new Date(0);
-            while (end.getDay() !== daysOfWeek[this.get("dayOfWeek")]) {
+            while (end.getDay() !== this.getDayOfWeek()) {
                 end.setDate(end.getDate() + 1);
             }
             end.setHours(hour, minute, 0, 0);

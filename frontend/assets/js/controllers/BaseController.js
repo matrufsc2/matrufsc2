@@ -38,6 +38,10 @@ define("controllers/BaseController", [
                 }
             });
             this.reuse("footer", FooterView);
+            if (!!window.ga) {
+                // Alert Google Analytics that the route changed
+                ga('send', 'pageview', "/"+route.path+"?"+route.query);
+            }
         }
     });
 });

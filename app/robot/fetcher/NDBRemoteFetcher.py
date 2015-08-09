@@ -2,6 +2,7 @@ import pickle
 import urllib
 import logging
 import zlib
+import time
 from app.robot.fetcher.base import BaseFetcher
 from google.appengine.ext import ndb
 
@@ -27,20 +28,25 @@ class NDBRemoteFetcher(BaseFetcher):
         url = self.base_url % path
         logging.debug("Requesting remote fetcher via NDB with parameters %s to URL %s", repr(parameters), url)
         ctx = ndb.get_context()
-        handler = yield ctx.urlfetch(
-            url=url,
-            payload=urllib.urlencode(parameters),
-            method="POST",
-            headers={'Cache-Control': 'no-cache,max-age=0', 'Pragma': 'no-cache'},
-            allow_truncated=False,
-            deadline=60,
-            follow_redirects=False
-        )
-        content = handler.content
-        result = pickle.loads(zlib.decompress(content))
-        if isinstance(result, Exception):
-            raise result
-        raise ndb.Return(result)
+        for _ in xrange(3):
+            try:
+                handler = yield ctx.urlfetch(
+                    url=url,
+                    payload=urllib.urlencode(parameters),
+                    method="POST",
+                    headers={'Cache-Control': 'no-cache,max-age=0', 'Pragma': 'no-cache'},
+                    allow_truncated=False,
+                    deadline=60,
+                    follow_redirects=False
+                )
+            except:
+                time.sleep(1)
+                continue
+            content = handler.content
+            result = pickle.loads(zlib.decompress(content))
+            if isinstance(result, Exception):
+                raise result
+            raise ndb.Return(result)
 
     @ndb.tasklet
     def login(self):

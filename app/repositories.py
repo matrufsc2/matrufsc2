@@ -63,7 +63,7 @@ class NDBRepository(Repository):
         return ndb.AND(*result)
 
     @ndb.tasklet
-    def find_by(self, filters, keys_only=False):
+    def find_by(self, filters, keys_only=False, limit=None):
         """
         Created query based on the specified filters
 
@@ -71,6 +71,8 @@ class NDBRepository(Repository):
         :type filters: dict
         :param keys_only: Return only keys
         :type keys_only: bool
+        :param local_cache: Use local cache?
+        :type local_cache: bool
         :return: The results of the query to NDB in App Engine
         :rtype: ndb.Future
         """
@@ -103,14 +105,16 @@ class NDBRepository(Repository):
             if old_keys:
                 filters['key'] = list(set(filters['key']).intersection(old_keys))
         if filters.keys() != ["key"]:
-            keys = yield self.__get_model__().query(self.__create_filter__(filters)).fetch_async(keys_only=True)
+            keys = yield self.__get_model__().query(self.__create_filter__(filters)).fetch_async(limit, keys_only=True)
         else:
             # Only parent key was found, search directly on the filters found
             keys = [ndb.Key(self.__get_model__(), key_id) for key_id in filters['key']]
+        if limit is not None:
+            keys = keys[:limit]
         if keys_only:
             results = keys
         else:
-            results = yield ndb.get_multi_async(keys)
+            results = yield ndb.get_multi_async(keys, use_cache=False, use_memcache=True)
         results = filter(None, results)
         raise ndb.Return(results)
 
@@ -124,7 +128,7 @@ class NDBRepository(Repository):
         :return: The results of the query to NDB in App Engine
         :rtype: ndb.Future
         """
-        result = yield self.__get_model__().get_by_id_async(id_value)
+        result = yield self.__get_model__().get_by_id_async(id_value, use_cache=False, use_memcache=True)
         raise ndb.Return(result)
 
     @ndb.tasklet
@@ -136,7 +140,7 @@ class NDBRepository(Repository):
         :rtype: ndb.Future
         """
         keys = yield self.__get_model__().query().fetch_async(keys_only=True)
-        results = yield ndb.get_multi_async(keys)
+        results = yield ndb.get_multi_async(keys, use_cache=False, use_memcache=True)
         raise ndb.Return(results)
 
 

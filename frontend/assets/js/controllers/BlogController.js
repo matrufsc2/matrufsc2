@@ -17,7 +17,7 @@ define("controllers/BlogController", [
             return categoriesCollection;
         },
         "index": function (params, metadata, request) {
-            this.adjustTitle("Ajuda");
+            this.adjustTitle("Blog");
             this.collection = new Posts();
             this.collection.currentPage = parseInt(request.query.page, 10) || 1;
             this.collection.query = request.query.q;
@@ -37,7 +37,7 @@ define("controllers/BlogController", [
                         "id": params.id,
                         "slug": params.slug
                     }, data),
-                    {"trigger": false, "replace": false}
+                    {"trigger": true, "replace": false}
                 );
             });
             this.view = new BlogView({
@@ -47,6 +47,7 @@ define("controllers/BlogController", [
             this.collection.fetch();
         },
         "category": function (params, metadata, request) {
+            this.adjustTitle("Blog");
             this.collection = new Posts();
             this.model = new Category({
                 "id": params.id
@@ -77,7 +78,7 @@ define("controllers/BlogController", [
                             "id": params.id,
                             "slug": params.slug
                         }, data),
-                        {"trigger": false, "replace": false}
+                        {"trigger": true, "replace": false}
                     );
                 });
                 if (params.slug !== this.model.get("slug")) {

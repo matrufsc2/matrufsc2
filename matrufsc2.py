@@ -64,9 +64,6 @@ def cache_response(response):
 # These URLs will be loaded lazily, on demand #
 ###############################################
 
-# Favicon
-url("/favicon.ico", "favicon.favicon")
-
 # API Index
 url("/api/", "api.api_index")
 
@@ -99,7 +96,7 @@ url("/api/pages/<slug>", "pages.get_page")
 # Blog
 #      - Categories
 url("/api/categories/", "blog.get_categories")
-url("/api/categories/<id_value>", "blog.get_categorie")
+url("/api/categories/<id_value>", "blog.get_category")
 
 #      - Posts
 url("/api/posts/", "blog.get_posts")

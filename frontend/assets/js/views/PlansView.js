@@ -148,6 +148,8 @@ define("views/PlansView", [
                 }, function (err) {
                     if (_.isString(err)) {
                         alert(err);
+                    } else if (window._rollbar) {
+                        window._rollbar.error("Error on loading plan", err);
                     }
                     button.removeClass("disabled").html("Abrir");
                 });

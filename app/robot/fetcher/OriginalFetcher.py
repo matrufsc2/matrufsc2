@@ -1,4 +1,3 @@
-import hashlib
 from bs4 import BeautifulSoup
 import urllib2
 import urllib
@@ -24,6 +23,10 @@ except:
 
 __author__ = 'fernando'
 
+schedule_re = re.compile(
+    "(?P<dayOfWeek>\d)\.(?P<hourStart>\d{2})(?P<minuteStart>\d{2})\-(?P<numberOfLessons>\d) \/ (?P<room>.+)"
+)
+
 
 class OriginalFetcher(BaseFetcher):
     """
@@ -33,7 +36,7 @@ class OriginalFetcher(BaseFetcher):
 
     __slots__ = ["create_opener", "opener", "auth", "xml", "buffer", "base_request", "view_state"]
 
-    def __init__(self, auth, create_opener=lambda: urllib2.build_opener(
+    def __init__(self, auth=None, create_opener=lambda: urllib2.build_opener(
         urllib2.HTTPCookieProcessor(cookielib.CookieJar()),
         urllib2.HTTPSHandler(debuglevel=0)
     )):
@@ -60,31 +63,47 @@ class OriginalFetcher(BaseFetcher):
             raise Exception("OriginalFetcher needs auth data")
         self.opener = self.create_opener()
         logging.info("Doing login \o/")
-        resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/aluno')
-        soup = BeautifulSoup(resp)
-        url_action = soup.form['action']
-        login_form = {}
-        for input in soup.findAll('input'):
+        for _ in xrange(3):
             try:
-                login_form[input['name']] = input['value']
-            except KeyError:
-                pass
-        login_form['username'] = self.auth.get_username()
-        login_form['password'] = self.auth.get_password()
-        logging.debug("Sending login form..")
-        self.opener.open('https://sistemas.ufsc.br' + url_action, urllib.urlencode(login_form))
-        logging.info('Getting view state')
-        resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/')
-        soup = BeautifulSoup(resp)
-        self.view_state = soup.find('input', {'name': 'javax.faces.ViewState'})['value']
-        self.base_request = urllib2.Request('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/index.xhtml')
-        self.base_request.add_header('Accept-Encoding', 'gzip')
-        self.base_request.add_header("Referer", "https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/")
-        self.base_request.add_header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-        self.base_request.add_header("User-Agent",
-                                     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0")
-        self.base_request.add_header("Pragma", "no-cache")
-        self.base_request.add_header("Cache-Control", "no-cache")
+                resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/aluno')
+            except:
+                logging.exception("Error detected when logging-in")
+                time.sleep(1)
+                continue
+            soup = BeautifulSoup(resp)
+            url_action = soup.form['action']
+            login_form = {}
+            for input in soup.findAll('input'):
+                try:
+                    login_form[input['name']] = input['value']
+                except KeyError:
+                    pass
+            login_form['username'] = self.auth.get_username()
+            login_form['password'] = self.auth.get_password()
+            try:
+                logging.debug("Sending login form..")
+                self.opener.open('https://sistemas.ufsc.br' + url_action, urllib.urlencode(login_form))
+            except:
+                logging.exception("Error detected when logging-in")
+                time.sleep(1)
+                continue
+            try:
+                logging.info('Getting view state')
+                resp = self.opener.open('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/')
+            except:
+                logging.exception("Error detected when logging-in")
+                time.sleep(1)
+                continue
+            soup = BeautifulSoup(resp)
+            self.view_state = soup.find('input', {'name': 'javax.faces.ViewState'})['value']
+            self.base_request = urllib2.Request('https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/index.xhtml')
+            self.base_request.add_header('Accept-Encoding', 'gzip')
+            self.base_request.add_header("Referer", "https://cagr.sistemas.ufsc.br/modules/aluno/cadastroTurmas/")
+            self.base_request.add_header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+            self.base_request.add_header("User-Agent",
+                                         "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:34.0) Gecko/20100101 Firefox/34.0")
+            self.base_request.add_header("Pragma", "no-cache")
+            self.base_request.add_header("Cache-Control", "no-cache")
 
     def fetch(self, data=None, page_number=1):
         form_data = {
@@ -94,17 +113,18 @@ class OriginalFetcher(BaseFetcher):
             'formBusca:selectCampus': '',
             'formBusca:selectCursosGraduacao': '0',
             'formBusca:codigoDisciplina': '',
-            'formBusca:j_id135_selection': '',
+            'formBusca:j_id100_selection': '',
             'formBusca:filterDisciplina': '',
-            'formBusca:j_id139': '',
-            'formBusca:j_id143_selection': '',
+            'formBusca:j_id104': '',
+            'formBusca:j_id119': 'formBusca:j_id119',
+            'formBusca:j_id108_selection': '',
             'formBusca:filterProfessor': '',
             'formBusca:selectDiaSemana': '0',
             'formBusca:selectHorarioSemana': '',
             'formBusca': 'formBusca',
             'autoScroll': '',
             'javax.faces.ViewState': self.view_state,
-            'AJAX:EVENTS_COUNT': '1'
+            'isoladas': ''
         }
         name_form = "formBusca"
         data['dataScroller1'] = page_number
@@ -132,13 +152,13 @@ class OriginalFetcher(BaseFetcher):
                 self.xml = ElementTree.fromstring(self.buffer)
             except:
                 logging.debug("Repeating parsing...")
+                time.sleep(1)
                 continue
-            else:
+            if self.xml:
                 logging.debug("Breaking! We have success!")
                 break
         if not self.xml:
             logging.error("Three errors consecutives found! Stopping..")
-
 
     def fetch_campi(self):
         campi = ['EaD', 'FLO', 'JOI', 'CBS', 'ARA', 'BLN']
@@ -181,8 +201,7 @@ class OriginalFetcher(BaseFetcher):
         if not self.buffer:
             return []
         teams = []
-        schedule_re = re.compile(
-            "(?P<dayOfWeek>\d)\.(?P<hourStart>\d{2})(?P<minuteStart>\d{2})\-(?P<numberOfLessons>\d) \/ (?P<room>.+)")
+
         for row in self.xml[1][1][2]:
             team = {}
             team["code"] = row[4].text  # str
