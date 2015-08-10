@@ -4,7 +4,7 @@ define("collections/PageableCollection", ["chaplin"], function (Chaplin) {
         "totalPages": 0,
         "currentPage": 1,
         "parse": function (response) {
-            if (!this.disposed) {
+            if (this.disposed) {
                 return;
             }
             this.totalPages = response.total_pages;
@@ -17,7 +17,7 @@ define("collections/PageableCollection", ["chaplin"], function (Chaplin) {
             return response.results;
         },
         "fetch": function (options) {
-            if (!this.disposed) {
+            if (this.disposed) {
                 return;
             }
             options = options || {};
